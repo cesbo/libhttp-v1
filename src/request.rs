@@ -12,6 +12,7 @@ use crate::error::{
 pub struct Request {
     method: String,
     url: String,
+    version: String,
     headers: HashMap<String, String>,
 }
 
@@ -21,6 +22,7 @@ impl Request {
         Request {
             method: String::new(),
             url: String::new(),
+            version: "HTTP/1.1".to_string(),
             headers: HashMap::new(),
         }
     }
@@ -41,8 +43,15 @@ impl Request {
         println!("{:#?}", self);
     }
     
+    pub fn set_version<S>(&mut self, version: S)
+    where
+        S: Into<String> 
+    {
+        self.version = version.into();
+    }
+    
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
-        writeln!(dst, "{} {} HTTP/1.1\r", self.method, self.head_from_url(&self.url))?;
+        writeln!(dst, "{} {} {}\r", self.method, self.head_from_url(&self.url), self.version)?;
         writeln!(dst, "Host: {}\r", self.host_from_url(&self.url))?;
         for (param, value) in self.headers.iter() {
             writeln!(dst, "{}: {}\r", param, value)?;
@@ -69,6 +78,10 @@ impl Request {
     fn host_from_url(&self, url: &str) -> String {
         let v: Vec<&str> = url.split('/').collect();
         v[2].to_string()
+    }
+    
+    pub fn read<R: Read>(&self, head: R) -> Result<()> {
+        Ok(())
     }
 }
 
