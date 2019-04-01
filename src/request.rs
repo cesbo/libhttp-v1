@@ -1,5 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::io::{Read, BufRead, BufReader, Write, BufWriter};
+
+use crate::error::{
+    Error,
+    Result,
+};
 
 
 #[derive(Debug)]
@@ -35,17 +41,14 @@ impl Request {
         println!("{:#?}", self);
     }
     
-    pub fn send(&self, dst: &mut Vec<u8>) {
-        let mut request = (&format!("{} {} HTTP/1.1\r\n", self.method, self.head_from_url(&self.url))).to_string();
-        request.push_str(&format!("Host: {}\r\n", self.host_from_url(&self.url)));
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
+        writeln!(dst, "{} {} HTTP/1.1\r", self.method, self.head_from_url(&self.url))?;
+        writeln!(dst, "Host: {}\r", self.host_from_url(&self.url))?;
         for (param, value) in self.headers.iter() {
-            request.push_str(&format!("{}: {}\r\n", param, value));
-        }
-        request.push_str("\r\n");
-        println!("===================");
-        println!("{}",request);
-        //dst = request.as_bytes();
-        println!("{:#?}", request.as_bytes());
+            writeln!(dst, "{}: {}\r", param, value)?;
+        } 
+        writeln!(dst, "\r")?;
+        Ok(())
     }
     
     fn head_from_url(&self, url: &str) -> String {

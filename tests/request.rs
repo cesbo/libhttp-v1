@@ -12,13 +12,13 @@ fn test_reader_send() {
     let mut request = Request::new();
     request.init("GET", "http://127.0.0.1:8000/path?query");
     request.set("User-Agent", "libhttp");
-    println!("========================");
     let mut dst: Vec<u8> = Vec::new();
-    request.send(&mut dst);
+    request.send(&mut dst).unwrap();
+    println!("{:#?}", &dst);
+    println!("========================");
     println!("{:#?}", TEST1.as_bytes());
-    //request.send(&mut dst).unwrap();
+    println!("========================");
     //assert_eq!(&dst, TEST1.as_bytes());
-    //assert_eq!(&dst, vec![0, 2, 4, 6]);
 }
 /*
 #[test]
