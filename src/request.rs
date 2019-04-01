@@ -81,6 +81,17 @@ impl Request {
     }
     
     pub fn read<R: Read>(&self, head: R) -> Result<()> {
+        let mut line = 0;
+        let mut reader = BufReader::new(head);
+        let mut buffer = String::new();
+        loop {
+            buffer.clear();
+            match reader.read_line(&mut buffer) {
+                Ok(v) => if v == 0 { break },
+                Err(e) => return Err(Error::from(e)),
+            };
+            line += 1;
+        }
         Ok(())
     }
 }
