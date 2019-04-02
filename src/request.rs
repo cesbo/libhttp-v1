@@ -43,11 +43,10 @@ impl Request {
         println!("{:#?}", self);
     }
     
-    pub fn set_version<S>(&mut self, version: S)
-    where
-        S: Into<String> 
+    pub fn set_version(&mut self, version: &str)
     {
-        self.version = version.into();
+        self.version.clear();
+        self.version.push_str(version);
     }
     
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
