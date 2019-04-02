@@ -1,18 +1,20 @@
+use std::io::BufRead;
+
+
+#[derive(Default)]
 pub struct Url {
     name: String,
     path: String,
 }
 
+
 impl Url {
-    pub fn new<S>(url: S) -> Self 
-    where
-        S:Into<String>
-    {
-        let v: Vec<&str> = url.into().split('/').collect();
-        Url {
-            name: v[2].to_string(),
-            path: self.find_path(&v),
-        }
+    pub fn new(inp: &str) -> Self {
+        let mut url = Url::default();
+        let v: Vec<&str> = inp.split('/').collect();
+        url.name=v[2].to_string();
+        url.path=url.find_path(&v);
+        url
     }
     
     fn find_path(&self, v: &Vec<&str>) -> String {
