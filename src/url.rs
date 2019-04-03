@@ -28,16 +28,30 @@ fn url_path(v: &Vec<&str>) -> String {
 
 impl Url {
     pub fn new(inp: &str) -> Self {
-        let mut i = inp.split('?');
-        let path = i.next().unwrap();
-        let query_fragment = i.next().unwrap();
-        i = query_fragment.split('#');
-        let query = i.next().unwrap();
-        let fragment = i.next().unwrap();
+		let mut query = "";
+		let mut fragment = "";
+		let mut path = "";
+		let mut i = inp.split('?');
+        let mut pre_path = i.next().unwrap_or("");
+		if pre_path.find("#") != None {
+		    let mut path_fragment = pre_path.split('#');
+			path = path_fragment.next().unwrap_or("");
+			fragment = path_fragment.next().unwrap_or("");
+		} else {
+		    path = pre_path;
+			let query_fragment = i.next().unwrap_or("");
+            i = query_fragment.split('#');
+            query = i.next().unwrap_or("");
+		    fragment = i.next().unwrap_or("");
+		}
         let v: Vec<&str> = path.split('/').collect();
+		let name = match v.len() {
+		    1 | 2 => "",
+			_ => v[2],
+		};
         Url {
-            scheme: v[0].replace(":",""),
-            name: v[2].to_string(),
+            scheme: v[0].replace(":","").to_string(),
+            name: name.to_string(),
             path: url_path(&v),
             query: query.to_string(),
             fragment: fragment.to_string(),
