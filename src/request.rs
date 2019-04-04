@@ -60,7 +60,7 @@ impl Request {
         Ok(())
     }
     
-    pub fn read<R: Read>(&self, head: R) -> Result<()> {
+    pub fn read<R: Read>(&mut self, head: R) -> Result<()> {
         let mut line = 0;
         let mut reader = BufReader::new(head);
         let mut buffer = String::new();
@@ -70,6 +70,10 @@ impl Request {
                 Ok(v) => if v == 0 { break },
                 Err(e) => return Err(Error::from(e)),
             };
+	    if line == 0 {
+	        let mut v = buffer.split(' ');
+                self.method = (v.next().unwrap_or("")).to_string();
+	    }
             line += 1;
         }
         Ok(())

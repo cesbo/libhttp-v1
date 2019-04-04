@@ -1,13 +1,5 @@
 use http::Url;
 
-/*
-dvb://#adapter=1&tp=11044:v:44200&type=s2
-udp://239.255.1.1:1234
-
-
-
-*/
-
 #[test]
 fn test_10() {
     let mut url = Url::new("dvb://#adapter=1&tp=11044:v:44200&type=s2");

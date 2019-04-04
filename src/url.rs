@@ -11,51 +11,56 @@ pub struct Url {
 }
 
 
-fn url_path(v: &Vec<&str>) -> String {
-    let mut flag: usize = 5;
-    let mut result = String::new();
-    for part in v {
-        if flag > 1 {
-            flag -= 1;
-        }
-        if flag == 1 {
-            result.push_str(&format!("/{}", part));
-        }
-    }
-    result
+pub struct Coord_url {
+    start: usize,
+    end:  usize,
 }
 
 
-//#[derive(Debug)]
 impl Url {
     pub fn new(inp: &str) -> Self {
-		let mut query = "";
-		let mut fragment = "";
-		let mut path = "";
-		let mut i = inp.split('?');
-        let mut pre_path = i.next().unwrap_or("");
-		if pre_path.find("#") != None {
-		    let mut path_fragment = pre_path.split('#');
-			path = path_fragment.next().unwrap_or("");
-			fragment = path_fragment.next().unwrap_or("");
-		} else {
-		    path = pre_path;
-			let query_fragment = i.next().unwrap_or("");
-            i = query_fragment.split('#');
-            query = i.next().unwrap_or("");
-		    fragment = i.next().unwrap_or("");
-		}
-        let v: Vec<&str> = path.split('/').collect();
-		let name = match v.len() {
-		    1 | 2 => "",
-			_ => v[2],
-		};
+        let mut skip = 0;
+	let mut step = 0;
+	let mut scheme: Coord_url = Coord_url { start:0, end: 0 };
+        let mut path: Coord_url = Coord_url { start:0, end: 0 };
+        let mut query: Coord_url = Coord_url { start:0, end: 0 };
+        let mut fragment: Coord_url = Coord_url { start:0, end: 0 };
+        let mut name: Coord_url = Coord_url { start:0, end: 0 };
+        if let Some(v) = inp.find("://") {
+            skip = v + 3;
+	    scheme.end = v;
+	    name.start = skip;
+        }
+        for (idx, part) in inp[skip ..].match_indices(|c: char| (c == '/' || c == '?' || c == '#' )) {
+            match part.as_bytes()[0] {
+                b'/' if step < 1 => { path.start = idx + skip; step = 1; },
+                b'?' if step < 2 => { query.start = idx + skip; step = 2; },
+                b'#' if step < 3 => { fragment.start = idx + skip; break; },
+                _ => {},
+            }; 
+        }
+	let mut tail = inp.len();
+	if fragment.start > 0 {
+	    fragment.end = tail;
+            tail = fragment.start;
+	    fragment.start = fragment.start + 1;
+        }
+        if query.start > 0 {
+            query.end = tail;
+            tail = query.start;
+            query.start = query.start + 1;
+        }
+        if path.start > 0 {
+            path.end = tail;
+            tail = path.start;
+        }
+        name.end = tail;
         Url {
-            scheme: v[0].replace(":","").to_string(),
-            name: name.to_string(),
-            path: url_path(&v),
-            query: query.to_string(),
-            fragment: fragment.to_string(),
+            scheme: (&inp[scheme.start .. scheme.end]).to_string(),
+            name: (&inp[name.start .. name.end]).to_string(),
+            path: (&inp[path.start .. path.end]).to_string(),
+            query: (&inp[query.start .. query.end]).to_string(),
+            fragment: (&inp[fragment.start .. fragment.end]).to_string(),
         }
     }
     
