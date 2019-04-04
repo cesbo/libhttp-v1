@@ -1,6 +1,8 @@
-pub mod request;
+mod request;
+pub use crate::request::Request;
 
-pub mod url;
+mod url;
+pub use crate::url::Url;
 
 mod error;
 pub use crate::error::{

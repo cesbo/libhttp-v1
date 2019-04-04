@@ -1,5 +1,4 @@
-extern crate http;
-use http::request::Request;
+use http::Request;
 
 const TEST1: &str = "GET /path?query HTTP/1.1\r\n\
     Host: 127.0.0.1:8000\r\n\

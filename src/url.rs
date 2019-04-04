@@ -1,7 +1,7 @@
 use std::io::BufRead;
 
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Url {
     scheme: String,
     name: String,
@@ -26,6 +26,7 @@ fn url_path(v: &Vec<&str>) -> String {
 }
 
 
+//#[derive(Debug)]
 impl Url {
     pub fn new(inp: &str) -> Self {
 		let mut query = "";

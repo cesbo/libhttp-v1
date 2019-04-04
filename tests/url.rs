@@ -1,5 +1,4 @@
-extern crate http;
-use http::url::Url;
+use http::Url;
 
 /*
 dvb://#adapter=1&tp=11044:v:44200&type=s2
