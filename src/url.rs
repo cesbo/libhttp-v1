@@ -11,57 +11,48 @@ pub struct Url {
 }
 
 
-pub struct Coord_url {
-    start: usize,
-    end:  usize,
-}
-
-
 impl Url {
-    pub fn new(inp: &str) -> Self {
+    pub fn new(u: &str) -> Self {
+        let mut url = Url::default();
+        if ! u.is_empty() {
+            url.set(u);
+        }
+        url
+    }
+    
+    pub fn set(&mut self, inp: &str) {
         let mut skip = 0;
 	let mut step = 0;
-	let mut scheme: Coord_url = Coord_url { start:0, end: 0 };
-        let mut path: Coord_url = Coord_url { start:0, end: 0 };
-        let mut query: Coord_url = Coord_url { start:0, end: 0 };
-        let mut fragment: Coord_url = Coord_url { start:0, end: 0 };
-        let mut name: Coord_url = Coord_url { start:0, end: 0 };
+	let mut scheme = 0;
+        let mut path = 0;
+        let mut query = 0;
+        let mut fragment = 0;
         if let Some(v) = inp.find("://") {
             skip = v + 3;
-	    scheme.end = v;
-	    name.start = skip;
         }
         for (idx, part) in inp[skip ..].match_indices(|c: char| (c == '/' || c == '?' || c == '#' )) {
             match part.as_bytes()[0] {
-                b'/' if step < 1 => { path.start = idx + skip; step = 1; },
-                b'?' if step < 2 => { query.start = idx + skip; step = 2; },
-                b'#' if step < 3 => { fragment.start = idx + skip; break; },
+                b'/' if step < 1 => { path = idx + skip; step = 1; },
+                b'?' if step < 2 => { query = idx + skip; step = 2; },
+                b'#' if step < 3 => { fragment = idx + skip; break; },
                 _ => {},
             }; 
         }
 	let mut tail = inp.len();
-	if fragment.start > 0 {
-	    fragment.end = tail;
-            tail = fragment.start;
-	    fragment.start = fragment.start + 1;
+	if fragment > 0 {
+	    self.fragment = (&inp[fragment + 1 .. tail]).to_string();
+            tail = fragment;
         }
-        if query.start > 0 {
-            query.end = tail;
-            tail = query.start;
-            query.start = query.start + 1;
+        if query > 0 {
+            self.query = (&inp[query + 1 .. tail]).to_string();
+            tail = query;
         }
-        if path.start > 0 {
-            path.end = tail;
-            tail = path.start;
+        if path > 0 {
+            self.path = (&inp[path .. tail]).to_string();
+            tail = path;
         }
-        name.end = tail;
-        Url {
-            scheme: (&inp[scheme.start .. scheme.end]).to_string(),
-            name: (&inp[name.start .. name.end]).to_string(),
-            path: (&inp[path.start .. path.end]).to_string(),
-            query: (&inp[query.start .. query.end]).to_string(),
-            fragment: (&inp[fragment.start .. fragment.end]).to_string(),
-        }
+        self.scheme = (&inp[0 .. skip - 3]).to_string();
+        self.name = (&inp[skip .. tail]).to_string();
     }
     
     #[inline]
