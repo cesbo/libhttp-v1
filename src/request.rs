@@ -41,7 +41,6 @@ impl Request {
         S: Into<String> 
     {
         self.headers.insert(header_name.into(), header_data.into());
-        println!("{:#?}", self);
     }
     
     pub fn set_version(&mut self, version: &str)
@@ -51,7 +50,7 @@ impl Request {
     }
     
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
-        writeln!(dst, "{} {}?{} {}\r", self.method, &self.url.get_path(), &self.url.get_query(), self.version)?;
+        writeln!(dst, "{} {}{} {}\r", self.method, &self.url.get_path(), &self.url.get_query(), self.version)?;
         writeln!(dst, "Host: {}\r", &self.url.get_name())?;
         for (param, value) in self.headers.iter() {
             writeln!(dst, "{}: {}\r", param, value)?;
@@ -59,6 +58,19 @@ impl Request {
         writeln!(dst, "\r")?;
         Ok(())
     }
+ 
+    pub fn get_method(&self) -> &str {
+        self.method.as_str()
+    }
+    /*
+    pub fn headers_get(&self, header: &str) -> &str {
+        match self.headers.get(&header) {
+            Some(&data) => {
+                
+            }
+            _ => ""
+        }
+    }*/
     
     pub fn read<R: Read>(&mut self, head: R) -> Result<()> {
         let mut line = 0;
@@ -72,10 +84,20 @@ impl Request {
             };
 	    if line == 0 {
 	        let mut v = buffer.split(' ');
-                self.method = (v.next().unwrap_or("")).to_string();
+                self.method += v.next().unwrap_or("");
+	    }
+	    if line > 0 {
+	        if buffer.find(": ") == None {
+	            continue;
+	        }
+	        let mut v = buffer.split(": ");
+	        let header = v.next().unwrap_or("");
+	        let data = v.next().unwrap_or("");
+	        self.headers.insert(header.to_string(), data.to_string());
 	    }
             line += 1;
         }
+        println!("{:#?}", self);
         Ok(())
     }
 }

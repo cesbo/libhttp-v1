@@ -22,8 +22,8 @@ impl Url {
     
     pub fn set(&mut self, inp: &str) {
         let mut skip = 0;
-	let mut step = 0;
-	let mut scheme = 0;
+        let mut step = 0;
+        let mut scheme = 0;
         let mut path = 0;
         let mut query = 0;
         let mut fragment = 0;
@@ -38,21 +38,21 @@ impl Url {
                 _ => {},
             }; 
         }
-	let mut tail = inp.len();
-	if fragment > 0 {
-	    self.fragment = (&inp[fragment + 1 .. tail]).to_string();
+        let mut tail = inp.len();
+        if fragment > 0 {
+            self.fragment += &inp[fragment .. tail];
             tail = fragment;
         }
         if query > 0 {
-            self.query = (&inp[query + 1 .. tail]).to_string();
+            self.query += &inp[query .. tail];
             tail = query;
         }
         if path > 0 {
-            self.path = (&inp[path .. tail]).to_string();
+            self.path += &inp[path .. tail];
             tail = path;
         }
-        self.scheme = (&inp[0 .. skip - 3]).to_string();
-        self.name = (&inp[skip .. tail]).to_string();
+        self.scheme += &inp[0 .. skip - 3];
+        self.name += &inp[skip .. tail];
     }
     
     #[inline]
