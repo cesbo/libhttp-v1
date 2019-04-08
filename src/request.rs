@@ -82,19 +82,19 @@ impl Request {
                 Ok(v) => if v == 0 { break },
                 Err(e) => return Err(Error::from(e)),
             };
-	    if line == 0 {
-	        let mut v = buffer.split(' ');
+            if line == 0 {
+                let mut v = buffer.split(' ');
                 self.method += v.next().unwrap_or("");
-	    }
-	    if line > 0 {
-	        if buffer.find(": ") == None {
-	            continue;
-	        }
-	        let mut v = buffer.split(": ");
-	        let header = v.next().unwrap_or("").to_lowercase();
-	        let data = v.next().unwrap_or("");
-	        self.headers.insert(header.to_string(), data.to_string());
-	    }
+            }
+            if line > 0 {
+                if buffer.find(": ") == None {
+                    continue;
+                }
+                let mut v = buffer.split(": ");
+                let header = v.next().unwrap_or("").to_lowercase();
+                let data = v.next().unwrap_or("");
+                self.headers.insert(header.to_string(), data.to_string());
+            }
             line += 1;
         }
         Ok(())
