@@ -61,7 +61,7 @@ impl Request {
     
     fn headers_case(&self, inp: &str) -> String {
         let mut ret = String::new();
-        let mut v = inp.split("-");
+        let mut v = inp.split('-');
         loop {
             let part = v.next().unwrap_or("");
             if part == "" { break(ret) }
