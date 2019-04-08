@@ -39,7 +39,7 @@ impl Request {
     where
         S: Into<String> 
     {
-        self.headers.insert(header_name.into(), header_data.into());
+        self.headers.insert(header_name.into().to_lowercase(), header_data.into());
     }
     
     pub fn set_version(&mut self, version: &str)
@@ -53,10 +53,27 @@ impl Request {
         writeln!(dst, "{} {}\r", &self.url.get_fragment(), self.version)?;
         writeln!(dst, "Host: {}\r", &self.url.get_name())?;
         for (param, value) in self.headers.iter() {
-            writeln!(dst, "{}: {}\r", param, value)?;
+            writeln!(dst, "{}: {}\r", self.headers_case(param), value)?;
         } 
         writeln!(dst, "\r")?;
         Ok(())
+    }
+    
+    fn headers_case(&self, inp: &str) -> String {
+        let mut ret = String::new();
+        let mut v = inp.split("-");
+        loop {
+            let part = v.next().unwrap_or("");
+            if part == "" { break(ret) }
+            if ret != "" { ret += "-"; }
+            if part.len() == 1 {
+                ret += &part.to_uppercase();
+            }
+            if part.len() > 1 {
+                ret += &part[.. 1].to_uppercase();
+                ret += &part[1 .. part.len()];
+            }
+        }
     }
  
     pub fn get_method(&self) -> &str {
@@ -66,7 +83,7 @@ impl Request {
     pub fn get_header(&self, header: &str) -> &str {
         match self.headers.get(header) {
             Some(data) => {
-                &data[0 .. (data.len() - 2)]
+                &data
             }
             _ => ""
         }
@@ -93,7 +110,7 @@ impl Request {
                 let mut v = buffer.split(": ");
                 let header = v.next().unwrap_or("").to_lowercase();
                 let data = v.next().unwrap_or("");
-                self.headers.insert(header.to_string(), data.to_string());
+                self.headers.insert(header.to_string(), (data[.. (data.len() - 2)]).to_string());
             }
             line += 1;
         }
