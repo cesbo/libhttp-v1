@@ -27,7 +27,7 @@ fn test_reader_read() {
     let mut request = Request::new();
     request.read(TEST1.as_bytes()).unwrap();
     assert_eq!(request.get_method(), "GET");
-    //assert_eq!(request.headers_get("host"), "127.0.0.1:8000");
-    //assert_eq!(request.headers_get("user-agent"), "libhttp");
+    assert_eq!(request.get_header("host"), "127.0.0.1:8000");
+    assert_eq!(request.get_header("user-agent"), "libhttp");
 }
 

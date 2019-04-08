@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
-use std::io::{Read, BufRead, BufReader, Write, BufWriter};
+use std::io::{Read, BufRead, BufReader, Write};
 
 use crate::url::Url;
 use crate::error::{
@@ -9,7 +8,7 @@ use crate::error::{
 };
 
 
-#[derive(Debug)]
+#[derive(Default)]
 pub struct Request {
     method: String,
     url: Url,
@@ -50,7 +49,8 @@ impl Request {
     }
     
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
-        writeln!(dst, "{} {}{} {}\r", self.method, &self.url.get_path(), &self.url.get_query(), self.version)?;
+        write!(dst,"{} {}{}", self.method, &self.url.get_path(), &self.url.get_query())?;
+        writeln!(dst, "{} {}\r", &self.url.get_fragment(), self.version)?;
         writeln!(dst, "Host: {}\r", &self.url.get_name())?;
         for (param, value) in self.headers.iter() {
             writeln!(dst, "{}: {}\r", param, value)?;
@@ -62,15 +62,15 @@ impl Request {
     pub fn get_method(&self) -> &str {
         self.method.as_str()
     }
-    /*
-    pub fn headers_get(&self, header: &str) -> &str {
-        match self.headers.get(&header) {
-            Some(&data) => {
-                
+    
+    pub fn get_header(&self, header: &str) -> &str {
+        match self.headers.get(header) {
+            Some(data) => {
+                &data[0 .. (data.len() - 2)]
             }
             _ => ""
         }
-    }*/
+    }
     
     pub fn read<R: Read>(&mut self, head: R) -> Result<()> {
         let mut line = 0;
@@ -91,13 +91,12 @@ impl Request {
 	            continue;
 	        }
 	        let mut v = buffer.split(": ");
-	        let header = v.next().unwrap_or("");
+	        let header = v.next().unwrap_or("").to_lowercase();
 	        let data = v.next().unwrap_or("");
 	        self.headers.insert(header.to_string(), data.to_string());
 	    }
             line += 1;
         }
-        println!("{:#?}", self);
         Ok(())
     }
 }

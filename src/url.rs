@@ -1,6 +1,3 @@
-use std::io::BufRead;
-
-
 #[derive(Default, Debug)]
 pub struct Url {
     scheme: String,
@@ -23,7 +20,6 @@ impl Url {
     pub fn set(&mut self, inp: &str) {
         let mut skip = 0;
         let mut step = 0;
-        let mut scheme = 0;
         let mut path = 0;
         let mut query = 0;
         let mut fragment = 0;
