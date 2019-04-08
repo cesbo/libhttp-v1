@@ -64,8 +64,12 @@ impl Request {
         let mut v = inp.split('-');
         loop {
             let part = v.next().unwrap_or("");
-            if part == "" { break(ret) }
-            if ret != "" { ret += "-"; }
+            if part == "" {
+                break(ret) 
+            }
+            if ret != "" {
+                ret += "-";
+            }
             if part.len() == 1 {
                 ret += &part.to_uppercase();
             }
@@ -80,12 +84,10 @@ impl Request {
         self.method.as_str()
     }
     
-    pub fn get_header(&self, header: &str) -> &str {
+    pub fn get_header(&self, header: &str) -> Option<&str> {
         match self.headers.get(header) {
-            Some(data) => {
-                &data
-            }
-            _ => ""
+            Some(data) => Some(data),
+            _ => None,
         }
     }
     
