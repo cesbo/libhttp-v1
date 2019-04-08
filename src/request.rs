@@ -61,23 +61,16 @@ impl Request {
     
     fn headers_case(&self, inp: &str) -> String {
         let mut ret = String::new();
-        let mut v = inp.split('-');
-        loop {
-            let part = v.next().unwrap_or("");
-            if part == "" {
-                break(ret) 
-            }
+        for part in inp.split('-') {
             if ret != "" {
                 ret += "-";
             }
-            if part.len() == 1 {
-                ret += &part.to_uppercase();
-            }
-            if part.len() > 1 {
+            if ! part.is_empty() {
                 ret += &part[.. 1].to_uppercase();
-                ret += &part[1 .. part.len()];
+                ret += &part[1 ..];
             }
         }
+        ret
     }
  
     pub fn get_method(&self) -> &str {
