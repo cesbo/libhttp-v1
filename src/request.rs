@@ -62,7 +62,7 @@ impl Request {
     fn headers_case(&self, inp: &str) -> String {
         let mut ret = String::new();
         for part in inp.split('-') {
-            if ret != "" {
+            if ! ret.is_empty() {
                 ret += "-";
             }
             if ! part.is_empty() {
@@ -77,11 +77,8 @@ impl Request {
         self.method.as_str()
     }
     
-    pub fn get_header(&self, header: &str) -> Option<&str> {
-        match self.headers.get(header) {
-            Some(data) => Some(data),
-            _ => None,
-        }
+    pub fn get_header(&self, header: &str) -> Option<&String> {
+        self.headers.get(header)
     }
     
     pub fn read<R: Read>(&mut self, head: R) -> Result<()> {
