@@ -92,13 +92,7 @@ impl Request {
                 self.method += v.next().unwrap_or("");
             }
             if line > 0 {
-                if buffer.find(": ") == None {
-                    continue;
-                }
-                let mut v = buffer.split(": ");
-                let header = v.next().unwrap_or("").to_lowercase();
-                let data = v.next().unwrap_or("");
-                self.headers.insert(header.to_string(), (data[.. (data.len() - 2)]).to_string());
+                header::pars_heades_line(&mut self.headers, &buffer);
             }
             line += 1;
         }
