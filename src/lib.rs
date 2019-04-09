@@ -1,6 +1,11 @@
 mod request;
 pub use crate::request::Request;
 
+mod response;
+pub use crate::response::Response;
+
+mod header;
+
 mod url;
 pub use crate::url::Url;
 

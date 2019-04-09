@@ -1,7 +1,13 @@
 use std::collections::HashMap;
-use std::io::{Read, BufRead, BufReader, Write};
+use std::io::{
+    Read,
+    BufRead,
+    BufReader, 
+    Write
+};
 
 use crate::url::Url;
+use crate::header;
 use crate::error::{
     Error,
     Result,
@@ -34,7 +40,8 @@ impl Request {
         self.method = method.into();
         self.url =  Url::new(url);
     }
-    
+  
+    #[inline]
     pub fn set<S>(&mut self, header_name: S, header_data: S)
     where
         S: Into<String> 
@@ -42,6 +49,7 @@ impl Request {
         self.headers.insert(header_name.into().to_lowercase(), header_data.into());
     }
     
+    #[inline]
     pub fn set_version(&mut self, version: &str)
     {
         self.version.clear();
@@ -53,30 +61,18 @@ impl Request {
         writeln!(dst, "{} {}\r", &self.url.get_fragment(), self.version)?;
         writeln!(dst, "Host: {}\r", &self.url.get_name())?;
         for (param, value) in self.headers.iter() {
-            writeln!(dst, "{}: {}\r", self.headers_case(param), value)?;
+            writeln!(dst, "{}: {}\r", header::headers_case(param), value)?;
         } 
         writeln!(dst, "\r")?;
         Ok(())
     }
-    
-    fn headers_case(&self, inp: &str) -> String {
-        let mut ret = String::new();
-        for part in inp.split('-') {
-            if ! ret.is_empty() {
-                ret += "-";
-            }
-            if ! part.is_empty() {
-                ret += &part[.. 1].to_uppercase();
-                ret += &part[1 ..];
-            }
-        }
-        ret
-    }
  
+    #[inline]
     pub fn get_method(&self) -> &str {
         self.method.as_str()
     }
-    
+
+    #[inline]    
     pub fn get_header(&self, header: &str) -> Option<&String> {
         self.headers.get(header)
     }
