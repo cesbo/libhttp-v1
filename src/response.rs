@@ -56,6 +56,42 @@ impl Response {
         }
         Ok(())
     }
+ 
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
+        writeln!(dst, "{} {} {}\r", self.version, self.code, self.reason)?;
+        for (param, value) in self.headers.iter() {
+            writeln!(dst, "{}: {}\r", header::headers_case(param), value)?;
+        } 
+        writeln!(dst, "\r")?;
+        Ok(())
+    }
+    
+    #[inline]
+    pub fn set_version(&mut self, version: &str)
+    {
+        self.version.clear();
+        self.version.push_str(version);
+    }  
+      
+    #[inline]
+    pub fn set_reason(&mut self, version: &str)
+    {
+        self.reason.push_str(version);
+    }
+              
+    #[inline]
+    pub fn set_code(&mut self, code: &usize)
+    {
+        self.code = *code;
+    }
+    
+    #[inline]
+    pub fn set<S>(&mut self, header_name: S, header_data: S)
+    where
+        S: Into<String> 
+    {
+        self.headers.insert(header_name.into().to_lowercase(), header_data.into());
+    }
     
     #[inline]    
     pub fn get_header(&self, header: &str) -> Option<&String> {
