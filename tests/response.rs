@@ -12,4 +12,7 @@ fn response_read() {
     response.read(TEST1.as_bytes()).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &code200);
+    assert_eq!(response.get_reason(), "Ok");
+    assert_eq!(response.get_header("server").unwrap(), "libhttp");
+    assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
 }
