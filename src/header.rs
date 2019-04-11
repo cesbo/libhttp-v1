@@ -16,10 +16,9 @@ pub fn headers_case(inp: &str) -> String {
 }
 
 pub fn pars_heades_line(headers: &mut HashMap<String, String>, buffer: &str) {
-    if buffer.find(": ") != None {    
-        let mut v = buffer.split(": ");
-        let header = v.next().unwrap_or("").to_lowercase();
-        let data = v.next().unwrap_or("");
-        headers.insert(header.to_string(), (data[.. (data.len() - 2)]).to_string());
+    if let Some(flag) = buffer.find(":") {   
+        let header = &buffer[.. flag].trim();
+        let data = &buffer[flag + 1 ..].trim();
+        headers.insert(header.to_lowercase().to_string(), data.to_string());
     }
 }

@@ -7,7 +7,6 @@ const TEST1: &str = "HTTP/1.1 200 Ok\r\n\
     
 const TEST2: &str = "RTSP/1.0 200 Ok\r\n\
     Date: Mon, 08 Apr 2019 10:42:12 GMT\r\n\
-    Server: lib\r\n\
     \r\n";
 
 const CODE200: usize = 200;    
@@ -26,7 +25,6 @@ fn response_read() {
 #[test]
 fn response_send() {
     let mut response = Response::new();
-    response.set("Server", "lib");
     response.set("Date", "Mon, 08 Apr 2019 10:42:12 GMT");
     response.set_version("RTSP/1.0");
     response.set_code(&CODE200);

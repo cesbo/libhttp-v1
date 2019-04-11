@@ -38,19 +38,21 @@ impl Response {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            match reader.read_line(&mut buffer) {
-                Ok(v) => if v == 0 { break },
-                Err(e) => return Err(Error::from(e)),
-            };
+            if let Err(e) = reader.read_line(&mut buffer) {
+                return Err(Error::from(e));
+            }
+            let s = buffer.trim();
+            if s.is_empty() {
+                break;
+            }
             if line == 0 {
-                let mut v = buffer.split(' ');
+                let mut v = s.split(' ');
                 self.version += v.next().unwrap_or("");
                 self.code = (v.next().unwrap_or("")).parse::<usize>().unwrap_or(0);
                 let data = v.next().unwrap_or("");
-                self.reason += &data[.. (data.len() - 2)];
-            }
-            if line > 0 {
-                header::pars_heades_line(&mut self.headers, &buffer);
+                self.reason += &data.trim();
+            } else {
+                header::pars_heades_line(&mut self.headers, &s);
             }
             line += 1;
         }

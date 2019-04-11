@@ -90,8 +90,7 @@ impl Request {
             if line == 0 {
                 let mut v = buffer.split(' ');
                 self.method += v.next().unwrap_or("");
-            }
-            if line > 0 {
+            } else {
                 header::pars_heades_line(&mut self.headers, &buffer);
             }
             line += 1;
