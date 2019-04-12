@@ -19,6 +19,6 @@ pub fn pars_heades_line(headers: &mut HashMap<String, String>, buffer: &str) {
     if let Some(flag) = buffer.find(":") {   
         let header = &buffer[.. flag].trim();
         let data = &buffer[flag + 1 ..].trim();
-        headers.insert(header.to_lowercase().to_string(), data.to_string());
+        headers.insert(header.to_lowercase(), data.to_string());
     }
 }

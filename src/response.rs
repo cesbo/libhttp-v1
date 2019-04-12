@@ -46,11 +46,23 @@ impl Response {
                 break;
             }
             if line == 0 {
-                let mut v = s.split(' ');
-                self.version += v.next().unwrap_or("");
-                self.code = (v.next().unwrap_or("")).parse::<usize>().unwrap_or(0);
-                let data = v.next().unwrap_or("");
-                self.reason += &data.trim();
+                let mut step: usize = 0;
+                let mut v = s.split(|c| c == ' ' || c == '\t');
+                loop {
+                    let part = v.next().unwrap_or(" ");
+                    if part == "" {
+                        continue;
+                    } else if part == " " {
+                        break;
+                    }
+                    match step {
+                        0 => self.version += part,
+                        1 => self.code = part.parse::<usize>().unwrap_or(0),
+                        2 => self.reason += &part.trim(),
+                        _ => break,
+                    };
+                    step += 1;
+                }
             } else {
                 header::pars_heades_line(&mut self.headers, &s);
             }

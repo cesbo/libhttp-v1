@@ -42,11 +42,12 @@ impl Request {
     }
   
     #[inline]
-    pub fn set<S>(&mut self, header_name: S, header_data: S)
+    pub fn set<R, S>(&mut self, name: R, data: S)
     where
-        S: Into<String> 
+        R: AsRef<str>,
+        S: Into<String>
     {
-        self.headers.insert(header_name.into().to_lowercase(), header_data.into());
+        self.headers.insert(name.as_ref().to_lowercase(), data.into());
     }
     
     #[inline]

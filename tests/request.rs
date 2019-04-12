@@ -4,15 +4,28 @@ const TEST1: &str = "GET /path?query HTTP/1.1\r\n\
     Host: 127.0.0.1:8000\r\n\
     User-Agent: libhttp\r\n\
     \r\n";
+    
+const TEST_BROKEN: &str = "GET /path?query HTTP/1.1\r\n\
+    Host: 127.0.0.1:8000\r\n\
+    User-Agent: lib";
 
 const TEST2: &str = "GET /path?query RTSP/1.0\r\n\
     Host: 127.0.0.1:8000\r\n\
     User-Agent: libhttp\r\n\
     \r\n";
 
+const TEST_TAB: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t        HTTP/1.1\r\n\
+    Host:\t127.0.0.1:8000\r\n\
+    User-Agent:\t libhttp\r\n\
+    \r\n";
+
+const TEST_TAB_UNIX: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t        HTTP/1.1\n\
+    Host:\t127.0.0.1:8000\n\
+    User-Agent:\t libhttp\n\
+    \n";
 
 #[test]
-fn test_reader_send() {
+fn send() {
     let mut request = Request::new();
     request.init("GET", "http://127.0.0.1:8000/path?query");
     request.set("User-Agent", "libhttp");
@@ -23,11 +36,52 @@ fn test_reader_send() {
 }
 
 #[test]
-fn test_reader_read() {
+fn send_case() {
+    let mut request = Request::new();
+    request.init("GET", "http://127.0.0.1:8000/path?query");
+    request.set("user-agent", "libhttp");
+    request.set_version("RTSP/1.0");
+    let mut dst: Vec<u8> = Vec::new();
+    request.send(&mut dst).unwrap();
+    assert_eq!(dst.as_slice(), TEST2.as_bytes());
+}
+
+
+#[test]
+fn reader_read() {
     let mut request = Request::new();
     request.read(TEST1.as_bytes()).unwrap();
     assert_eq!(request.get_method(), "GET");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
 }
+
+#[test]
+fn reader_broken() {
+    let mut request = Request::new();
+    request.read(TEST_BROKEN.as_bytes()).unwrap();
+    assert_eq!(request.get_method(), "GET");
+    assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
+    assert_eq!(request.get_header("user-agent").unwrap(), "lib");
+}
+
+#[test]
+fn reader_tab() {
+    let mut request = Request::new();
+    request.read(TEST_TAB.as_bytes()).unwrap();
+    assert_eq!(request.get_method(), "POST");
+    assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
+    assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
+}
+
+
+#[test]
+fn reader_unix() {
+    let mut request = Request::new();
+    request.read(TEST_TAB_UNIX.as_bytes()).unwrap();
+    assert_eq!(request.get_method(), "POST");
+    assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
+    assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
+}
+
 
