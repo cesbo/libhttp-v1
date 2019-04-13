@@ -142,3 +142,4 @@ fn response_send_case() {
     response.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST_SEND_CASE.as_bytes());
 }
+

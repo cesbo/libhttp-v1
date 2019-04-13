@@ -47,14 +47,7 @@ impl Response {
             }
             if line == 0 {
                 let mut step: usize = 0;
-                let mut v = s.split(|c| c == ' ' || c == '\t');
-                loop {
-                    let part = v.next().unwrap_or(" ");
-                    if part == "" {
-                        continue;
-                    } else if part == " " {
-                        break;
-                    }
+                for part in s.split_whitespace() {
                     match step {
                         0 => self.version += part,
                         1 => self.code = part.parse::<usize>().unwrap_or(0),
