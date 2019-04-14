@@ -23,6 +23,13 @@ pub struct Request {
 }
 
 
+impl Read for Request {
+    fn read(&mut self, src: &mut [u8]) -> Result<usize> {
+        Ok(1)
+    }
+}
+
+
 impl Request {
     pub fn new() -> Self {
         Request {
@@ -78,7 +85,7 @@ impl Request {
         self.headers.get(header)
     }
     
-    pub fn read<R: Read>(&mut self, head: R) -> Result<()> {
+    pub fn parse<R: Read>(&mut self, head: R) -> Result<()> {
         let mut line = 0;
         let mut reader = BufReader::new(head);
         let mut buffer = String::new();

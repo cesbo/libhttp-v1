@@ -46,9 +46,9 @@ const CODE404: usize = 404;
 const CODE0: usize = 0;   
 
 #[test]
-fn response_read() {    
+fn response_parse() {    
     let mut response = Response::new();
-    response.read(TEST1.as_bytes()).unwrap();
+    response.parse(TEST1.as_bytes()).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -57,9 +57,9 @@ fn response_read() {
 }
 
 #[test]
-fn response_read_spaces() {    
+fn response_parse_spaces() {    
     let mut response = Response::new();
-    response.read(TEST_SPACES.as_bytes()).unwrap();
+    response.parse(TEST_SPACES.as_bytes()).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -68,9 +68,9 @@ fn response_read_spaces() {
 }
 
 #[test]
-fn response_read_tabs() {    
+fn response_parse_tabs() {    
     let mut response = Response::new();
-    response.read(TEST_TABS.as_bytes()).unwrap();
+    response.parse(TEST_TABS.as_bytes()).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -79,9 +79,9 @@ fn response_read_tabs() {
 }
 
 #[test]
-fn response_read_tabs_case() {    
+fn response_parse_tabs_case() {    
     let mut response = Response::new();
-    response.read(TEST_TABS_CASE.as_bytes()).unwrap();
+    response.parse(TEST_TABS_CASE.as_bytes()).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -90,9 +90,9 @@ fn response_read_tabs_case() {
 }
 
 #[test]
-fn response_read_unix() {
+fn response_parse_unix() {
     let mut response = Response::new();
-    response.read(TEST_UNIX.as_bytes()).unwrap();
+    response.parse(TEST_UNIX.as_bytes()).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -101,9 +101,9 @@ fn response_read_unix() {
 }
 
 #[test]
-fn response_read_bad_code() {    
+fn response_parse_bad_code() {    
     let mut response = Response::new();
-    response.read(TEST3.as_bytes()).unwrap();
+    response.parse(TEST3.as_bytes()).unwrap();
     assert_eq!(response.get_version(), "RTSP/1.0");
     assert_eq!(response.get_code(), &CODE0);
     assert_eq!(response.get_reason(), "");
@@ -112,9 +112,9 @@ fn response_read_bad_code() {
 
 
 #[test]
-fn response_read_test4() {    
+fn response_parse_test4() {    
     let mut response = Response::new();
-    response.read(TEST4.as_bytes()).unwrap();
+    response.parse(TEST4.as_bytes()).unwrap();
     assert_eq!(response.get_version(), "RTSP/1.0");
     assert_eq!(response.get_code(), &CODE404);
 }

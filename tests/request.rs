@@ -48,27 +48,27 @@ fn send_case() {
 
 
 #[test]
-fn reader_read() {
+fn parseer_parse() {
     let mut request = Request::new();
-    request.read(TEST1.as_bytes()).unwrap();
+    request.parse(TEST1.as_bytes()).unwrap();
     assert_eq!(request.get_method(), "GET");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
 }
 
 #[test]
-fn reader_broken() {
+fn parseer_broken() {
     let mut request = Request::new();
-    request.read(TEST_BROKEN.as_bytes()).unwrap();
+    request.parse(TEST_BROKEN.as_bytes()).unwrap();
     assert_eq!(request.get_method(), "GET");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.get_header("user-agent").unwrap(), "lib");
 }
 
 #[test]
-fn reader_tab() {
+fn parseer_tab() {
     let mut request = Request::new();
-    request.read(TEST_TAB.as_bytes()).unwrap();
+    request.parse(TEST_TAB.as_bytes()).unwrap();
     assert_eq!(request.get_method(), "POST");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
@@ -76,9 +76,9 @@ fn reader_tab() {
 
 
 #[test]
-fn reader_unix() {
+fn parseer_unix() {
     let mut request = Request::new();
-    request.read(TEST_TAB_UNIX.as_bytes()).unwrap();
+    request.parse(TEST_TAB_UNIX.as_bytes()).unwrap();
     assert_eq!(request.get_method(), "POST");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");

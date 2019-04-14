@@ -32,7 +32,7 @@ impl Response {
         }
     }
     
-    pub fn read<R: Read>(&mut self, head: R) -> Result<()> {
+    pub fn parse<R: Read>(&mut self, head: R) -> Result<()> {
         let mut line = 0;
         let mut reader = BufReader::new(head);
         let mut buffer = String::new();
