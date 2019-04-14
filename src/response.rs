@@ -46,16 +46,12 @@ impl Response {
                 break;
             }
             if line == 0 {
-                let mut step: usize = 0;
-                for part in s.split_whitespace() {
-                    match step {
-                        0 => self.version += part,
-                        1 => self.code = part.parse::<usize>().unwrap_or(0),
-                        2 => self.reason += &part.trim(),
-                        _ => break,
-                    };
-                    step += 1;
-                }
+                let skip = s.find(char::is_whitespace).unwrap_or(s.len());
+                self.version = (&s[.. skip]).to_string(); 
+                let s = s[skip ..].trim_start();
+                let skip = s.find(char::is_whitespace).unwrap_or(s.len());
+                self.code = s[.. skip].parse::<usize>().unwrap_or(0);
+                self.reason = s[skip ..].trim().to_string();
             } else {
                 header::pars_heades_line(&mut self.headers, &s);
             }
