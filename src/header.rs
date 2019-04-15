@@ -18,7 +18,7 @@ pub fn headers_case<W: Write>(inp: &str, dst: &mut W) -> Result<()> {
 }
 
 pub fn parse(headers: &mut HashMap<String, String>, buffer: &str) {
-    if let Some(flag) = buffer.find(":") {   
+    if let Some(flag) = buffer.find(':') {   
         let header = &buffer[.. flag].trim();
         let data = &buffer[flag + 1 ..].trim();
         headers.insert(header.to_lowercase(), data.to_string());

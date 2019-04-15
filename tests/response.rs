@@ -124,7 +124,7 @@ fn response_send() {
     let mut response = Response::new();
     response.set("Date", "Mon, 08 Apr 2019 10:42:12 GMT");
     response.set_version("RTSP/1.0");
-    response.set_code(&CODE200);
+    response.set_code(CODE200);
     response.set_reason("Ok");
     let mut dst: Vec<u8> = Vec::new();
     response.send(&mut dst).unwrap();
@@ -136,7 +136,7 @@ fn response_send_case() {
     let mut response = Response::new();
     response.set("date-start", "Mon, 08 Apr 2019 10:42:12 GMT");
     response.set_version("RTSP/1.0");
-    response.set_code(&CODE200);
+    response.set_code(CODE200);
     response.set_reason("Ok");
     let mut dst: Vec<u8> = Vec::new();
     response.send(&mut dst).unwrap();

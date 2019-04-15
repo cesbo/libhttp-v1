@@ -46,10 +46,10 @@ impl Response {
                 break;
             }
             if line == 0 {
-                let skip = s.find(char::is_whitespace).unwrap_or(s.len());
+                let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.version = (&s[.. skip]).to_string(); 
                 let s = s[skip ..].trim_start();
-                let skip = s.find(char::is_whitespace).unwrap_or(s.len());
+                let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.code = s[.. skip].parse::<usize>().unwrap_or(0);
                 self.reason = s[skip ..].trim().to_string();
             } else {
@@ -84,9 +84,9 @@ impl Response {
     }
               
     #[inline]
-    pub fn set_code(&mut self, code: &usize)
+    pub fn set_code(&mut self, code: usize)
     {
-        self.code = *code;
+        self.code = code;
     }
     
     #[inline]
