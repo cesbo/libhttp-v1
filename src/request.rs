@@ -69,7 +69,8 @@ impl Request {
         writeln!(dst, "{} {}\r", &self.url.get_fragment(), self.version)?;
         writeln!(dst, "Host: {}\r", &self.url.get_name())?;
         for (param, value) in self.headers.iter() {
-            writeln!(dst, "{}: {}\r", header::headers_case(param), value)?;
+            header::headers_case(param, dst)?;
+            writeln!(dst, ": {}\r", value)?;
         } 
         writeln!(dst, "\r")?;
         Ok(())
@@ -79,22 +80,22 @@ impl Request {
     pub fn get_method(&self) -> &str {
         self.method.as_str()
     } 
-	
+    
     #[inline]
     pub fn get_version(&self) -> &str {
         self.version.as_str()
-    }
-	
+    } 
+    
     #[inline]
     pub fn get_path(&self) -> &str {
         self.url.get_path()
-    }	
-	
+    }
+    
     #[inline]
     pub fn get_query(&self) -> &str {
         self.url.get_query()
     }
-	
+    
     #[inline]    
     pub fn get_header(&self, header: &str) -> Option<&String> {
         self.headers.get(header)
@@ -111,20 +112,18 @@ impl Request {
                 Err(e) => return Err(Error::from(e)),
             };
             if line == 0 {
-                let mut step: usize = 0;
-				for part in buffer.split_whitespace() {
-				    match step {
-					    0 => self.method += part,
-						1 => self.url =  Url::new(part),
-						2 => self.version = part.to_string(),
-						_ => continue,
-					}
-				    step += 1;
+                for (step, part) in buffer.split_whitespace().enumerate() {
+                    match step {
+                        0 => self.method += part,
+                        1 => self.url =  Url::new(part),
+                        2 => self.version = part.to_string(),
+                        _ => break,
+                     }
                 }
                 let mut v = buffer.split(' ');
                 v.next().unwrap_or("");
             } else {
-                header::pars_heades_line(&mut self.headers, &buffer);
+                header::parse(&mut self.headers, &buffer);
             }
             line += 1;
         }

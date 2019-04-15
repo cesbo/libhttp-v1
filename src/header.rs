@@ -1,21 +1,23 @@
 use std::collections::HashMap;
+use std::io::Write;
+
+use crate::error::Result;
 
 
-pub fn headers_case(inp: &str) -> String {
-    let mut ret = String::new();
-    for part in inp.split('-') {
-        if ! ret.is_empty() {
-            ret += "-";
+pub fn headers_case<W: Write>(inp: &str, dst: &mut W) -> Result<()> {
+    for (step, part) in inp.split('-').enumerate() {
+        if step > 0 {
+            write!(dst, "-")?;
         }
         if ! part.is_empty() {
-            ret += &part[.. 1].to_uppercase();
-            ret += &part[1 ..];
+		    write!(dst, "{}", &part[.. 1].to_uppercase())?;
+		    write!(dst, "{}", &part[1 ..])?;
         }
     }
-    ret
+    Ok(())
 }
 
-pub fn pars_heades_line(headers: &mut HashMap<String, String>, buffer: &str) {
+pub fn parse(headers: &mut HashMap<String, String>, buffer: &str) {
     if let Some(flag) = buffer.find(":") {   
         let header = &buffer[.. flag].trim();
         let data = &buffer[flag + 1 ..].trim();

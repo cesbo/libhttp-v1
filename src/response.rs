@@ -25,7 +25,7 @@ pub struct Response {
 impl Response {
     pub fn new() -> Self {
         Response {
-            version: String::new(),
+            version: "HTTP/1.1".to_string(),
             code: 0,
             reason: String::new(),
             headers: HashMap::new(),
@@ -53,7 +53,7 @@ impl Response {
                 self.code = s[.. skip].parse::<usize>().unwrap_or(0);
                 self.reason = s[skip ..].trim().to_string();
             } else {
-                header::pars_heades_line(&mut self.headers, &s);
+                header::parse(&mut self.headers, &s);
             }
             line += 1;
         }
@@ -63,7 +63,8 @@ impl Response {
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
         writeln!(dst, "{} {} {}\r", self.version, self.code, self.reason)?;
         for (param, value) in self.headers.iter() {
-            writeln!(dst, "{}: {}\r", header::headers_case(param), value)?;
+            header::headers_case(param, dst)?;
+            writeln!(dst, ": {}\r", value)?;
         } 
         writeln!(dst, "\r")?;
         Ok(())
