@@ -84,7 +84,17 @@ impl Request {
     pub fn get_version(&self) -> &str {
         self.version.as_str()
     }
-
+	
+    #[inline]
+    pub fn get_path(&self) -> &str {
+        self.url.get_path()
+    }	
+	
+    #[inline]
+    pub fn get_query(&self) -> &str {
+        self.url.get_query()
+    }
+	
     #[inline]    
     pub fn get_header(&self, header: &str) -> Option<&String> {
         self.headers.get(header)

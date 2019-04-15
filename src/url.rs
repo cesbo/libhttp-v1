@@ -46,11 +46,13 @@ impl Url {
         if path > 0 {
             self.path += &inp[path .. tail];
             tail = path;
-        }
+        } 
 		if skip > 2 {
             self.scheme += &inp[0 .. skip - 3];
+			self.name += &inp[skip .. tail];
+		} else {
+		    self.path += &inp[0 .. tail];
 		}
-        self.name += &inp[skip .. tail];
     }
     
     #[inline]
