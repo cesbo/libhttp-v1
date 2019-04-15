@@ -78,6 +78,11 @@ impl Request {
     #[inline]
     pub fn get_method(&self) -> &str {
         self.method.as_str()
+    } 
+	
+    #[inline]
+    pub fn get_version(&self) -> &str {
+        self.version.as_str()
     }
 
     #[inline]    
@@ -96,8 +101,18 @@ impl Request {
                 Err(e) => return Err(Error::from(e)),
             };
             if line == 0 {
+                let mut step: usize = 0;
+				for part in buffer.split_whitespace() {
+				    match step {
+					    0 => self.method += part,
+						1 => self.url =  Url::new(part),
+						2 => self.version = part.to_string(),
+						_ => continue,
+					}
+				    step += 1;
+                }
                 let mut v = buffer.split(' ');
-                self.method += v.next().unwrap_or("");
+                v.next().unwrap_or("");
             } else {
                 header::pars_heades_line(&mut self.headers, &buffer);
             }
