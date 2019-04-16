@@ -90,11 +90,11 @@ impl Response {
     }
     
     #[inline]
-    pub fn set<S>(&mut self, header_name: S, header_data: S)
+    pub fn set<S>(&mut self, key: S, value: S)
     where
         S: Into<String> 
     {
-        self.headers.insert(header_name.into().to_lowercase(), header_data.into());
+        self.headers.insert(key.into().to_lowercase(), value.into());
     }
     
     #[inline]    

@@ -4,6 +4,9 @@ pub use crate::request::Request;
 mod response;
 pub use crate::response::Response;
 
+mod client;
+pub use crate::client::HttpClient;
+
 mod header;
 
 mod url;
