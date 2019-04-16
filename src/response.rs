@@ -63,7 +63,7 @@ impl Response {
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
         writeln!(dst, "{} {} {}\r", self.version, self.code, self.reason)?;
         for (param, value) in self.headers.iter() {
-            header::headers_case(param, dst)?;
+            header::write_key(param, dst)?;
             writeln!(dst, ": {}\r", value)?;
         } 
         writeln!(dst, "\r")?;

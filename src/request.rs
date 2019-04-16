@@ -47,7 +47,46 @@ impl Request {
         self.method = method.into();
         self.url =  Url::new(url);
     }
-  
+    
+    pub fn parse<R: Read>(&mut self, head: R) -> Result<()> {
+        let mut line = 0;
+        let mut reader = BufReader::new(head);
+        let mut buffer = String::new();
+        loop {
+            buffer.clear();
+            match reader.read_line(&mut buffer) {
+                Ok(v) => if v == 0 { break },
+                Err(e) => return Err(Error::from(e)),
+            };
+            if line == 0 {
+                for (step, part) in buffer.split_whitespace().enumerate() {
+                    match step {
+                        0 => self.method += part,
+                        1 => self.url =  Url::new(part),
+                        2 => self.version = part.to_string(),
+                        _ => break,
+                     }
+                }
+            } else {
+                header::parse(&mut self.headers, &buffer);
+            }
+            line += 1;
+        }
+        Ok(())
+    }
+    
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
+        write!(dst,"{} {}{}", self.method, &self.url.get_path(), &self.url.get_query())?;
+        writeln!(dst, "{} {}\r", &self.url.get_fragment(), self.version)?;
+        writeln!(dst, "Host: {}\r", &self.url.get_name())?;
+        for (param, value) in self.headers.iter() {
+            header::write_key(param, dst)?;
+            writeln!(dst, ": {}\r", value)?;
+        } 
+        writeln!(dst, "\r")?;
+        Ok(())
+    }
+
     #[inline]
     pub fn set<R, S>(&mut self, name: R, data: S)
     where
@@ -62,18 +101,6 @@ impl Request {
     {
         self.version.clear();
         self.version.push_str(version);
-    }
-    
-    pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
-        write!(dst,"{} {}{}", self.method, &self.url.get_path(), &self.url.get_query())?;
-        writeln!(dst, "{} {}\r", &self.url.get_fragment(), self.version)?;
-        writeln!(dst, "Host: {}\r", &self.url.get_name())?;
-        for (param, value) in self.headers.iter() {
-            header::headers_case(param, dst)?;
-            writeln!(dst, ": {}\r", value)?;
-        } 
-        writeln!(dst, "\r")?;
-        Ok(())
     }
  
     #[inline]
@@ -99,35 +126,6 @@ impl Request {
     #[inline]    
     pub fn get_header(&self, header: &str) -> Option<&String> {
         self.headers.get(header)
-    }
-    
-    pub fn parse<R: Read>(&mut self, head: R) -> Result<()> {
-        let mut line = 0;
-        let mut reader = BufReader::new(head);
-        let mut buffer = String::new();
-        loop {
-            buffer.clear();
-            match reader.read_line(&mut buffer) {
-                Ok(v) => if v == 0 { break },
-                Err(e) => return Err(Error::from(e)),
-            };
-            if line == 0 {
-                for (step, part) in buffer.split_whitespace().enumerate() {
-                    match step {
-                        0 => self.method += part,
-                        1 => self.url =  Url::new(part),
-                        2 => self.version = part.to_string(),
-                        _ => break,
-                     }
-                }
-                let mut v = buffer.split(' ');
-                v.next().unwrap_or("");
-            } else {
-                header::parse(&mut self.headers, &buffer);
-            }
-            line += 1;
-        }
-        Ok(())
     }
 }
 
