@@ -1,5 +1,5 @@
 use std::net::TcpStream;
-use std::io::BufWriter;
+//use std::io::BufWriter;
 
 use crate::request::Request;
 use crate::response::Response;
@@ -7,9 +7,9 @@ use crate::error::Result;
 
 
 pub struct HttpClient {
-    response: Response,
-    request: Request,
-    stream: BufWriter<TcpStream>,
+    pub response: Response,
+    pub request: Request,
+    stream: Option<TcpStream>,
 }
 
 impl HttpClient {
@@ -17,11 +17,12 @@ impl HttpClient {
         HttpClient {
             response: Response::new(),
             request: Request::new(),
-            stream: BufWriter::new(TcpStream::new()),
+            stream: None,
         }
     }
-    pub fn connect(&self) -> Result<()> {
-//      let mut stream = TcpStream::connect(&self.url.get_name())?;
+
+    pub fn connect(&mut self) -> Result<()> {
+        self.stream = Some(TcpStream::connect(&self.request.get_path())?); 
         Ok(())
     }
 }
