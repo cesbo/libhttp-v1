@@ -23,15 +23,9 @@ impl HttpClient {
     }
 
     pub fn connect(&mut self) -> Result<()> {
-        self.stream = Some(TcpStream::connect(&self.request.get_path())?); 
-        Ok(())
-    }
-    
-    pub fn send(&mut self) -> Result<()> {
+        self.stream = Some(TcpStream::connect(&self.request.url.get_name())?);
         if let Some(v) = &mut self.stream{
-            let mut dst: Vec<u8> = Vec::new();
-            self.request.send(&mut dst).unwrap();
-            v.write(&dst);
+            self.request.send(v).unwrap();
         }
         Ok(())
     }
