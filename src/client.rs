@@ -18,15 +18,10 @@ impl HttpClient {
     }
 
     pub fn connect(&mut self) -> Result<()> {
-        println!(" ------------ Start  ------------- ");
         self.stream = Some(TcpStream::connect(&self.request.url.get_name())?);
         if let Some(v) = &mut self.stream {
-            println!(" ------------ Some is in  ------------- ");
             self.request.send(v).unwrap();
-            self.response.parse(v).unwrap();
-            println!("{:#?}", self.response); 
-        } else {
-            println!(" ------------ Fail: None! ------------- ");
+            self.response.parse(v).unwrap(); 
         }
         Ok(())
     }
