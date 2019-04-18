@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::io::{ 
     Read, 
     BufRead, 
@@ -13,7 +14,7 @@ use crate::error::{
 };
 
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Response {
     version: String,
     code: usize,

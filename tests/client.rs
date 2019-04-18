@@ -6,4 +6,5 @@ fn simple_client() {
     client.request.init("GET", "http://httpbin.org/get");
     client.request.set("User-Agent", "libhttp");
 	client.connect();
+    // test
 }
