@@ -14,6 +14,12 @@ pub struct Url {
 }
 
 
+pub struct HostPort {
+    pub host: String,
+    pub port: Option<u16>,
+}
+
+
 impl Url {
     pub fn new(u: &str) -> Self {
         let mut url = Url::default();
@@ -61,25 +67,25 @@ impl Url {
 		} 
     }
 
-    pub fn get_host_port(&self) -> Result<(&str, u16)> {
-        let host_port = {
-            if let Some(s) = &self.name.find(':') {
-                let host = &self.name[.. s];
-                let port = match &self.name.as_str()[s + 1 ..].parse() {
-                    Ok(v) => v,
-                    _ => return Err(Error::Custom("wrong port value")),
-                };
-                (host, port)
-            } else {
-                let port = match self.scheme.as_str() {
-                    "http" => 80,
-                    "https" => 443,
-                    _ => return Err(Error::Custom("port not defined")),
-                };
-                (&self.name, port)
+    pub fn get_host_port(&self) -> HostPort {
+        if let Some(s) = (self.name.as_str()).find(':') {
+            let host = &self.name[.. s];
+            let port: Option<u16> = Some(self.name[s + 1 ..].parse::<u16>().unwrap());
+            HostPort {
+                host: host.to_string(),
+                port: port,
             }
-        };
-        Ok(host_port)
+        } else {
+            let port: Option<u16> = match self.scheme.as_str() {
+                "http" => Some(80),
+                "https" => Some(443),
+                _ => None,
+            };
+            HostPort {
+                host: self.get_name().to_string(),
+                port: port,
+            }
+        }
     }
     
     #[inline]
