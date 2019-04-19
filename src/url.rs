@@ -1,3 +1,9 @@
+use crate::error::{
+    Error,
+    Result,
+};
+
+
 #[derive(Default, Debug)]
 pub struct Url {
     scheme: String,
@@ -52,7 +58,28 @@ impl Url {
 			self.name += &inp[skip .. tail];
 		} else {
 		    self.path += &inp[0 .. tail];
-		}
+		} 
+    }
+
+    pub fn get_host_port(&self) -> Result<(&str, u16)> {
+        let host_port = {
+            if let Some(s) = &self.name.find(':') {
+                let host = &self.name[.. s];
+                let port = match &self.name.as_str()[s + 1 ..].parse() {
+                    Ok(v) => v,
+                    _ => return Err(Error::Custom("wrong port value")),
+                };
+                (host, port)
+            } else {
+                let port = match self.scheme.as_str() {
+                    "http" => 80,
+                    "https" => 443,
+                    _ => return Err(Error::Custom("port not defined")),
+                };
+                (&self.name, port)
+            }
+        };
+        Ok(host_port)
     }
     
     #[inline]

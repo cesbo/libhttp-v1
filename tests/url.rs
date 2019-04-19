@@ -55,6 +55,7 @@ fn test_5() {
     let url = Url::new("http://127.0.0.1?qwery#fragment");
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_name(), "127.0.0.1");
+    assert_eq!(url.get_host_port().0, "127.0.0.1");
     assert_eq!(url.get_path(), "");
     assert_eq!(url.get_query(), "?qwery");
     assert_eq!(url.get_fragment(), "#fragment");
