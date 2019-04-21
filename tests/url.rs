@@ -33,7 +33,7 @@ fn test_8() {
     assert_eq!(url.get_query(), "");
     assert_eq!(url.get_fragment(), "#pnr=6");
 }
-
+   
 #[test]
 fn test_7() {
     let url = Url::new("http://127.0.0.1?qwery");
