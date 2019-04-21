@@ -6,19 +6,14 @@ use crate::error::{
 
 #[derive(Default, Debug)]
 pub struct Url {
+    name: String,
     scheme: String,
     prefix: String,
     host: String,
-    port: Option<usize>,
+    port: usize,
     path: String,
     query: String,
     fragment: String,
-}
-
-
-pub struct HostPort {
-    pub host: String,
-    pub port: Option<u16>,
 }
 
 
@@ -66,7 +61,10 @@ impl Url {
             tail = path;
         } 
         if port > 0 {
-            self.port += &inp[port .. tail];// Change to .parse() and input to option
+            self.port = match inp[port .. tail].parse::<usize>() {
+                Ok(v) => v,
+                _ => 0,
+            };
             tail = port;
         } 
         if host > 0 {
@@ -75,6 +73,7 @@ impl Url {
         } 
 		if skip > 2 {
             self.scheme += &inp[0 .. skip - 3];
+            self.name += &inp[skip .. tail];
             if host == 0 {
                 self.host += &inp[skip .. tail];
             } else {
@@ -83,23 +82,38 @@ impl Url {
         } else {
             self.path += &inp[0 .. tail];
         } 
-        if self.port == None {
+        if self.port == 0 {
             self.port = match self.scheme.as_str() {
-                "http" => Some(80),
-                "https" => Some(443),
-                _ => None,
+                "http" => 80,
+                "https" => 443,
+                _ => 0,
             }
         }
     }
     
     #[inline]
-    pub fn get_name(&self) -> &str {
-        self.name.as_str() // Change to format!(... ...
+    pub fn get_name(&self) -> &str {  
+        self.name.as_str()
     }
     
     #[inline]
     pub fn get_scheme(&self) -> &str {
         self.scheme.as_str()
+    }
+    
+    #[inline]
+    pub fn get_prefix(&self) -> &str {
+        self.prefix.as_str()
+    }
+
+    #[inline]
+    pub fn get_host(&self) -> &str {
+        self.host.as_str()
+    }
+
+    #[inline]
+    pub fn get_port(&self) -> usize {
+        self.port
     }
     
     #[inline]
