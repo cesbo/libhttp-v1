@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use crate::error::{
     Error,
     Result,
@@ -6,7 +8,6 @@ use crate::error::{
 
 #[derive(Default, Debug)]
 pub struct Url {
-    name: String,
     scheme: String,
     prefix: String,
     host: String,
@@ -67,7 +68,6 @@ impl Url {
             self.path += &inp[skip .. tail];
         } else {
             let mut addr = inp[skip .. tail].splitn(2, ':');
-            self.name += &inp[skip .. tail];
             self.host = addr.next().unwrap().to_string();
             self.port = match addr.next() {
                 Some(v) => match v.parse::<u16>() {
@@ -84,11 +84,6 @@ impl Url {
                 _ => 0,
             }
         }
-    }
-    
-    #[inline]
-    pub fn get_name(&self) -> &str {  
-        self.name.as_str()
     }
     
     #[inline]
@@ -124,5 +119,25 @@ impl Url {
     #[inline]
     pub fn get_fragment(&self) -> &str {
         self.fragment.as_str()
+    }
+    
+    #[inline]
+    pub fn write_request_url<W: Write>(&self, dst: &mut W) -> Result<()> {
+        if self.path.is_empty() {
+            write!(dst, "/{}", self.query)?;
+        } else {
+            write!(dst, "{}{}", self.path, self.query)?;
+        }
+        Ok(())
+    }
+    
+    #[inline]
+    pub fn write_header_host<W: Write>(&self, dst: &mut W) -> Result<()> {
+        if self.port == 80 || self.port == 443 || self.port == 0 {
+            write!(dst, "{}", self.host)?;
+        } else {
+            write!(dst, "{}:{}", self.host, self.port)?;
+        }
+        Ok(())
     }
 }

@@ -79,7 +79,9 @@ impl Request {
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
         write!(dst,"{} {}{}", self.method, &self.url.get_path(), &self.url.get_query())?;
         writeln!(dst, "{} {}\r", &self.url.get_fragment(), self.version)?;
-        writeln!(dst, "Host: {}\r", &self.url.get_name())?;
+        write!(dst, "Host: ")?;
+        &self.url.write_header_host(dst).unwrap();
+        writeln!(dst, "\r")?;
         for (param, value) in self.headers.iter() {
             header::write_key(param, dst)?;
             writeln!(dst, ": {}\r", value)?;

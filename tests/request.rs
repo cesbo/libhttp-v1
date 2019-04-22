@@ -74,7 +74,6 @@ fn parseer_tab() {
     assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
 }
 
-
 #[test]
 fn parseer_unix() {
     let mut request = Request::new();
