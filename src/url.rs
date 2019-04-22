@@ -10,7 +10,7 @@ pub struct Url {
     scheme: String,
     prefix: String,
     host: String,
-    port: usize,
+    port: u16,
     path: String,
     query: String,
     fragment: String,
@@ -29,21 +29,20 @@ impl Url {
     pub fn set(&mut self, inp: &str) {
         let mut skip = 0;
         let mut step = 0;
-        let mut host = 0;
-        let mut port = 0;
+        let mut prefix = 0;
         let mut path = 0;
         let mut query = 0;
         let mut fragment = 0;
         if let Some(v) = inp.find("://") {
+            self.scheme += &inp[0 .. v];
             skip = v + 3;
         }
-        for (idx, part) in inp[skip ..].match_indices(|c: char| (c == '/' || c == '?' || c == '#' || c == '@' || c == ':')) {
+        for (idx, part) in inp[skip ..].match_indices(|c: char| (c == '/' || c == '?' || c == '#' || c == '@')) {
             match part.as_bytes()[0] {
-                b'@' if step < 1 => { host = idx + skip; step = 1; },
-                b':' if step < 2 => { port = idx + skip; step = 2; },
-                b'/' if step < 3 => { path = idx + skip; step = 3; },
-                b'?' if step < 4 => { query = idx + skip; step = 4; },
-                b'#' if step < 5 => { fragment = idx + skip; break; },
+                b'@' if step < 1 => { prefix = idx + skip; step = 1; },
+                b'/' if step < 2 => { path = idx + skip; step = 2; },
+                b'?' if step < 3 => { query = idx + skip; step = 3; },
+                b'#' if step < 4 => { fragment = idx + skip; break; },
                 _ => {},
             }; 
         }
@@ -60,29 +59,25 @@ impl Url {
             self.path += &inp[path .. tail];
             tail = path;
         } 
-        if port > 0 {
-            self.port = match inp[port .. tail].parse::<usize>() {
-                Ok(v) => v,
-                _ => 0,
-            };
-            tail = port;
-        } 
-        if host > 0 {
-            self.host += &inp[host .. tail];
-            tail = host;
-        } 
-		if skip > 2 {
-            self.scheme += &inp[0 .. skip - 3];
-            self.name += &inp[skip .. tail];
-            if host == 0 {
-                self.host += &inp[skip .. tail];
-            } else {
-                self.prefix += &inp[skip .. tail];
-            }
+        if prefix > 0 {
+            self.prefix += &inp[path .. tail];
+            skip = prefix + 1;
+        }
+        if skip == 0 {
+            self.path += &inp[skip .. tail];
         } else {
-            self.path += &inp[0 .. tail];
-        } 
-        if self.port == 0 {
+            let mut addr = inp[skip .. tail].splitn(2, ':');
+            self.name += &inp[skip .. tail];
+            self.host = addr.next().unwrap().to_string();
+            self.port = match addr.next() {
+                Some(v) => match v.parse::<u16>() {
+                    Ok(v) => v,
+                    _ => 0,
+                },
+                None => 0,
+            };
+        }
+        if self.port == 0 && ! self.scheme.is_empty() {
             self.port = match self.scheme.as_str() {
                 "http" => 80,
                 "https" => 443,
@@ -112,7 +107,7 @@ impl Url {
     }
 
     #[inline]
-    pub fn get_port(&self) -> usize {
+    pub fn get_port(&self) -> u16 {
         self.port
     }
     
