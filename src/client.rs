@@ -3,7 +3,10 @@ use std::net::TcpStream;
 
 use crate::request::Request;
 use crate::response::Response;
-use crate::error::Result;
+use crate::error::{
+    Error,
+    Result,
+};
 
 #[derive(Default)]
 pub struct HttpClient {
@@ -24,16 +27,15 @@ impl HttpClient {
                 match self.request.url.get_scheme() {
                     "http" => 80,
                     "https" => 443,
-                    _ => 0,
+                    _ => return Err(Error::Custom("HttpClient: port not defined for unknown scheme")),
                 }
             }
-            _ => self.request.url.get_port(),
+            v => v,
         };
-        self.stream = Some(TcpStream::connect((host, port))?);
-        if let Some(v) = &mut self.stream {
-            self.request.send(v).unwrap();
-            self.response.parse(v).unwrap(); 
-        }
+        let mut stream = TcpStream::connect((host, port))?;
+        self.request.send(&mut stream)?;
+        self.response.parse(&stream)?;
+        self.stream = Some(stream);
         Ok(())
     }
 }
