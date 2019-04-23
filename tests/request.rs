@@ -36,6 +36,16 @@ fn send() {
 }
 
 #[test]
+fn send_version() {
+    let mut request = Request::new();
+    request.init("GET", "http://127.0.0.1:8000/path?query");
+    request.set("User-Agent", "libhttp");
+    let mut dst: Vec<u8> = Vec::new();
+    request.send(&mut dst).unwrap();
+    assert_eq!(dst.as_slice(), TEST1.as_bytes());
+}
+
+#[test]
 fn send_case() {
     let mut request = Request::new();
     request.init("GET", "http://127.0.0.1:8000/path?query");

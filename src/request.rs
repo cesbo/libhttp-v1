@@ -36,12 +36,12 @@ impl Request {
         Request {
             method: String::new(),
             url: Url::new(""),
-            version: "HTTP/1.1".to_string(),
+            version: format!("HTTP/1.1"),
             headers: HashMap::new(),
         }
     }
     
-    pub fn init<S>(&mut self, method: S, url: &str) 
+    pub fn init<S>(&mut self, method: S, url: &str)
     where
         S: Into<String>,
     {
