@@ -48,7 +48,6 @@ fn test_7() {
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
-    assert_eq!(url.get_port(), 80);
     assert_eq!(url.get_path(), "");
     assert_eq!(url.get_query(), "?qwery");
     assert_eq!(url.get_fragment(), "");
@@ -63,7 +62,6 @@ fn test_6() {
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
-    assert_eq!(url.get_port(), 80);
     assert_eq!(url.get_path(), "");
     assert_eq!(url.get_query(), "");
     assert_eq!(url.get_fragment(), "#fragment");
@@ -78,7 +76,6 @@ fn test_5() {
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
-    assert_eq!(url.get_port(), 80);
     assert_eq!(url.get_path(), "");
     assert_eq!(url.get_query(), "?qwery");
     assert_eq!(url.get_fragment(), "#fragment");
@@ -93,7 +90,6 @@ fn test_4() {
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
-    assert_eq!(url.get_port(), 80);
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "");
     assert_eq!(url.get_fragment(), "");
@@ -108,7 +104,6 @@ fn test_3() {
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
-    assert_eq!(url.get_port(), 80);
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "?qwery");
     assert_eq!(url.get_fragment(), "");
@@ -123,7 +118,6 @@ fn test_2() {
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
-    assert_eq!(url.get_port(), 80);
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "");
     assert_eq!(url.get_fragment(), "#fragment");
@@ -138,7 +132,6 @@ fn test_1() {
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
-    assert_eq!(url.get_port(), 80);
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "?qwery");
     assert_eq!(url.get_fragment(), "#fragment");

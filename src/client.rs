@@ -18,8 +18,18 @@ impl HttpClient {
     }
 
     pub fn connect(&mut self) -> Result<()> {
-        let connect = format!("{}:{}", &self.request.url.get_host(), &self.request.url.get_port());
-        self.stream = Some(TcpStream::connect(connect)?);
+        let host = self.request.url.get_host();
+        let port = match self.request.url.get_port() {
+            0 => {
+                match self.request.url.get_scheme() {
+                    "http" => 80,
+                    "https" => 443,
+                    _ => 0,
+                }
+            }
+            _ => self.request.url.get_port(),
+        };
+        self.stream = Some(TcpStream::connect((host, port))?);
         if let Some(v) = &mut self.stream {
             self.request.send(v).unwrap();
             self.response.parse(v).unwrap(); 

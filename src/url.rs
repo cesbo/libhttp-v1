@@ -56,7 +56,7 @@ impl Url {
             self.query += &inp[query .. tail];
             tail = query;
         }
-        if path > 0 {
+        if path > 0 || skip == 0 {
             self.path += &inp[path .. tail];
             tail = path;
         } 
@@ -64,9 +64,7 @@ impl Url {
             self.prefix += &inp[path .. tail];
             skip = prefix + 1;
         }
-        if skip == 0 {
-            self.path += &inp[skip .. tail];
-        } else {
+        if skip != 0 {
             let mut addr = inp[skip .. tail].splitn(2, ':');
             self.host = addr.next().unwrap().to_string();
             self.port = match addr.next() {
@@ -76,13 +74,6 @@ impl Url {
                 },
                 None => 0,
             };
-        }
-        if self.port == 0 && ! self.scheme.is_empty() {
-            self.port = match self.scheme.as_str() {
-                "http" => 80,
-                "https" => 443,
-                _ => 0,
-            }
         }
     }
     
