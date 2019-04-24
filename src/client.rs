@@ -1,5 +1,8 @@
 use std::net::TcpStream;
-//use std::io::BufWriter;
+use std::io::{
+    BufWriter,
+    BufReader,
+};
 
 use crate::request::Request;
 use crate::response::Response;
@@ -33,7 +36,11 @@ impl HttpClient {
             v => v,
         };
         let mut stream = TcpStream::connect((host, port))?;
-        self.request.send(&mut stream)?;
+        let stream_clone = stream.try_clone()?;
+        {
+            let mut writer = BufWriter::new(&mut stream);
+            self.request.send(&mut writer)?;
+        }
         self.response.parse(&stream)?;
         self.stream = Some(stream);
         Ok(())
