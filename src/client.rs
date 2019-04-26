@@ -4,13 +4,16 @@ use std::io::{
     BufReader,
     Write,
     Read,
+    ErrorKind,
+    Error,
+    Result,
 };
 
 use crate::request::Request;
 use crate::response::Response;
 use crate::error::{
-    Error,
-    Result,
+    Error as CustomError,
+    Result as CustomResult,
 };
 
 
@@ -19,30 +22,40 @@ pub struct HttpClient {
     pub response: Response,
     pub request: Request,
     stream: Option<TcpStream>,
-    stream_read: Option<BufReader<TcpStream>>,
-    stream_write: Option<BufWriter<TcpStream>>,
+}
+
+
+enum HttpStream {
+    None,
+    Read(BufReader<TcpStream>),
+    Write(BufWriter<TcpStream>),
 }
 
 
 impl Write for HttpClient {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> Result<usize> {
-        match self.stream {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match &mut self.stream {
             Some(v) => v.write(buf),
-            _ =>  Err(Error::Custom("socket not ready")),
+            _ => return Err(Error::new(ErrorKind::Other, "socket not ready")),
+            //_ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
         }
+    }
+
+    #[inline]
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.flush()
     }
 }
 
 
 impl Read for HttpClient {
     #[inline]
-    fn read_to_string(&mut self, buf: &[u8]) -> String {
-        let buffer = match self.stream {
-            Some(v) => self.response.read(buf),
-            _ =>  Err(Error::Custom("socket not ready")),
-        };
-        buffer.to_string()
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match &mut self.stream {
+            Some(v) => v.read(buf),
+            _ => return Err(Error::new(ErrorKind::Other, "socket not ready")),
+        }
     }
 }
 
@@ -52,22 +65,22 @@ impl HttpClient {
         HttpClient::default()
     }
 
-    pub fn connect(&mut self) -> Result<()> {
+    pub fn connect(&mut self) -> CustomResult<()> {
         let host = self.request.url.get_host();
         let port = match self.request.url.get_port() {
             0 => {
                 match self.request.url.get_scheme() {
                     "http" => 80,
                     "https" => 443,
-                    _ => return Err(Error::Custom("HttpClient: port not defined for unknown scheme")),
+                    _ => return Err(CustomError::Custom("HttpClient: port not defined for unknown scheme")),
                 }
             } 
             v => v,
         };
         let mut stream = TcpStream::connect((host, port))?;
         {
-            self.stream_write = BufWriter::new(&mut stream);
-            self.request.send(&mut self.stream_write)?;
+            let mut writer = BufWriter::new(&mut stream);
+            self.request.send(&mut writer)?;
         }
         self.response.parse(&stream)?;
         self.stream = Some(stream);
