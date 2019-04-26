@@ -4,16 +4,14 @@ use std::io::{
     BufReader,
     Write,
     Read,
-    ErrorKind,
-    Error,
-    Result,
+    self,
 };
 
 use crate::request::Request;
 use crate::response::Response;
 use crate::error::{
-    Error as CustomError,
-    Result as CustomResult,
+    Error,
+    Result,
 };
 
 
@@ -34,16 +32,15 @@ enum HttpStream {
 
 impl Write for HttpClient {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut self.stream {
             Some(v) => v.write(buf),
-            _ => return Err(Error::new(ErrorKind::Other, "socket not ready")),
-            //_ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
+            _ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
         }
     }
 
     #[inline]
-    fn flush(&mut self) -> std::io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         self.flush()
     }
 }
@@ -51,10 +48,10 @@ impl Write for HttpClient {
 
 impl Read for HttpClient {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.stream {
             Some(v) => v.read(buf),
-            _ => return Err(Error::new(ErrorKind::Other, "socket not ready")),
+            _ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
         }
     }
 }
@@ -65,14 +62,14 @@ impl HttpClient {
         HttpClient::default()
     }
 
-    pub fn connect(&mut self) -> CustomResult<()> {
+    pub fn connect(&mut self) -> Result<()> {
         let host = self.request.url.get_host();
         let port = match self.request.url.get_port() {
             0 => {
                 match self.request.url.get_scheme() {
                     "http" => 80,
                     "https" => 443,
-                    _ => return Err(CustomError::Custom("HttpClient: port not defined for unknown scheme")),
+                    _ => return Err(Error::Custom("HttpClient: port not defined for unknown scheme")),
                 }
             } 
             v => v,
