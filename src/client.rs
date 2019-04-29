@@ -62,7 +62,7 @@ impl HttpClient {
         HttpClient::default()
     }
 
-    pub fn connect(&mut self) -> Result<()> {
+    pub fn send(&mut self, data: &str) -> Result<()> {
         let host = self.request.url.get_host();
         let port = match self.request.url.get_port() {
             0 => {
@@ -76,14 +76,11 @@ impl HttpClient {
         };
         let stream = TcpStream::connect((host, port))?;
         self.stream = Some(stream);
-        Ok(())
-    }
-
-    pub fn send(&mut self) -> Result<()> {
         match &mut self.stream {
             Some(v) => {
                 let mut writer = BufWriter::new(v);
                 self.request.send(&mut writer)?;
+                write!(writer, "{}", data);
                 Ok(())
             }
             _ => return Err(Error::Custom("socket not ready")),

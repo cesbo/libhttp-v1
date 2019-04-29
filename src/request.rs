@@ -22,14 +22,7 @@ pub struct Request {
     version: String,
     headers: HashMap<String, String>,
 }
-
-/*
-impl Read for Request {
-    fn read(&mut self, data: &mut [u8]) -> Result<usize, ReadError> {
-        Ok(0)
-    }
-}
-*/
+ 
 
 impl Request {
     pub fn new() -> Self {
