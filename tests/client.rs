@@ -27,8 +27,8 @@ fn simple_client() {
 #[test]
 fn simple_post() {
     let mut client = HttpClient::new();
-    //client.request.init("POST", "http://127.0.0.1:9090/post");// make 500
-    client.request.init("POST", "http://127.0.0.1:9090");//make 200
+    client.request.init("POST", "http://127.0.0.1:9090/post");// make 500
+    //client.request.init("POST", "http://127.0.0.1:9090");//make 200
     client.request.set_version("HTTP/1.1");
     client.request.set("User-Agent", "test");
     let mut dst: Vec<u8> = Vec::new();
