@@ -20,6 +20,7 @@ pub struct HttpClient {
     pub response: Response,
     pub request: Request,
     stream: Option<TcpStream>,
+    httpstream: HttpStream,
 }
 
 
@@ -27,6 +28,14 @@ enum HttpStream {
     None,
     Read(BufReader<TcpStream>),
     Write(BufWriter<TcpStream>),
+}
+
+
+impl Default for HttpStream {
+    #[inline]
+    fn default() -> HttpStream {
+        HttpStream::None
+    }
 }
 
 
@@ -74,16 +83,11 @@ impl HttpClient {
             } 
             v => v,
         };
-        let stream = TcpStream::connect((host, port))?;
-        self.stream = Some(stream);
-        match &mut self.stream {
-            Some(v) => {
-                let mut writer = BufWriter::new(v);
-                self.request.send(&mut writer)?;
-                Ok(())
-            }
-            _ => return Err(Error::Custom("socket not ready")),
-        }
+        let mut stream = TcpStream::connect((host, port))?;
+        let mut writer = BufWriter::new(stream);
+        self.request.send(&mut writer)?; 
+        self.httpstream = HttpStream::Write(writer);
+        Ok(())
     }
 
     pub fn receive(&mut self) -> Result<()> {
