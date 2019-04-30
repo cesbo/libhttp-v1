@@ -62,7 +62,7 @@ impl HttpClient {
         HttpClient::default()
     }
 
-    pub fn send(&mut self, data: &str) -> Result<()> {
+    pub fn send(&mut self) -> Result<()> {
         let host = self.request.url.get_host();
         let port = match self.request.url.get_port() {
             0 => {
@@ -80,7 +80,6 @@ impl HttpClient {
             Some(v) => {
                 let mut writer = BufWriter::new(v);
                 self.request.send(&mut writer)?;
-                write!(writer, "{}", data);
                 Ok(())
             }
             _ => return Err(Error::Custom("socket not ready")),

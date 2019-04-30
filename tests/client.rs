@@ -8,7 +8,7 @@ fn simple_client() {
     client.request.init("GET", "http://httpbin.org/get");
     client.request.set_version("HTTP/1.1");
     client.request.set("User-Agent", "libhttp");
-    client.send("test send info").unwrap();
+    client.send().unwrap();
     client.receive();
     println!("{:#?}", client.request);
     println!("{:#?}", client.response);
@@ -21,7 +21,7 @@ fn simple_post() {
     client.request.init("POST", "http://127.0.0.1:9090/post");
     client.request.set_version("HTTP/1.1");
     client.request.set("User-Agent", "test");
-    client.send("test send info").unwrap();
+    client.send().unwrap();
     client.receive();
     println!("{:#?}", client.request);
     println!("{:#?}", client.response);
