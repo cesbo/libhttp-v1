@@ -43,7 +43,7 @@ impl Write for HttpClient {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut self.stream {
             HttpStream::Write(v) => v.write(buf),
-            _ => { Ok(0) },
+            _ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
         }
     }
 
@@ -51,7 +51,7 @@ impl Write for HttpClient {
     fn flush(&mut self) -> io::Result<()> {
         match &mut self.stream {
             HttpStream::Write(v) => v.flush(),
-            _ => { Ok(()) },
+            _ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
         }
     }
 }
@@ -62,7 +62,7 @@ impl Read for HttpClient {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.stream {
             HttpStream::Read(v) => v.read(buf),
-            _ => { Ok(0) },
+            _ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
         }
     }
 }
