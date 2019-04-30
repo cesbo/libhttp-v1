@@ -19,8 +19,7 @@ use crate::error::{
 pub struct HttpClient {
     pub response: Response,
     pub request: Request,
-    stream: Option<TcpStream>,
-    httpstream: HttpStream,
+    stream: HttpStream,
 }
 
 
@@ -43,14 +42,17 @@ impl Write for HttpClient {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut self.stream {
-            Some(v) => v.write(buf),
-            _ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
+            HttpStream::Write(v) => v.write(buf),
+            _ => { Ok(0) },
         }
     }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
-        self.flush()
+        match &mut self.stream {
+            HttpStream::Write(v) => v.flush(),
+            _ => { Ok(()) },
+        }
     }
 }
 
@@ -59,8 +61,8 @@ impl Read for HttpClient {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.stream {
-            Some(v) => v.read(buf),
-            _ => return Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
+            HttpStream::Read(v) => v.read(buf),
+            _ => { Ok(0) },
         }
     }
 }
@@ -86,14 +88,17 @@ impl HttpClient {
         let mut stream = TcpStream::connect((host, port))?;
         let mut writer = BufWriter::new(stream);
         self.request.send(&mut writer)?; 
-        self.httpstream = HttpStream::Write(writer);
+        self.stream = HttpStream::Write(writer);
         Ok(())
     }
 
     pub fn receive(&mut self) -> Result<()> {
         match &mut self.stream {
-            Some(v) => {
-                self.response.parse(v)?;
+            HttpStream::Write(v) => { 
+                //self.response.parse(v)?;
+                Ok(())
+            }
+            HttpStream::Read(v) => {
                 Ok(())
             }
             _ => return Err(Error::Custom("socket not ready")),
