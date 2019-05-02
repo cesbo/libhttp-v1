@@ -93,15 +93,18 @@ impl HttpClient {
     }
 
     pub fn receive(&mut self) -> Result<()> {
-        match &mut self.stream {
+        match &self.stream {
             HttpStream::Write(v) => { 
-                //self.response.parse(v)?;
-                Ok(())
+                match v.into_inner() {
+                    Ok(inner) => {
+                        self.stream = HttpStream::Read(BufReader::new(inner));
+                    }
+                    Err(inner) => return Err(Error::Custom("socket not ready")),
+                } 
             }
-            HttpStream::Read(v) => {
-                Ok(())
-            }
+            HttpStream::Read(v) => {}
             _ => return Err(Error::Custom("socket not ready")),
-        }
+        };
+        Ok(())
     } 
 }
