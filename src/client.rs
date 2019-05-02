@@ -1,5 +1,5 @@
 use std::net::TcpStream;
-use std::mem::replace;
+use std::mem;
 use std::io::{
     BufWriter,
     BufReader,
@@ -42,7 +42,7 @@ impl Default for HttpStream {
 impl HttpStream {
     #[inline]
     fn take(&mut self) -> HttpStream {
-        replace(self, HttpStream::None)
+        mem::replace(self, HttpStream::None)
     }
 }
 
