@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::io::{
     Read,
     BufRead,
@@ -29,7 +28,7 @@ impl Request {
         Request {
             method: String::new(),
             url: Url::new(""),
-            version: format!("HTTP/1.1"),
+            version: "HTTP/1.1".to_string(),
             headers: HashMap::new(),
         }
     }
@@ -71,10 +70,10 @@ impl Request {
     
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
         write!(dst,"{} ", self.method)?;
-        &self.url.write_request_url(dst).unwrap();
+        self.url.write_request_url(dst).unwrap();
         writeln!(dst, " {}\r", self.version)?;
         write!(dst, "Host: ")?;
-        &self.url.write_header_host(dst).unwrap();
+        self.url.write_header_host(dst).unwrap();
         writeln!(dst, "\r")?;
         for (param, value) in self.headers.iter() {
             header::write_key(param, dst)?;

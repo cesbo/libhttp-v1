@@ -1,5 +1,3 @@
-use std::str;
-
 use http::HttpClient;
 
 #[test]
@@ -9,7 +7,7 @@ fn simple_client() {
     client.request.set_version("HTTP/1.1");
     client.request.set("User-Agent", "libhttp");
     client.send().unwrap();
-    client.receive();
+    let _result = client.receive();
     println!("{:#?}", client.request);
     println!("{:#?}", client.response);
 }
@@ -22,7 +20,7 @@ fn simple_post() {
     client.request.set_version("HTTP/1.1");
     client.request.set("User-Agent", "test");
     client.send().unwrap();
-    client.receive();
+    let _result = client.receive();
     println!("{:#?}", client.request);
     println!("{:#?}", client.response);
 }

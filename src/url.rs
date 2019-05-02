@@ -1,9 +1,6 @@
 use std::io::Write;
 
-use crate::error::{
-    Error,
-    Result,
-};
+use crate::error::Result;
 
 
 #[derive(Default, Debug)]
