@@ -73,7 +73,17 @@ impl Url {
             };
         }
     }
-    
+
+    pub fn urlencode_ascii(&self, buf: &str) -> String {
+        let result = String::new();
+        for chars in buf.chars() {
+            if chars.is_ascii() {
+                let char_code = chars.escape_unicode();
+            } 
+        }
+        result
+    }
+
     #[inline]
     pub fn get_scheme(&self) -> &str {
         self.scheme.as_str()

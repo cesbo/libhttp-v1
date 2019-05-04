@@ -1,6 +1,12 @@
 use http::Url;
 
 #[test]
+fn urlencode_ascii_simple() {
+    let url = Url::new("udp://239.255.1.1:1234");
+    let s = url.urlencode_ascii("some test гусь . scheme&?");
+}
+
+#[test]
 fn test_10() {
     let url = Url::new("dvb://#adapter=1&tp=11044:v:44200&type=s2");
     assert_eq!(url.get_scheme(), "dvb");
