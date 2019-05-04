@@ -74,12 +74,75 @@ impl Url {
         }
     }
 
-    pub fn urlencode_ascii(&self, buf: &str) -> String {
-        let result = String::new();
-        for chars in buf.chars() {
-            if chars.is_ascii() {
-                let char_code = chars.escape_unicode();
-            } 
+    #[inline]
+    fn is_rfc3986(&self, b: u8) -> bool {
+        match b {
+            b'a' ..= b'z' => true,
+            b'A' ..= b'Z' => true,
+            b'0' ..= b'9' => true,
+            b'-' => true,
+            b'_' => true,
+            b'.' => true,
+            b'~' => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    fn byte2hex(&self, b: u8) -> char {
+        if b < 0x0A {
+            char::from(b'0' + b)
+        } else {
+            char::from(b'A' - 0x0A + b)
+        }
+    }
+
+    fn pars_hex(&self, b: u8) -> u8 {
+        match b {
+            48 ..= 57 => b - 48, // pars 0-9
+            65 ..= 70 => b - 55, // pars A-F
+            97 ..= 102 => b - 87, // pasr a-f
+            _ => 0,
+        }
+    }
+
+    #[inline]
+    pub fn urlencode(&self, buf: &str) -> String {
+        let mut result = String::new();
+        for &b in buf.as_bytes() {
+            if self.is_rfc3986(b) {
+                result.push(char::from(b));
+            } else {
+                result.push('%');
+                result.push(self.byte2hex(b >> 4));
+                result.push(self.byte2hex(b & 0x0F));
+            }
+        }
+        result
+    }
+
+    pub fn urldecode(&self, buf: &str) -> String {
+        let mut result = String::new();
+        let mut is_hex = false;
+        let mut iteration = 0;
+        let mut buffer = 0;
+        for &b in buf.as_bytes() {
+            if is_hex {
+                buffer += self.pars_hex(b);
+                if iteration == 0 {
+                    buffer = buffer << 4;
+                }
+                iteration += 1;
+                if iteration == 2{
+                    result.push(char::from(buffer));
+                    iteration = 0;
+                    is_hex = false;
+                }
+            } else if self.is_rfc3986(b) {
+                result.push(char::from(b));
+            } else if b == 37 { // 37 in ascii is '%' 
+                is_hex = true;
+            }
         }
         result
     }

@@ -3,7 +3,15 @@ use http::Url;
 #[test]
 fn urlencode_ascii_simple() {
     let url = Url::new("udp://239.255.1.1:1234");
-    let s = url.urlencode_ascii("some test гусь . scheme&?");
+    let s = url.urlencode("some test гусь . scheme&?");
+    assert_eq!(s.as_str(), "some%20test%20%D0%B3%D1%83%D1%81%D1%8C%20.%20scheme%26%3F");
+}
+
+#[test]
+fn urldecode_simple() {
+    let url = Url::new("udp://239.255.1.1:1234");
+    let s = url.urldecode("some%20test%20");
+    assert_eq!(s.as_str(), "some test ");
 }
 
 #[test]
