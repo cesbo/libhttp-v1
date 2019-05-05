@@ -140,6 +140,7 @@ impl Url {
                 }
                 if step == 3{
                     result.push(char::from(buffer));
+                    buffer = 0;
                     step = 0;
                 }
             } else if b == b'%' { 
