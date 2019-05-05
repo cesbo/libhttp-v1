@@ -9,9 +9,12 @@ fn urlencode_ascii_simple() {
 
 #[test]
 fn urldecode_simple() {
-    let url = Url::new("udp://239.255.1.1:1234");
-    let s = url.urldecode("some%20test%20");
-    assert_eq!(s.as_str(), "some test ");
+    let url = Url::new("");
+    let s = match url.urldecode("some%20test%20"){
+        Some(v) => v,
+        None => "".to_string(),
+    };
+    assert_eq!(s, "some test ");
 }
 
 #[test]

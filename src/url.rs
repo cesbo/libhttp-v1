@@ -1,6 +1,9 @@
 use std::io::Write;
 
-use crate::error::Result;
+use crate::error::{
+    Error,
+    Result,
+};
 
 
 #[derive(Default, Debug)]
@@ -97,12 +100,12 @@ impl Url {
         }
     }
 
-    fn pars_hex(&self, b: u8) -> u8 {
+    fn pars_hex(&self, b: u8) -> Option<u8> {
         match b {
-            48 ..= 57 => b - 48, // pars 0-9
-            65 ..= 70 => b - 55, // pars A-F
-            97 ..= 102 => b - 87, // pasr a-f
-            _ => 0,
+            b'0' ..= b'9' => Some(b - 48), 
+            b'A' ..= b'F' => Some(b - 55), 
+            b'a' ..= b'f' => Some(b - 87), 
+            _ => None,
         }
     }
 
@@ -121,30 +124,31 @@ impl Url {
         result
     }
 
-    pub fn urldecode(&self, buf: &str) -> String {
+    pub fn urldecode(&self, buf: &str) -> Option<String> {
         let mut result = String::new();
-        let mut is_hex = false;
-        let mut iteration = 0;
+        let mut step = 0;
         let mut buffer = 0;
         for &b in buf.as_bytes() {
-            if is_hex {
-                buffer += self.pars_hex(b);
-                if iteration == 0 {
+            if step > 0 {                
+                step += 1;
+                buffer +=  match self.pars_hex(b) {
+                    Some(v) => v,
+                    None => return None,
+                };
+                if step == 2 {
                     buffer = buffer << 4;
                 }
-                iteration += 1;
-                if iteration == 2{
+                if step == 3{
                     result.push(char::from(buffer));
-                    iteration = 0;
-                    is_hex = false;
+                    step = 0;
                 }
-            } else if self.is_rfc3986(b) {
+            } else if b == b'%' { 
+                step = 1;
+            } else {
                 result.push(char::from(b));
-            } else if b == 37 { // 37 in ascii is '%' 
-                is_hex = true;
             }
         }
-        result
+        Some(result)
     }
 
     #[inline]
