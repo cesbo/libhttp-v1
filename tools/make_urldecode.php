@@ -13,7 +13,7 @@ $test_arr = array(
     " ^-some",
     " ^-",
     "All_to_659811165565659449",
-    "test: string",
+    "test: string\ кирилица и смайл 🙂",
 );
 
 foreach ($test_arr as $k => $v) {
