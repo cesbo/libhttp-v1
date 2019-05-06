@@ -1,21 +1,19 @@
 use http::Url;
 
 #[test]
-fn urlencode_ascii_simple() {
-    let url = Url::new("udp://239.255.1.1:1234");
-    let s = url.urlencode("some test гусь . scheme&?");
-    assert_eq!(s.as_str(), "some%20test%20%D0%B3%D1%83%D1%81%D1%8C%20.%20scheme%26%3F");
+fn urlencode() {
+    let url = Url::new("");
+    let s = url.urlencode("http://foo bar/тест/🍔/");
+    assert_eq!(s.as_str(), "http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
 }
 
 #[test]
-fn urldecode_simple() {
+fn urldecode() {
     let url = Url::new("");
-    let s = match url.urldecode("some%20test%20"){
-        Some(v) => v,
-        None => "".to_string(),
-    };
-    assert_eq!(s, "some test ");
+    let s =  url.urldecode("http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
+    assert_eq!(s.as_str(), "http://foo bar/тест/🍔/");
 }
+
 
 #[test]
 fn test_10() {

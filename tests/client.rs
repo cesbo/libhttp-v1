@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::io::Read;
 
 use http::HttpClient;
 
