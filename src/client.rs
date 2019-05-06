@@ -1,8 +1,5 @@
 use std::net::TcpStream;
-use std::mem;
 use std::io::{
-    BufWriter,
-    BufReader,
     Write,
     Read,
     self,
@@ -10,6 +7,7 @@ use std::io::{
 
 use crate::request::Request;
 use crate::response::Response;
+use crate::stream::HttpStream;
 use crate::error::{
     Error,
     Result,
@@ -20,47 +18,26 @@ use crate::error::{
 pub struct HttpClient {
     pub response: Response,
     pub request: Request,
-    stream: HttpStream,
-}
- 
-
-enum HttpStream {
-    None,
-    Read(BufReader<TcpStream>),
-    Write(BufWriter<TcpStream>),
-}
-
-
-impl Default for HttpStream {
-    #[inline]
-    fn default() -> HttpStream {
-        HttpStream::None
-    }
-}
-
-
-impl HttpStream {
-    #[inline]
-    fn take(&mut self) -> HttpStream {
-        mem::replace(self, HttpStream::None)
-    }
+    stream: Option<HttpStream>,
 }
 
 
 impl Write for HttpClient {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match &mut self.stream {
-            HttpStream::Write(v) => v.write(buf),
-            _ => Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
+        if let Some(stream) = &mut self.stream {
+            stream.write(buf)
+        } else {
+            unreachable!()
         }
     }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
-        match &mut self.stream {
-            HttpStream::Write(v) => v.flush(),
-            _ => Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
+        if let Some(stream) = &mut self.stream {
+            stream.flush()
+        } else {
+            unreachable!()
         }
     }
 }
@@ -69,18 +46,17 @@ impl Write for HttpClient {
 impl Read for HttpClient {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match &mut self.stream {
-            HttpStream::Read(v) => v.read(buf),
-            _ => Err(io::Error::new(io::ErrorKind::Other, "socket not ready")),
+        if let Some(stream) = &mut self.stream {
+            stream.read(buf)
+        } else {
+            unreachable!()
         }
     }
 }
 
 
 impl HttpClient {
-    pub fn new() -> Self {
-        HttpClient::default()
-    }
+    pub fn new() -> Self { HttpClient::default() }
 
     pub fn send(&mut self) -> Result<()> {
         let host = self.request.url.get_host();
@@ -91,28 +67,32 @@ impl HttpClient {
                     "https" => 443,
                     _ => return Err(Error::Custom("HttpClient: port not defined for unknown scheme")),
                 }
-            } 
+            }
             v => v,
         };
-        let stream = TcpStream::connect((host, port))?;
-        let mut writer = BufWriter::new(stream);
-        self.request.send(&mut writer)?; 
-        self.stream = HttpStream::Write(writer);
+
+        let mut stream = HttpStream::new(TcpStream::connect((host, port))?);
+        self.request.send(&mut stream)?;
+        stream.flush()?;
+        self.stream = Some(stream);
         Ok(())
     }
 
     pub fn receive(&mut self) -> Result<()> {
-        let writer = match self.stream.take() {
-            HttpStream::Write(v) => v,
-            _ => return Err(Error::Custom("HttpClient::receive() failed. wrong socket state")),
-        };
-        let stream = match writer.into_inner() {
-            Ok(v) => v,
-            _ => return Err(Error::Custom("HttpClient::receive() failed. wrong socket state")),
-        };
-        let mut reader = BufReader::new(stream);
-        self.response.parse(&mut reader)?;
-        self.stream = HttpStream::Read(reader);
+        if let Some(stream) = &mut self.stream {
+            stream.flush()?;
+            self.response.parse(stream)?;
+
+            stream.set_stream_eof();
+            if let Some(v) = self.response.get_header("content-length") {
+                stream.set_stream_length(v.parse().unwrap_or(0))
+            } else if let Some(v) = self.response.get_header("transfer-encoding") {
+                if v == "chunked" { stream.set_stream_chunked() }
+            }
+        } else {
+            unreachable!()
+        }
+
         Ok(())
-    } 
+    }
 }
