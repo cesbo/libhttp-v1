@@ -1,10 +1,11 @@
+use std::io::BufReader;
 use http::Request;
 
 const TEST1: &str = "GET /path?query HTTP/1.1\r\n\
     Host: 127.0.0.1:8000\r\n\
     User-Agent: libhttp\r\n\
     \r\n";
-    
+
 const TEST_BROKEN: &str = "GET /path?query HTTP/1.1\r\n\
     Host: 127.0.0.1:8000\r\n\
     User-Agent: lib";
@@ -59,7 +60,7 @@ fn send_case() {
 #[test]
 fn parseer_parse() {
     let mut request = Request::new();
-    request.parse(TEST1.as_bytes()).unwrap();
+    request.parse(&mut BufReader::new(TEST1.as_bytes())).unwrap();
     assert_eq!(request.get_method(), "GET");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
@@ -68,7 +69,7 @@ fn parseer_parse() {
 #[test]
 fn parseer_broken() {
     let mut request = Request::new();
-    request.parse(TEST_BROKEN.as_bytes()).unwrap();
+    request.parse(&mut BufReader::new(TEST_BROKEN.as_bytes())).unwrap();
     assert_eq!(request.get_method(), "GET");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.get_header("user-agent").unwrap(), "lib");
@@ -77,7 +78,7 @@ fn parseer_broken() {
 #[test]
 fn parseer_tab() {
     let mut request = Request::new();
-    request.parse(TEST_TAB.as_bytes()).unwrap();
+    request.parse(&mut BufReader::new(TEST_TAB.as_bytes())).unwrap();
     assert_eq!(request.get_method(), "POST");
     assert_eq!(request.get_version(), "RTSP/1.3");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
@@ -87,7 +88,7 @@ fn parseer_tab() {
 #[test]
 fn parseer_unix() {
     let mut request = Request::new();
-    request.parse(TEST_TAB_UNIX.as_bytes()).unwrap();
+    request.parse(&mut BufReader::new(TEST_TAB_UNIX.as_bytes())).unwrap();
     assert_eq!(request.get_method(), "POST");
     assert_eq!(request.get_version(), "RTSP/1.0");
     println!("{:#?}", request.url);
@@ -96,5 +97,3 @@ fn parseer_unix() {
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
 }
-
-

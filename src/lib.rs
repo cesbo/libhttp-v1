@@ -4,6 +4,8 @@ pub use crate::request::Request;
 mod response;
 pub use crate::response::Response;
 
+mod stream;
+
 mod client;
 pub use crate::client::HttpClient;
 

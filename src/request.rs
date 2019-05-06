@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::io::{
-    Read,
     BufRead,
-    BufReader, 
     Write
 };
 
@@ -14,17 +12,17 @@ use crate::error::{
 };
 
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Request {
     method: String,
     pub url: Url,
     version: String,
     headers: HashMap<String, String>,
 }
- 
 
-impl Request {
-    pub fn new() -> Self {
+
+impl Default for Request {
+    fn default() -> Request {
         Request {
             method: String::new(),
             url: Url::new(""),
@@ -32,18 +30,23 @@ impl Request {
             headers: HashMap::new(),
         }
     }
-    
+}
+
+
+impl Request {
+    #[inline]
+    pub fn new() -> Self { Request::default() }
+
     pub fn init<S>(&mut self, method: S, url: &str)
     where
         S: Into<String>,
     {
         self.method = method.into();
-        self.url =  Url::new(url);
+        self.url = Url::new(url);
     }
-    
-    pub fn parse<R: Read>(&mut self, head: R) -> Result<()> {
+
+    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<()> {
         let mut line = 0;
-        let mut reader = BufReader::new(head);
         let mut buffer = String::new();
         loop {
             buffer.clear();
@@ -55,7 +58,7 @@ impl Request {
                 for (step, part) in buffer.split_whitespace().enumerate() {
                     match step {
                         0 => self.method += part,
-                        1 => self.url =  Url::new(part),
+                        1 => self.url = Url::new(part),
                         2 => self.version = part.to_string(),
                         _ => break,
                      }
@@ -67,7 +70,7 @@ impl Request {
         }
         Ok(())
     }
-    
+
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
         write!(dst,"{} ", self.method)?;
         self.url.write_request_url(dst).unwrap();
@@ -78,7 +81,7 @@ impl Request {
         for (param, value) in self.headers.iter() {
             header::write_key(param, dst)?;
             writeln!(dst, ": {}\r", value)?;
-        } 
+        }
         writeln!(dst, "\r")?;
         Ok(())
     }
@@ -91,27 +94,25 @@ impl Request {
     {
         self.headers.insert(name.as_ref().to_lowercase(), data.into());
     }
-    
+
     #[inline]
-    pub fn set_version(&mut self, version: &str)
-    {
+    pub fn set_version(&mut self, version: &str) {
         self.version.clear();
         self.version.push_str(version);
     }
- 
+
     #[inline]
     pub fn get_method(&self) -> &str {
         self.method.as_str()
-    } 
-    
+    }
+
     #[inline]
     pub fn get_version(&self) -> &str {
         self.version.as_str()
-    } 
-    
-    #[inline]    
+    }
+
+    #[inline]
     pub fn get_header(&self, header: &str) -> Option<&String> {
         self.headers.get(header)
     }
 }
-

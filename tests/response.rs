@@ -1,24 +1,25 @@
+use std::io::BufReader;
 use http::Response;
 
 const TEST1: &str = "HTTP/1.1 200 Ok\r\n\
     Server: libhttp\r\n\
     Date: Mon, 08 Apr 2019 10:42:12 GMT\r\n\
     \r\n";
-    
+
 const TEST2: &str = "RTSP/1.0 200 Ok\r\n\
     Date: Mon, 08 Apr 2019 10:42:12 GMT\r\n\
-    \r\n"; 
-       
+    \r\n";
+
 const TEST_SEND_CASE: &str = "RTSP/1.0 200 Ok\r\n\
     Date-Start: Mon, 08 Apr 2019 10:42:12 GMT\r\n\
     \r\n";
-    
+
 const TEST3: &str = "RTSP/1.0 200Ok\r\n\
     Date: Mon, 08 Apr 2019 10:42:12 GMT\r\n\
     \r\n";
-        
-const TEST4: &str = "RTSP/1.0 404   "; 
-   
+
+const TEST4: &str = "RTSP/1.0 404   ";
+
 const TEST_UNIX: &str = "HTTP/1.1 200 Ok\n\
     Server: libhttp\n\
     Date: Mon, 08 Apr 2019 10:42:12 GMT\n\
@@ -41,14 +42,14 @@ const TEST_TABS_CASE: &str = "HTTP/1.1  \t\t\t    200 Ok\r\n\
     Date_date:     \t  Mon, 08 Apr 2019 10:42:12 GMT\r\n\
     \r\n";
 
-const CODE200: usize = 200; 
-const CODE404: usize = 404;   
-const CODE0: usize = 0;   
+const CODE200: usize = 200;
+const CODE404: usize = 404;
+const CODE0: usize = 0;
 
 #[test]
-fn response_parse() {    
+fn response_parse() {
     let mut response = Response::new();
-    response.parse(TEST1.as_bytes()).unwrap();
+    response.parse(&mut BufReader::new(TEST1.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -57,9 +58,9 @@ fn response_parse() {
 }
 
 #[test]
-fn response_parse_spaces() {    
+fn response_parse_spaces() {
     let mut response = Response::new();
-    response.parse(TEST_SPACES.as_bytes()).unwrap();
+    response.parse(&mut BufReader::new(TEST_SPACES.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -68,9 +69,9 @@ fn response_parse_spaces() {
 }
 
 #[test]
-fn response_parse_tabs() {    
+fn response_parse_tabs() {
     let mut response = Response::new();
-    response.parse(TEST_TABS.as_bytes()).unwrap();
+    response.parse(&mut BufReader::new(TEST_TABS.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -79,9 +80,9 @@ fn response_parse_tabs() {
 }
 
 #[test]
-fn response_parse_tabs_case() {    
+fn response_parse_tabs_case() {
     let mut response = Response::new();
-    response.parse(TEST_TABS_CASE.as_bytes()).unwrap();
+    response.parse(&mut BufReader::new(TEST_TABS_CASE.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -92,7 +93,7 @@ fn response_parse_tabs_case() {
 #[test]
 fn response_parse_unix() {
     let mut response = Response::new();
-    response.parse(TEST_UNIX.as_bytes()).unwrap();
+    response.parse(&mut BufReader::new(TEST_UNIX.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), &CODE200);
     assert_eq!(response.get_reason(), "Ok");
@@ -101,9 +102,9 @@ fn response_parse_unix() {
 }
 
 #[test]
-fn response_parse_bad_code() {    
+fn response_parse_bad_code() {
     let mut response = Response::new();
-    response.parse(TEST3.as_bytes()).unwrap();
+    response.parse(&mut BufReader::new(TEST3.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "RTSP/1.0");
     assert_eq!(response.get_code(), &CODE0);
     assert_eq!(response.get_reason(), "");
@@ -112,9 +113,9 @@ fn response_parse_bad_code() {
 
 
 #[test]
-fn response_parse_test4() {    
+fn response_parse_test4() {
     let mut response = Response::new();
-    response.parse(TEST4.as_bytes()).unwrap();
+    response.parse(&mut BufReader::new(TEST4.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "RTSP/1.0");
     assert_eq!(response.get_code(), &CODE404);
 }
@@ -142,4 +143,3 @@ fn response_send_case() {
     response.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST_SEND_CASE.as_bytes());
 }
-
