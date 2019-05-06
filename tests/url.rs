@@ -1,6 +1,6 @@
 use http::Url;
-use http::url::urlencode;
-use http::url::urldecode;
+use http::urlencode;
+use http::urldecode;
 
 #[test]
 fn test_urlencode() {

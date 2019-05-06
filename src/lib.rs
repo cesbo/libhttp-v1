@@ -11,8 +11,12 @@ pub use crate::client::HttpClient;
 
 mod header;
 
-pub mod url;
-pub use crate::url::Url;
+mod url;
+pub use crate::url::{
+    Url,
+    urlencode,
+    urldecode,
+};
 
 mod error;
 pub use crate::error::{
