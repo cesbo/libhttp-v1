@@ -3,6 +3,83 @@ use std::io::Write;
 use crate::error::Result;
 
 
+#[inline]
+fn is_rfc3986(b: u8) -> bool {
+    match b {
+        b'a' ..= b'z' => true,
+        b'A' ..= b'Z' => true,
+        b'0' ..= b'9' => true,
+        b'-' => true,
+        b'_' => true,
+        b'.' => true,
+        b'~' => true,
+        _ => false,
+    }
+}
+
+#[inline]
+fn byte2hex(b: u8) -> char {
+    if b < 0x0A {
+        char::from(b'0' + b)
+    } else {
+        char::from(b'A' - 0x0A + b)
+    }
+}
+
+fn pars_hex(b: u8) -> Option<u8> {
+    match b {
+        b'0' ..= b'9' => Some(b - 48), 
+        b'A' ..= b'F' => Some(b - 55), 
+        b'a' ..= b'f' => Some(b - 87), 
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn urlencode(buf: &str) -> String {
+    let mut result = String::new();
+    for &b in buf.as_bytes() {
+        if is_rfc3986(b) {
+            result.push(char::from(b));
+        } else {
+            result.push('%');
+            result.push(byte2hex(b >> 4));
+            result.push(byte2hex(b & 0x0F));
+        }
+    }
+    result
+}
+
+pub fn urldecode(buf: &str) -> String {
+    let mut result: Vec<u8> = Vec::new(); 
+    let mut step = 0;
+    let mut buffer = 0;
+    for &b in buf.as_bytes() {
+        if step > 0 {                
+            step += 1;
+            buffer +=  match pars_hex(b) {
+                Some(v) => v,
+                None => return "".to_string(),
+            };
+            if step == 2 {
+                buffer = buffer << 4;
+            }
+            if step == 3{
+                result.push(buffer);
+                buffer = 0;
+                step = 0;
+            }
+        } else if b == b'%' { 
+            step = 1;
+        } else {
+            result.push(b);
+        }
+    }
+    unsafe { 
+        String::from_utf8_unchecked(result)
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct Url {
     scheme: String,
@@ -71,83 +148,6 @@ impl Url {
                 },
                 None => 0,
             };
-        }
-    }
-
-    #[inline]
-    fn is_rfc3986(&self, b: u8) -> bool {
-        match b {
-            b'a' ..= b'z' => true,
-            b'A' ..= b'Z' => true,
-            b'0' ..= b'9' => true,
-            b'-' => true,
-            b'_' => true,
-            b'.' => true,
-            b'~' => true,
-            _ => false,
-        }
-    }
-
-    #[inline]
-    fn byte2hex(&self, b: u8) -> char {
-        if b < 0x0A {
-            char::from(b'0' + b)
-        } else {
-            char::from(b'A' - 0x0A + b)
-        }
-    }
-
-    fn pars_hex(&self, b: u8) -> Option<u8> {
-        match b {
-            b'0' ..= b'9' => Some(b - 48), 
-            b'A' ..= b'F' => Some(b - 55), 
-            b'a' ..= b'f' => Some(b - 87), 
-            _ => None,
-        }
-    }
-
-    #[inline]
-    pub fn urlencode(&self, buf: &str) -> String {
-        let mut result = String::new();
-        for &b in buf.as_bytes() {
-            if self.is_rfc3986(b) {
-                result.push(char::from(b));
-            } else {
-                result.push('%');
-                result.push(self.byte2hex(b >> 4));
-                result.push(self.byte2hex(b & 0x0F));
-            }
-        }
-        result
-    }
-
-    pub fn urldecode(&self, buf: &str) -> String {
-        let mut result: Vec<u8> = Vec::new(); 
-        let mut step = 0;
-        let mut buffer = 0;
-        for &b in buf.as_bytes() {
-            if step > 0 {                
-                step += 1;
-                buffer +=  match self.pars_hex(b) {
-                    Some(v) => v,
-                    None => return "".to_string(),
-                };
-                if step == 2 {
-                    buffer = buffer << 4;
-                }
-                if step == 3{
-                    result.push(buffer);
-                    buffer = 0;
-                    step = 0;
-                }
-            } else if b == b'%' { 
-                step = 1;
-            } else {
-                result.push(b);
-            }
-        }
-        unsafe { 
-            String::from_utf8_unchecked(result)
         }
     }
 

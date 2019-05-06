@@ -1,16 +1,14 @@
 use http::Url;
 
 #[test]
-fn urlencode() {
-    let url = Url::new("");
-    let s = url.urlencode("http://foo bar/тест/🍔/");
+fn test_urlencode() {
+    let s = Url::urlencode("http://foo bar/тест/🍔/");
     assert_eq!(s.as_str(), "http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
 }
 
 #[test]
-fn urldecode() {
-    let url = Url::new("");
-    let s =  url.urldecode("http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
+fn test_urldecode() {
+    let s = Url::urldecode("http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
     assert_eq!(s.as_str(), "http://foo bar/тест/🍔/");
 }
 
