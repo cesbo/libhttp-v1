@@ -131,7 +131,7 @@ impl Url {
             tail = query;
         }
         if path > 0 || skip == 0 {
-            self.path += &inp[path .. tail];
+            self.path = urldecode(&inp[path .. tail]);
             tail = path;
         } 
         if prefix > 0 {
