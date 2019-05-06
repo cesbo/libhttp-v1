@@ -1,9 +1,6 @@
 use std::io::Write;
 
-use crate::error::{
-    Error,
-    Result,
-};
+use crate::error::Result;
 
 
 #[derive(Default, Debug)]
@@ -124,8 +121,8 @@ impl Url {
         result
     }
 
-    pub fn urldecode(&self, buf: &str) -> Option<String> {
-        let mut result = String::new();
+    pub fn urldecode(&self, buf: &str) -> String {
+        let mut result: Vec<u8> = Vec::new(); 
         let mut step = 0;
         let mut buffer = 0;
         for &b in buf.as_bytes() {
@@ -133,23 +130,25 @@ impl Url {
                 step += 1;
                 buffer +=  match self.pars_hex(b) {
                     Some(v) => v,
-                    None => return None,
+                    None => return "".to_string(),
                 };
                 if step == 2 {
                     buffer = buffer << 4;
                 }
                 if step == 3{
-                    result.push(char::from(buffer));
+                    result.push(buffer);
                     buffer = 0;
                     step = 0;
                 }
             } else if b == b'%' { 
                 step = 1;
             } else {
-                result.push(char::from(b));
+                result.push(b);
             }
         }
-        Some(result)
+        unsafe { 
+            String::from_utf8_unchecked(result)
+        }
     }
 
     #[inline]

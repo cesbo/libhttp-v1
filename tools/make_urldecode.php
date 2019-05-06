@@ -1,19 +1,10 @@
 <?php
 /*
- This script forms tests/urlencode_auto.rs
+ This script make test for url
 */
 $rez = "use http::Url;";
 $test_arr = array( 
-    "test some sting",
-    "this is.. ?",
-    "where is %user% ! ? ? ?",
-    "@#$%^&*((((((*&^%$#%user%!?   sad ??",
-    "-----^-",
-    " ^-",
-    " ^-some",
-    " ^-",
-    "All_to_659811165565659449",
-    "test: string\ кирилица и смайл 🙂",
+    "http://foo bar/тест/🍔/",
 );
 
 foreach ($test_arr as $k => $v) {
