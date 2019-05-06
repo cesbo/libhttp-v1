@@ -5,7 +5,6 @@ mod response;
 pub use crate::response::Response;
 
 mod stream;
-pub use crate::stream::HttpStream;
 
 mod client;
 pub use crate::client::HttpClient;

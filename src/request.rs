@@ -42,7 +42,7 @@ impl Request {
         S: Into<String>,
     {
         self.method = method.into();
-        self.url =  Url::new(url);
+        self.url = Url::new(url);
     }
 
     pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<()> {
@@ -58,7 +58,7 @@ impl Request {
                 for (step, part) in buffer.split_whitespace().enumerate() {
                     match step {
                         0 => self.method += part,
-                        1 => self.url =  Url::new(part),
+                        1 => self.url = Url::new(part),
                         2 => self.version = part.to_string(),
                         _ => break,
                      }

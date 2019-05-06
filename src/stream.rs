@@ -8,16 +8,23 @@ use std::cmp;
 use std::net::TcpStream;
 
 
-pub const DEFAULT_BUF_SIZE: usize = 8 * 1024;
+const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 
 enum HttpTransferEncoding {
-    /// Stream without defined length. Reading until EOF
+    /// Reading until EOF
     Eof,
     /// Content-Length
     Length(usize),
     /// Transfer-Encoding: chunked
     Chunked(usize),
+}
+
+
+impl Default for HttpTransferEncoding {
+    fn default() -> HttpTransferEncoding {
+        HttpTransferEncoding::Eof
+    }
 }
 
 
@@ -43,44 +50,54 @@ impl Default for HttpBuffer {
 }
 
 
+#[derive(Default)]
 pub struct HttpStream {
-    inner: TcpStream,
-    wbuf: HttpBuffer,
+    inner: Option<TcpStream>,
     rbuf: HttpBuffer,
+    wbuf: HttpBuffer,
 
     transfer: HttpTransferEncoding,
 }
 
 
 impl HttpStream {
-    pub fn new(inner: TcpStream) -> HttpStream {
-        HttpStream {
-            inner,
-            wbuf: HttpBuffer::default(),
-            rbuf: HttpBuffer::default(),
-            transfer: HttpTransferEncoding::Eof,
-        }
+    #[inline]
+    pub fn is_ready(&self) -> bool {
+        self.inner.is_some()
     }
 
-    #[inline]
-    pub fn set_stream_eof(&mut self) {
+    pub (crate) fn clear(&mut self) {
+        self.rbuf.pos = 0;
+        self.rbuf.cap = 0;
+        self.wbuf.pos = 0;
+        self.wbuf.cap = 0;
         self.transfer = HttpTransferEncoding::Eof;
     }
 
     #[inline]
-    pub fn set_stream_length(&mut self, len: usize) {
+    pub (crate) fn set(&mut self, inner: TcpStream) {
+        self.inner = Some(inner);
+    }
+
+    #[inline]
+    pub (crate) fn set_stream_eof(&mut self) {
+        self.transfer = HttpTransferEncoding::Eof;
+    }
+
+    #[inline]
+    pub (crate) fn set_stream_length(&mut self, len: usize) {
         self.transfer = HttpTransferEncoding::Length(len);
     }
 
     #[inline]
-    pub fn set_stream_chunked(&mut self) {
+    pub (crate) fn set_stream_chunked(&mut self) {
         self.transfer = HttpTransferEncoding::Chunked(0);
     }
 
     fn fill_stream(&mut self) -> io::Result<&[u8]> {
-        dbg!((self.rbuf.pos, self.rbuf.cap));
         if self.rbuf.pos >= self.rbuf.cap {
-            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
+            let inner = self.inner.as_mut().unwrap(); // TODO: fix
+            self.rbuf.cap = inner.read(&mut self.rbuf.buf)?;
             self.rbuf.pos = 0;
         }
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
@@ -88,15 +105,85 @@ impl HttpStream {
 
     fn fill_length(&mut self, len: usize) -> io::Result<&[u8]> {
         if self.rbuf.pos >= self.rbuf.cap {
-            let remain = dbg!(cmp::min(len, self.rbuf.buf.len()));
-            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf[0 .. remain])?;
+            let remain = cmp::min(len, self.rbuf.buf.len());
+            let inner = self.inner.as_mut().unwrap(); // TODO: fix
+            self.rbuf.cap = inner.read(&mut self.rbuf.buf[0 .. remain])?;
             self.rbuf.pos = 0;
         }
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
     }
 
-    fn fill_chunked(&mut self, _len: usize) -> io::Result<&[u8]> {
-        unimplemented!()
+    fn fill_chunked(&mut self, len: usize) -> io::Result<&[u8]> {
+        let mut len = len;
+
+        if len == 0 {
+            // step:
+            // 0 - wait first digit
+            // 1 - parse digit
+            // 2 - skip chunk-ext
+            let mut step = 0;
+            loop {
+                while self.rbuf.pos < self.rbuf.cap {
+                    let b = self.rbuf.buf[self.rbuf.pos];
+                    self.rbuf.pos += 1;
+
+                    if step == 2 {
+                        if b == b'\n' {
+                            break;
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    let d = match b {
+                        b'0' ..= b'9' => b - b'0',
+                        b'a' ..= b'f' => b - b'a' + 10,
+                        b'A' ..= b'F' => b - b'A' + 10,
+
+                        b'\r' => continue,
+                        b'\n' if step == 0 => continue,
+                        b'\n' => break,
+
+                        b';' => {
+                            step = 2;
+                            continue;
+                        },
+
+                        _ => {
+                            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid chunk-size format"));
+                        },
+                    };
+
+                    step = 1;
+                    len = len * 16 + usize::from(d);
+                }
+
+                if self.rbuf.cap > self.rbuf.pos {
+                    break;
+                }
+
+                let inner = self.inner.as_mut().unwrap(); // TODO: fix
+                self.rbuf.cap = inner.read(&mut self.rbuf.buf)?;
+                self.rbuf.pos = 0;
+            }
+
+            self.transfer = HttpTransferEncoding::Chunked(len);
+            if len == 0 {
+                return Ok(&self.rbuf.buf[0 .. 0]);
+            }
+        }
+
+        if self.rbuf.pos >= self.rbuf.cap {
+            let inner = self.inner.as_mut().unwrap(); // TODO: fix
+            self.rbuf.cap = inner.read(&mut self.rbuf.buf)?;
+            self.rbuf.pos = 0;
+        }
+
+        if len >= self.rbuf.cap - self.rbuf.pos {
+            Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
+        } else {
+            Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.pos + len])
+        }
     }
 }
 
@@ -144,7 +231,8 @@ impl Write for HttpStream {
         }
 
         if buf.len() >= self.wbuf.buf.len() {
-            self.inner.write(buf)
+            let inner = self.inner.as_mut().unwrap(); // TODO: fix
+            inner.write(buf)
         } else {
             let r = (&mut self.wbuf.buf[self.wbuf.cap ..]).write(buf)?;
             self.wbuf.cap += r;
@@ -153,8 +241,9 @@ impl Write for HttpStream {
     }
 
     fn flush(&mut self) -> io::Result<()> {
+        let inner = self.inner.as_mut().unwrap(); // TODO: fix
         while self.wbuf.pos < self.wbuf.cap {
-            match self.inner.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
+            match inner.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
                 Ok(0) => {
                     return Err(io::Error::new(io::ErrorKind::WriteZero, "failed to write the buffered data"));
                 },
@@ -167,6 +256,6 @@ impl Write for HttpStream {
         }
         self.wbuf.pos = 0;
         self.wbuf.cap = 0;
-        self.inner.flush()
+        inner.flush()
     }
 }
