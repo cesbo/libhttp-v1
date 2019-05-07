@@ -16,6 +16,7 @@ pub use crate::url::{
     Url,
     urlencode,
     urldecode,
+    pars_query,
 };
 
 mod error;

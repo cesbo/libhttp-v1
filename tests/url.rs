@@ -1,6 +1,14 @@
 use http::Url;
 use http::urlencode;
 use http::urldecode;
+use http::pars_query;
+
+
+#[test]
+fn pars_query_test() {
+    let pars_query = pars_query("data=1&string=5&testing=&test=not test string &&");
+    println!("{:#?}", pars_query);
+}
 
 #[test]
 fn test_urlencode() {

@@ -1,8 +1,7 @@
 use std::io::Write;
+use std::collections::HashMap;
 
 use crate::error::Result;
-
-
 
 
 #[inline]
@@ -63,7 +62,6 @@ pub fn urldecode(buf: &str) -> String {
     while skip < len {
         let b = buf[skip];
         skip += 1;
-        
         if b == b'%' {
             result.push(hex2byte(&buf[skip ..]));
             skip += 2;
@@ -90,6 +88,24 @@ pub fn urlencode(buf: &str) -> String {
         }
     }
     result
+}
+
+
+#[inline]
+pub fn pars_query(query: &str) -> HashMap<&str, &str> {
+    let mut ret = HashMap::new();
+    let mut name = "";
+    for data in query.split('&') {
+        for v in data.split('=') {
+            if name.is_empty() {
+                name = v;
+            } else {
+                ret.insert(name, v);
+                name = "";
+            }
+        }
+    }
+    ret
 }
 
 
