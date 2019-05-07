@@ -3,6 +3,8 @@ use std::io::Write;
 use crate::error::Result;
 
 
+
+
 #[inline]
 fn is_rfc3986(b: u8) -> bool {
     match b {
@@ -17,6 +19,31 @@ fn is_rfc3986(b: u8) -> bool {
     }
 }
 
+
+#[inline]
+fn hex2nibble(b: u8) -> Option<u8> {
+    match b {
+        b'0' ..= b'9' => Some(b - b'0'),
+        b'A' ..= b'F' => Some(b - b'A' + 10),
+        b'a' ..= b'f' => Some(b - b'a' + 10),
+        _ => None,
+    }
+}
+
+
+#[inline]
+fn hex2byte(buf: &[u8]) -> u8 {
+    if buf.len() >= 2 {
+        if let Some(n0) = hex2nibble(buf[0]) {
+            if let Some(n1) = hex2nibble(buf[1]) {
+                return n0 * 16 + n1;
+            }
+        }
+    }
+    b'-'
+}
+
+
 #[inline]
 fn byte2hex(b: u8) -> char {
     if b < 0x0A {
@@ -26,14 +53,29 @@ fn byte2hex(b: u8) -> char {
     }
 }
 
-fn pars_hex(b: u8) -> Option<u8> {
-    match b {
-        b'0' ..= b'9' => Some(b - 48), 
-        b'A' ..= b'F' => Some(b - 55), 
-        b'a' ..= b'f' => Some(b - 87), 
-        _ => None,
+
+#[inline]
+pub fn urldecode(buf: &str) -> String {
+    let mut result: Vec<u8> = Vec::new(); 
+    let buf = buf.as_bytes();
+    let mut skip = 0;
+    let len = buf.len();
+    while skip < len {
+        let b = buf[skip];
+        skip += 1;
+        
+        if b == b'%' {
+            result.push(hex2byte(&buf[skip ..]));
+            skip += 2;
+        } else {
+            result.push(b);
+        }
+    }
+    unsafe { 
+        String::from_utf8_unchecked(result)
     }
 }
+
 
 #[inline]
 pub fn urlencode(buf: &str) -> String {
@@ -50,35 +92,6 @@ pub fn urlencode(buf: &str) -> String {
     result
 }
 
-pub fn urldecode(buf: &str) -> String {
-    let mut result: Vec<u8> = Vec::new(); 
-    let mut step = 0;
-    let mut buffer = 0;
-    for &b in buf.as_bytes() {
-        if step > 0 {                
-            step += 1;
-            buffer +=  match pars_hex(b) {
-                Some(v) => v,
-                None => return "".to_string(),
-            };
-            if step == 2 {
-                buffer = buffer << 4;
-            }
-            if step == 3{
-                result.push(buffer);
-                buffer = 0;
-                step = 0;
-            }
-        } else if b == b'%' { 
-            step = 1;
-        } else {
-            result.push(b);
-        }
-    }
-    unsafe { 
-        String::from_utf8_unchecked(result)
-    }
-}
 
 #[derive(Default, Debug)]
 pub struct Url {
