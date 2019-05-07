@@ -1,13 +1,13 @@
 use http::Url;
 use http::urlencode;
 use http::urldecode;
-use http::pars_query;
+use http::parse_query;
 
 
 #[test]
 fn pars_query_test() {
-    let pars_query = pars_query("data=1&string=5&testing=&test=not test string &&");
-    println!("{:#?}", pars_query);
+    let parse_query = parse_query("data=1&string=5&testing_кирилица=&&link=%26%26%26http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F?&test=not test string &&");
+    println!("{:#?}", parse_query);
 }
 
 #[test]
@@ -26,12 +26,12 @@ fn test_urldecode() {
 fn test_pathdecode() {
     let name: &str = "127.0.0.1";
     let mut dst: Vec<u8> = Vec::new();
-    let url = Url::new("http://127.0.0.1/foo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
+    let url = Url::new("http://127.0.0.1/foo%20++bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
     url.write_header_host(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
-    assert_eq!(url.get_path(), "/foo bar/тест/🍔/");
+    assert_eq!(url.get_path(), "/foo   bar/тест/🍔/");
     assert_eq!(url.get_query(), "");
     assert_eq!(url.get_fragment(), "");
 }

@@ -62,11 +62,13 @@ pub fn urldecode(buf: &str) -> String {
     while skip < len {
         let b = buf[skip];
         skip += 1;
-        if b == b'%' {
-            result.push(hex2byte(&buf[skip ..]));
-            skip += 2;
-        } else {
-            result.push(b);
+        match b {
+            b'%' => {
+                result.push(hex2byte(&buf[skip ..]));
+                skip += 2;
+            },
+            b'+' => result.push(b' '),
+            _ => result.push(b),
         }
     }
     unsafe { 
@@ -92,18 +94,17 @@ pub fn urlencode(buf: &str) -> String {
 
 
 #[inline]
-pub fn pars_query(query: &str) -> HashMap<&str, &str> {
+pub fn parse_query(query: &str) -> HashMap<String, String> {
     let mut ret = HashMap::new();
-    let mut name = "";
     for data in query.split('&') {
-        for v in data.split('=') {
-            if name.is_empty() {
-                name = v;
-            } else {
-                ret.insert(name, v);
-                name = "";
-            }
+        let mut i = data.splitn(2, '=');
+        let key = i.next().unwrap();
+        if key.is_empty() {
+            continue;
         }
+        let key = urldecode(key);
+        let value = urldecode(i.next().unwrap_or(""));
+        ret.insert(key, value);
     }
     ret
 }
