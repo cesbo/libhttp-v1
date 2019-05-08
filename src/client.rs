@@ -1,5 +1,9 @@
 use std::net::TcpStream;
 use std::io::Write;
+use serialize::base64::{
+    ToBase64, 
+    STANDARD,
+};
 
 use crate::request::Request;
 use crate::response::Response;
@@ -39,6 +43,11 @@ impl HttpClient {
             self.stream.set(TcpStream::connect((host, port))?);
         } else {
             self.stream.clear();
+        }
+        
+        let prefix = self.request.url.get_prefix();
+        if ! prefix.is_empty() {
+            self.request.set("Authorization", format!("Basic: {}", prefix.as_bytes().to_base64(STANDARD)));
         }
 
         self.request.send(&mut self.stream)?;
