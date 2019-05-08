@@ -7,8 +7,25 @@ use std::io::{
 use std::cmp;
 use std::net::TcpStream;
 
+use openssl::ssl::{
+    SslMethod,
+    SslConnector,
+    SslStream,
+};
+
+use crate::response::Response;
+use crate::error::{
+    Error,
+    Result,
+};
+
 
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
+
+
+trait Stream: Read + Write {}
+impl Stream for TcpStream {}
+impl Stream for SslStream<TcpStream> {}
 
 
 enum HttpTransferEncoding {
@@ -52,7 +69,7 @@ impl Default for HttpBuffer {
 
 #[derive(Default)]
 pub struct HttpStream {
-    inner: Option<TcpStream>,
+    inner: Option<Box<dyn Stream>>,
     rbuf: HttpBuffer,
     wbuf: HttpBuffer,
 
@@ -61,37 +78,50 @@ pub struct HttpStream {
 
 
 impl HttpStream {
-    #[inline]
-    pub fn is_ready(&self) -> bool {
-        self.inner.is_some()
-    }
-
-    pub (crate) fn clear(&mut self) {
+    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<()> {
         self.rbuf.pos = 0;
         self.rbuf.cap = 0;
         self.wbuf.pos = 0;
         self.wbuf.cap = 0;
         self.transfer = HttpTransferEncoding::Eof;
+
+        if self.inner.is_some() {
+            // keep-alive
+        } else if tls {
+            // TODO: fix unwrap
+            let connector = SslConnector::builder(SslMethod::tls()).unwrap();
+            let mut ssl = connector.build().configure().unwrap();
+            ssl.set_use_server_name_indication(true);
+            ssl.set_verify_hostname(true);
+            let stream = TcpStream::connect((host, port))?;
+            let stream = ssl.connect(host, stream).unwrap();
+            self.inner = Some(Box::new(stream));
+        } else {
+            let stream = TcpStream::connect((host, port))?;
+            self.inner = Some(Box::new(stream));
+        }
+
+        Ok(())
     }
 
-    #[inline]
-    pub (crate) fn set(&mut self, inner: TcpStream) {
-        self.inner = Some(inner);
-    }
-
-    #[inline]
-    pub (crate) fn set_stream_eof(&mut self) {
+    pub fn configure(&mut self, response: &Response) -> Result<()> {
         self.transfer = HttpTransferEncoding::Eof;
-    }
 
-    #[inline]
-    pub (crate) fn set_stream_length(&mut self, len: usize) {
-        self.transfer = HttpTransferEncoding::Length(len);
-    }
+        if let Some(len) = response.get_header("content-length") {
+            let len = len.parse().unwrap_or(0);
+            self.transfer = HttpTransferEncoding::Length(len);
+            return Ok(());
+        }
 
-    #[inline]
-    pub (crate) fn set_stream_chunked(&mut self) {
-        self.transfer = HttpTransferEncoding::Chunked(0);
+        if let Some(te) = response.get_header("transfer-encoding") {
+            // TODO: parse te
+            if te == "chunked" {
+                self.transfer = HttpTransferEncoding::Chunked(0);
+                return Ok(())
+            }
+        }
+
+        Ok(())
     }
 
     fn fill_stream(&mut self) -> io::Result<&[u8]> {

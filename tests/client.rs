@@ -64,3 +64,16 @@ fn test_post_chunked() {
     }
     assert_eq!(count, 10);
 }
+
+#[test]
+fn test_get_ssl() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "https://httpbin.org/base64/SGVsbG8sIHdvcmxkIQ==");
+    client.request.set("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+
+    let mut body = String::new();
+    client.stream.read_to_string(&mut body).unwrap();
+    assert_eq!(HELLO_WORLD, body.as_bytes());
+}
