@@ -30,7 +30,7 @@ fn test_post_length() {
     client.request.init("POST", "http://127.0.0.1:9090/post-length");
     client.request.set("user-agent", "libhttp");
     client.request.set("content-type", "text/plain");
-    client.request.set("content-length", HELLO_WORLD.len().to_string());
+    client.request.set("content-length", HELLO_WORLD.len());
     client.send().unwrap();
     client.stream.write(HELLO_WORLD).unwrap();
     client.receive().unwrap();
@@ -47,7 +47,7 @@ fn test_post_chunked() {
     client.request.init("POST", "http://127.0.0.1:9090/post-chunked");
     client.request.set("user-agent", "libhttp");
     client.request.set("content-type", "text/plain");
-    client.request.set("content-length", HELLO_WORLD.len().to_string());
+    client.request.set("content-length", HELLO_WORLD.len());
     client.send().unwrap();
     client.stream.write(HELLO_WORLD).unwrap();
     client.receive().unwrap();

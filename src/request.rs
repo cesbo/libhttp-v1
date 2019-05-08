@@ -90,9 +90,9 @@ impl Request {
     pub fn set<R, S>(&mut self, name: R, data: S)
     where
         R: AsRef<str>,
-        S: Into<String>
+        S: ToString,
     {
-        self.headers.insert(name.as_ref().to_lowercase(), data.into());
+        self.headers.insert(name.as_ref().to_lowercase(), data.to_string());
     }
 
     #[inline]

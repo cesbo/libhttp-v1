@@ -90,11 +90,12 @@ impl Response {
     }
 
     #[inline]
-    pub fn set<S>(&mut self, key: S, value: S)
+    pub fn set<R, S>(&mut self, name: R, data: S)
     where
-        S: Into<String>
+        R: AsRef<str>,
+        S: ToString,
     {
-        self.headers.insert(key.into().to_lowercase(), value.into());
+        self.headers.insert(name.as_ref().to_lowercase(), data.to_string());
     }
 
     #[inline]
