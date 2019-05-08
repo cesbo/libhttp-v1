@@ -14,10 +14,7 @@ use openssl::ssl::{
 };
 
 use crate::response::Response;
-use crate::error::{
-    Error,
-    Result,
-};
+use crate::error::Result;
 
 
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
@@ -88,13 +85,12 @@ impl HttpStream {
         if self.inner.is_some() {
             // keep-alive
         } else if tls {
-            // TODO: fix unwrap
-            let connector = SslConnector::builder(SslMethod::tls()).unwrap();
-            let mut ssl = connector.build().configure().unwrap();
+            let connector = SslConnector::builder(SslMethod::tls())?;
+            let mut ssl = connector.build().configure()?;
             ssl.set_use_server_name_indication(true);
             ssl.set_verify_hostname(true);
             let stream = TcpStream::connect((host, port))?;
-            let stream = ssl.connect(host, stream).unwrap();
+            let stream = ssl.connect(host, stream)?;
             self.inner = Some(Box::new(stream));
         } else {
             let stream = TcpStream::connect((host, port))?;
@@ -171,6 +167,7 @@ impl HttpStream {
                         b'A' ..= b'F' => b - b'A' + 10,
 
                         b'\r' => continue,
+                        // TODO: skip \r\n after segment
                         b'\n' if step == 0 => continue,
                         b'\n' => break,
 
@@ -180,7 +177,8 @@ impl HttpStream {
                         },
 
                         _ => {
-                            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid chunk-size format"));
+                            return Err(io::Error::new(io::ErrorKind::InvalidData,
+                                "invalid chunk-size format"));
                         },
                     };
 
@@ -275,7 +273,8 @@ impl Write for HttpStream {
         while self.wbuf.pos < self.wbuf.cap {
             match inner.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
                 Ok(0) => {
-                    return Err(io::Error::new(io::ErrorKind::WriteZero, "failed to write the buffered data"));
+                    return Err(io::Error::new(io::ErrorKind::WriteZero,
+                        "failed to write the buffered data"));
                 },
                 Ok(n) => { self.wbuf.pos += n },
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},

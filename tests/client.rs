@@ -77,3 +77,14 @@ fn test_get_ssl() {
     client.stream.read_to_string(&mut body).unwrap();
     assert_eq!(HELLO_WORLD, body.as_bytes());
 }
+
+#[test]
+fn test_get_expired_ssl() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "https://expired.badssl.com/");
+    client.request.set("user-agent", "libhttp");
+    match client.send() {
+        Ok(_) => unreachable!(),
+        Err(ref e) => println!("{}", e),
+    }
+}
