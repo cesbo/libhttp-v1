@@ -134,3 +134,16 @@ fn test_get_expired_ssl() {
         Err(ref e) => println!("{}", e),
     }
 }
+
+
+#[test]
+fn test_get_timeout() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "http://httpbin.org/delay/5");
+    client.request.set("user-agent", "libhttp");
+    client.send().unwrap();
+    match client.receive() {
+        Ok(_) => unreachable!(),
+        Err(ref e) => println!("{}", e),
+    }
+}

@@ -1,8 +1,10 @@
 <?php
 
+
 define('URL_PATH', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 define('METHOD', $_SERVER['REQUEST_METHOD']);
 define('TEST_DATA', 'Hello, world!');
+
 
 if (URL_PATH == '/get' && METHOD == 'GET') {
     header('Content-Type: text/plain');
@@ -10,12 +12,14 @@ if (URL_PATH == '/get' && METHOD == 'GET') {
     exit;
 }
 
+
 if (URL_PATH == '/post-length' && METHOD == 'POST') {
     $content = file_get_contents('php://input');
     header('Content-Type: text/plain');
     echo $content;
     exit;
 }
+
 
 if (URL_PATH == '/post-chunked' && METHOD == 'POST') {
     $content = file_get_contents('php://input') . "\r\n";
@@ -30,6 +34,7 @@ if (URL_PATH == '/post-chunked' && METHOD == 'POST') {
     exit;
 }
 
+
 if (URL_PATH == '/get-chunked-lf-only' && METHOD == 'GET') {
     ob_implicit_flush(1);
     header('Transfer-Encoding: chunked');
@@ -42,6 +47,7 @@ if (URL_PATH == '/get-chunked-lf-only' && METHOD == 'GET') {
     printf("0\n\n");
     exit;
 }
+
 
 if (URL_PATH == '/get-chunked-wo-trailer' && METHOD == 'GET') {
     ob_implicit_flush(1);
