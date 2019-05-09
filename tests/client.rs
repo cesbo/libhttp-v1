@@ -58,12 +58,57 @@ fn test_post_chunked() {
             Ok(v) => {
                 count += 1;
                 assert_eq!(v.as_bytes(), HELLO_WORLD);
-            },
+            }
             _ => unreachable!(),
         };
     }
     assert_eq!(count, 10);
 }
+
+
+#[test]
+fn test_get_chunked_lf_only() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "http://127.0.0.1:9090/get-chunked-lf-only");
+    client.request.set("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+
+    let mut count = 0;
+    for line in client.stream.lines() {
+        match line {
+            Ok(v) => {
+                count += 1;
+                assert_eq!(v.as_bytes(), HELLO_WORLD);
+            }
+            _ => unreachable!(),
+        };
+    }
+    assert_eq!(count, 10);
+}
+
+
+#[test]
+fn test_get_chunked_wo_trailer() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "http://127.0.0.1:9090/get-chunked-wo-trailer");
+    client.request.set("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+
+    let mut count = 0;
+    for line in client.stream.lines() {
+        match line {
+            Ok(v) => {
+                count += 1;
+                assert_eq!(v.as_bytes(), HELLO_WORLD);
+            }
+            _ => unreachable!(),
+        };
+    }
+    assert_eq!(count, 10);
+}
+
 
 #[test]
 fn test_get_ssl() {
@@ -77,6 +122,7 @@ fn test_get_ssl() {
     client.stream.read_to_string(&mut body).unwrap();
     assert_eq!(HELLO_WORLD, body.as_bytes());
 }
+
 
 #[test]
 fn test_get_expired_ssl() {

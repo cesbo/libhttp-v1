@@ -40,19 +40,19 @@ impl fmt::Display for Error {
                         write!(f, "HTTP Handshake Setup Failure: {}", s)
                     }
                     HandshakeError::Failure(ee) => {
-                        write!(f, "HTTP Handshake Failure")?;
+                        write!(f, "HTTP Handshake Failure: ")?;
                         let inner_error = ee.error();
                         if let Some(io_ee) = inner_error.io_error() {
-                            write!(f, ": IO Error: {}", io_ee)?;
+                            write!(f, "{}", io_ee)?;
                         } else if let Some(ssl_ee) = inner_error.ssl_error() {
                             let s = ssl_ee.errors().get(0)
                                 .and_then(|eee| eee.reason())
-                                .unwrap_or("");
-                            write!(f, ": {}", s)?;
-                        }
-                        let verify_result = ee.ssl().verify_result();
-                        if verify_result.as_raw() != 0 {
-                            write!(f, ": {}", verify_result.error_string())?;
+                                .unwrap_or("unknown");
+                            write!(f, "{}", s)?;
+                            let v = ee.ssl().verify_result();
+                            if v.as_raw() != 0 {
+                                write!(f, ": {}", v.error_string())?;
+                            }
                         }
                         Ok(())
                     }
