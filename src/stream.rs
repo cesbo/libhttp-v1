@@ -21,6 +21,8 @@ use crate::response::Response;
 use crate::error::Result;
 
 
+const DEFAULT_IP_TTL: u32 = 64;
+const DEFAULT_TCP_NODELAY: bool = false;
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 
@@ -64,6 +66,9 @@ impl Default for HttpBuffer {
 
 pub struct HttpStream {
     timeout: Duration,
+    ttl: u32,
+    nodelay: bool,
+
     inner: Option<Box<dyn Stream>>,
     rbuf: HttpBuffer,
     wbuf: HttpBuffer,
@@ -76,9 +81,13 @@ impl Default for HttpStream {
     fn default() -> HttpStream {
         HttpStream {
             timeout: Duration::from_secs(3),
+            ttl: DEFAULT_IP_TTL,
+            nodelay: DEFAULT_TCP_NODELAY,
+
             inner: None,
             rbuf: HttpBuffer::default(),
             wbuf: HttpBuffer::default(),
+
             transfer: HttpTransferEncoding::Eof,
         }
     }
@@ -86,10 +95,29 @@ impl Default for HttpStream {
 
 
 impl HttpStream {
+    /// Sets specified timeout for connect, read, write
+    /// Default: 3sec
     pub fn set_timeout(&mut self, timeout: Duration) {
         self.timeout = timeout
     }
 
+    /// Sets IP_TTL. Max value 255
+    /// Default: 64
+    pub fn set_ttl(&mut self, ttl: u32) {
+        self.ttl = ttl
+    }
+
+    /// Sets TCP_NODELAY. If sets, segments are always sent as soon as possible,
+    /// even if there is only a small amount of data. When not set, data is
+    /// buffered until there is a sufficient amount to send out,
+    /// thereby avoiding the frequent sending of small packets.
+    /// Default: false
+    pub fn set_nodelay(&mut self, nodelay: bool) {
+        self.nodelay = nodelay
+    }
+
+    /// Opens a TCP connection to a remote host
+    /// If connection already opened just clears read/write buffers
     pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<()> {
         self.rbuf.pos = 0;
         self.rbuf.cap = 0;
@@ -116,6 +144,12 @@ impl HttpStream {
             };
 
             let stream = get_stream()?;
+            if self.ttl != DEFAULT_IP_TTL {
+                stream.set_ttl(self.ttl)?;
+            }
+            if self.nodelay != DEFAULT_TCP_NODELAY {
+                stream.set_nodelay(self.nodelay)?;
+            }
             stream.set_read_timeout(Some(self.timeout))?;
             stream.set_write_timeout(Some(self.timeout))?;
 
@@ -134,6 +168,7 @@ impl HttpStream {
         Ok(())
     }
 
+    /// Checks response headers and set content parser behavior
     pub fn configure(&mut self, response: &Response) -> Result<()> {
         self.transfer = HttpTransferEncoding::Eof;
 
@@ -154,6 +189,7 @@ impl HttpStream {
         Ok(())
     }
 
+    /// HttpTransferEncoding::Eof
     fn fill_stream(&mut self) -> io::Result<&[u8]> {
         if self.rbuf.pos >= self.rbuf.cap {
             let inner = self.inner.as_mut().unwrap(); // TODO: fix
@@ -163,6 +199,7 @@ impl HttpStream {
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
     }
 
+    /// HttpTransferEncoding::Length
     fn fill_length(&mut self, len: usize) -> io::Result<&[u8]> {
         if self.rbuf.pos >= self.rbuf.cap {
             let remain = cmp::min(len, self.rbuf.buf.len());
@@ -173,6 +210,7 @@ impl HttpStream {
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
     }
 
+    /// HttpTransferEncoding::Chunked
     fn fill_chunked(&mut self, len: usize, first: bool) -> io::Result<&[u8]> {
         let mut len = len;
         if len == 0 {
@@ -196,22 +234,13 @@ impl HttpStream {
                             b'0' ..= b'9' => b - b'0',
                             b'a' ..= b'f' => b - b'a' + 10,
                             b'A' ..= b'F' => b - b'A' + 10,
-                            b'\n' => {
-                                if len == 0 {
-                                    // skip trailer
-                                    step = 3;
-                                    continue
-                                } else {
-                                    step = 100;
-                                    break 'M
-                                }
-                            }
+                            b'\n' if len == 0 => { step = 3; continue }
+                            b'\n' => { step = 100; break 'M }
                             b'\r' => { step = 4; continue }
                             b';' | b' ' | b'\t' => { step = 2; continue }
                             _ => break 'M,
                         };
 
-                        step = 1;
                         len = len * 16 + usize::from(d);
                     }
 
