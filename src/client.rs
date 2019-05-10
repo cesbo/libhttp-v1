@@ -26,7 +26,7 @@ impl HttpClient {
     fn auth_basic(&mut self) {
         let prefix = self.request.url.get_prefix();
         if ! prefix.is_empty() {
-            self.request.set("Authorization", format!("Basic: {}", encode(prefix)));
+            self.request.set("Authorization", format!("Basic {}", encode(prefix)));
         }
     }
 
@@ -48,7 +48,7 @@ impl HttpClient {
         } else {
             self.stream.clear();
         }
-        
+        self.auth_basic();
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;
         Ok(())

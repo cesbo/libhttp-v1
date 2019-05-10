@@ -11,6 +11,17 @@ const HELLO_WORLD: &[u8] = b"Hello, world!";
 
 
 #[test]
+fn test_auth_basic() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "http://test:testpass@httpbin.org/basic-auth/test/testpass");
+    client.request.set("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+    println!("{:#?}", client.request);
+    println!("{:#?}", client.response);
+}
+
+#[test]
 fn test_get_eof() {
     let mut client = HttpClient::new();
     client.request.init("GET", "http://127.0.0.1:9090/get");

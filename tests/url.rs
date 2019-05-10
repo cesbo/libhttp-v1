@@ -49,7 +49,7 @@ fn test_10() {
 fn test_9() {
     let name: &str = "239.255.1.1:1234";
     let mut dst: Vec<u8> = Vec::new();
-    let url = Url::new("udp://239.255.1.1:1234");
+    let url = Url::new("udp://test:test@239.255.1.1:1234");
     url.write_header_host(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), name.as_bytes());
     assert_eq!(url.get_scheme(), "udp");
@@ -58,6 +58,7 @@ fn test_9() {
     assert_eq!(url.get_path(), "");
     assert_eq!(url.get_query(), "");
     assert_eq!(url.get_fragment(), "");
+    assert_eq!(url.get_prefix(), "test:test");
 }
 
 #[test]
