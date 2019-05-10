@@ -61,3 +61,13 @@ if (URL_PATH == '/get-chunked-wo-trailer' && METHOD == 'GET') {
     printf("0\r\n");
     exit;
 }
+
+
+if (URL_PATH == '/get-chunked-deflate' && METHOD == 'GET') {
+    $content = gzdeflate(TEST_DATA);
+    header('Transfer-Encoding: deflate, chunked');
+    header('Content-Type: text/plain');
+    printf("%x\r\n%s\r\n", strlen($content), $content);
+    printf("0\r\n\r\n");
+    exit;
+}
