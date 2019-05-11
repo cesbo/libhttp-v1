@@ -29,7 +29,7 @@ const TEST_TAB_UNIX: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t       RT
 fn send() {
     let mut request = Request::new();
     request.init("GET", "http://127.0.0.1:8000/path?query");
-    request.set("User-Agent", "libhttp");
+    request.set_header("User-Agent", "libhttp");
     request.set_version("RTSP/1.0");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
@@ -40,7 +40,7 @@ fn send() {
 fn send_version() {
     let mut request = Request::new();
     request.init("GET", "http://127.0.0.1:8000/path?query");
-    request.set("User-Agent", "libhttp");
+    request.set_header("User-Agent", "libhttp");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST1.as_bytes());
@@ -50,7 +50,7 @@ fn send_version() {
 fn send_case() {
     let mut request = Request::new();
     request.init("GET", "http://127.0.0.1:8000/path?query");
-    request.set("user-agent", "libhttp");
+    request.set_header("user-agent", "libhttp");
     request.set_version("RTSP/1.0");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();

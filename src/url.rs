@@ -1,7 +1,4 @@
-use std::io::Write;
 use std::collections::HashMap;
-
-use crate::error::Result;
 
 
 #[inline]
@@ -55,7 +52,7 @@ fn byte2hex(b: u8) -> char {
 
 #[inline]
 pub fn urldecode(buf: &str) -> String {
-    let mut result: Vec<u8> = Vec::new(); 
+    let mut result: Vec<u8> = Vec::new();
     let buf = buf.as_bytes();
     let mut skip = 0;
     let len = buf.len();
@@ -71,7 +68,7 @@ pub fn urldecode(buf: &str) -> String {
             _ => result.push(b),
         }
     }
-    unsafe { 
+    unsafe {
         String::from_utf8_unchecked(result)
     }
 }
@@ -130,7 +127,7 @@ impl Url {
         }
         url
     }
-    
+
     pub fn set(&mut self, inp: &str) {
         let mut skip = 0;
         let mut step = 0;
@@ -149,7 +146,7 @@ impl Url {
                 b'?' if step < 3 => { query = idx + skip; step = 3; },
                 b'#' if step < 4 => { fragment = idx + skip; break; },
                 _ => {},
-            }; 
+            };
         }
         let mut tail = inp.len();
         if fragment > 0 {
@@ -163,7 +160,7 @@ impl Url {
         if path > 0 || skip == 0 {
             self.path = urldecode(&inp[path .. tail]);
             tail = path;
-        } 
+        }
         if prefix > 0 {
             self.prefix += &inp[path .. tail];
             skip = prefix + 1;
@@ -185,7 +182,7 @@ impl Url {
     pub fn get_scheme(&self) -> &str {
         self.scheme.as_str()
     }
-    
+
     #[inline]
     pub fn get_prefix(&self) -> &str {
         self.prefix.as_str()
@@ -200,39 +197,19 @@ impl Url {
     pub fn get_port(&self) -> u16 {
         self.port
     }
-    
+
     #[inline]
     pub fn get_path(&self) -> &str {
         self.path.as_str()
     }
-    
+
     #[inline]
     pub fn get_query(&self) -> &str {
         self.query.as_str()
     }
-    
+
     #[inline]
     pub fn get_fragment(&self) -> &str {
         self.fragment.as_str()
-    }
-    
-    #[inline]
-    pub fn write_request_url<W: Write>(&self, dst: &mut W) -> Result<()> {
-        if self.path.is_empty() {
-            write!(dst, "/{}", self.query)?;
-        } else {
-            write!(dst, "{}{}", self.path, self.query)?;
-        }
-        Ok(())
-    }
-    
-    #[inline]
-    pub fn write_header_host<W: Write>(&self, dst: &mut W) -> Result<()> {
-        if self.port == 80 || self.port == 443 || self.port == 0 {
-            write!(dst, "{}", self.host)?;
-        } else {
-            write!(dst, "{}:{}", self.host, self.port)?;
-        }
-        Ok(())
     }
 }

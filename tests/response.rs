@@ -123,7 +123,7 @@ fn response_parse_test4() {
 #[test]
 fn response_send() {
     let mut response = Response::new();
-    response.set("Date", "Mon, 08 Apr 2019 10:42:12 GMT");
+    response.set_header("date", "Mon, 08 Apr 2019 10:42:12 GMT");
     response.set_version("RTSP/1.0");
     response.set_code(CODE200);
     response.set_reason("Ok");
@@ -135,7 +135,7 @@ fn response_send() {
 #[test]
 fn response_send_case() {
     let mut response = Response::new();
-    response.set("date-start", "Mon, 08 Apr 2019 10:42:12 GMT");
+    response.set_header("date-start", "Mon, 08 Apr 2019 10:42:12 GMT");
     response.set_version("RTSP/1.0");
     response.set_code(CODE200);
     response.set_reason("Ok");

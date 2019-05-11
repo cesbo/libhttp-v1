@@ -1,14 +1,11 @@
 use std::collections::HashMap;
 use std::io::{
+    self,
     BufRead,
     Write
 };
 
-use crate::header;
-use crate::error::{
-    Error,
-    Result,
-};
+use crate::tools;
 
 
 #[derive(Debug)]
@@ -36,41 +33,55 @@ impl Response {
     #[inline]
     pub fn new() -> Self { Response::default() }
 
-    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<()> {
-        let mut line = 0;
+    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> io::Result<()> {
+        let mut first_line = true;
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            if let Err(e) = reader.read_line(&mut buffer) {
-                return Err(Error::from(e));
-            }
+            if reader.read_line(&mut buffer)? == 0 { break }
             let s = buffer.trim();
-            if s.is_empty() {
-                break;
-            }
-            if line == 0 {
-                let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
-                self.version = (&s[.. skip]).to_string();
-                let s = s[skip ..].trim_start();
-                let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
-                self.code = s[.. skip].parse::<usize>().unwrap_or(0);
-                self.reason = s[skip ..].trim().to_string();
+            if s.is_empty() { break }
+            if first_line {
+                for (step, part) in s.split_whitespace().enumerate() {
+                    match step {
+                        0 => self.version = part.to_string(),
+                        1 => self.code = part.parse().unwrap_or(0),
+                        _ => self.reason += part,
+                     }
+                }
+                first_line = false;
             } else {
-                header::parse(&mut self.headers, &s);
+                if let Some(flag) = s.find(':') {
+                    self.headers.insert(
+                        s[.. flag].trim_end().to_lowercase(),
+                        s[flag + 1 ..].trim_start().to_string()
+                    );
+                }
             }
-            line += 1;
         }
         Ok(())
     }
 
-    pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
-        writeln!(dst, "{} {} {}\r", self.version, self.code, self.reason)?;
-        for (param, value) in self.headers.iter() {
-            header::write_key(param, dst)?;
-            writeln!(dst, ": {}\r", value)?;
+    pub fn send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
+        writeln!(dst, "{} {} {}\r",
+            self.version,
+            self.code,
+            self.reason)?;
+
+        for (key, value) in self.headers.iter() {
+            tools::header_write(dst, key, value)?;
         }
-        writeln!(dst, "\r")?;
-        Ok(())
+
+        writeln!(dst, "\r")
+    }
+
+    #[inline]
+    pub fn set_header<R, S>(&mut self, key: R, value: S)
+    where
+        R: AsRef<str>,
+        S: ToString,
+    {
+        self.headers.insert(key.as_ref().to_lowercase(), value.to_string());
     }
 
     #[inline]
@@ -87,15 +98,6 @@ impl Response {
     #[inline]
     pub fn set_code(&mut self, code: usize) {
         self.code = code;
-    }
-
-    #[inline]
-    pub fn set<R, S>(&mut self, name: R, data: S)
-    where
-        R: AsRef<str>,
-        S: ToString,
-    {
-        self.headers.insert(name.as_ref().to_lowercase(), data.to_string());
     }
 
     #[inline]

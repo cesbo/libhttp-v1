@@ -1,7 +1,22 @@
 use std::{
     fmt,
+    io,
     result,
 };
+
+
+pub (crate) fn header_write<W: io::Write>(dst: &mut W, key: &str, value: &str) -> io::Result<()> {
+    for (step, part) in key.split('-').enumerate() {
+        if step > 0 {
+            write!(dst, "-")?;
+        }
+        if ! part.is_empty() {
+            write!(dst, "{}", &part[.. 1].to_uppercase())?;
+            write!(dst, "{}", &part[1 ..])?;
+        }
+    }
+    writeln!(dst, ": {}\r", value)
+}
 
 
 #[derive(Debug)]
