@@ -1,7 +1,7 @@
 use std::net::TcpStream;
 use std::io::Write;
-use base64::encode;
 
+use crate::authorization;
 use crate::request::Request;
 use crate::response::Response;
 use crate::stream::HttpStream;
@@ -23,13 +23,6 @@ impl HttpClient {
     #[inline]
     pub fn new() -> Self { HttpClient::default() }
 
-    fn auth_basic(&mut self) {
-        let prefix = self.request.url.get_prefix();
-        if ! prefix.is_empty() {
-            self.request.set("Authorization", format!("Basic {}", encode(prefix)));
-        }
-    }
-
     pub fn send(&mut self) -> Result<()> {
         if ! self.stream.is_ready() {
             let host = self.request.url.get_host();
@@ -48,7 +41,9 @@ impl HttpClient {
         } else {
             self.stream.clear();
         }
-        self.auth_basic();
+        if ! &self.request.url.get_prefix().is_empty() {
+            authorization::basic(&mut self.request);
+        }
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;
         Ok(())
