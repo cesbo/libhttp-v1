@@ -31,6 +31,7 @@ impl Stream for TcpStream {}
 impl Stream for SslStream<TcpStream> {}
 
 
+/// Internal transfer state
 enum HttpTransferEncoding {
     /// Reading until EOF
     Eof,
@@ -42,6 +43,7 @@ enum HttpTransferEncoding {
 }
 
 
+/// Read/Write buffer
 struct HttpBuffer {
     buf: Box<[u8]>,
     pos: usize,
@@ -64,6 +66,16 @@ impl Default for HttpBuffer {
 }
 
 
+/// HTTP transport stream
+///
+/// Supports next features:
+///
+/// - synchronous tcp stream
+/// - buffering reader and writer
+/// - chunked transfer-encoding
+/// - returns EOF if content completely readed or connection closed
+/// - keep-alive
+/// - TLS encryption
 pub struct HttpStream {
     timeout: Duration,
     ttl: u32,

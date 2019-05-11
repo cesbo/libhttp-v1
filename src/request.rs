@@ -9,6 +9,7 @@ use crate::tools;
 use crate::url::Url;
 
 
+/// Parser and formatter for HTTP request line and headers
 #[derive(Debug)]
 pub struct Request {
     method: String,
@@ -22,7 +23,7 @@ impl Default for Request {
     fn default() -> Request {
         Request {
             method: String::new(),
-            url: Url::new(""),
+            url: Url::default(),
             version: "HTTP/1.1".to_string(),
             headers: HashMap::new(),
         }
@@ -31,17 +32,22 @@ impl Default for Request {
 
 
 impl Request {
+    /// Allocates new request object
     #[inline]
     pub fn new() -> Self { Request::default() }
 
+    /// Sets request method and url
+    /// method should be in uppercase
     pub fn init<S>(&mut self, method: S, url: &str)
     where
         S: Into<String>,
     {
         self.method = method.into();
-        self.url = Url::new(url);
+        self.url.set(url);
     }
 
+    /// Reads and parses request line and headers
+    /// Reads until empty line found
     pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> io::Result<()> {
         let mut first_line = true;
         let mut buffer = String::new();
@@ -54,7 +60,7 @@ impl Request {
                 for (step, part) in s.split_whitespace().enumerate() {
                     match step {
                         0 => self.method = part.to_string(),
-                        1 => self.url = Url::new(part),
+                        1 => self.url.set(part),
                         2 => self.version = part.to_string(),
                         _ => break,
                      }
@@ -72,6 +78,7 @@ impl Request {
         Ok(())
     }
 
+    /// Writes request line and headers to dst
     pub fn send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
         let path = self.url.get_path();
         let path = if path.is_empty() { "/" } else { path };
@@ -96,6 +103,8 @@ impl Request {
         writeln!(dst, "\r")
     }
 
+    /// Sets request header
+    /// key should be in lowercase
     #[inline]
     pub fn set_header<R, S>(&mut self, key: R, value: S)
     where
@@ -105,24 +114,30 @@ impl Request {
         self.headers.insert(key.as_ref().to_lowercase(), value.to_string());
     }
 
+    /// Sets protocol version
+    /// Default: `HTTP/1.1`
     #[inline]
     pub fn set_version(&mut self, version: &str) {
         self.version.clear();
         self.version.push_str(version);
     }
 
+    /// Returns request method
     #[inline]
     pub fn get_method(&self) -> &str {
         self.method.as_str()
     }
 
+    /// Returns request version
     #[inline]
     pub fn get_version(&self) -> &str {
         self.version.as_str()
     }
 
+    /// Returns reference to the request header value value corresponding to the key
+    /// key should be in lowercase
     #[inline]
-    pub fn get_header(&self, header: &str) -> Option<&String> {
-        self.headers.get(header)
+    pub fn get_header(&self, key: &str) -> Option<&String> {
+        self.headers.get(key)
     }
 }

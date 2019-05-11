@@ -5,8 +5,17 @@ use http::tools;
 fn test_bin2hex() {
     let foo: &[u8] = &[0x12, 0x34, 0x0a, 0xb0];
     let mut result = String::new();
-    tools::bin2hex(&mut result, foo);
+    tools::bin2hex(&mut result, foo, false);
     assert_eq!(result, "12340ab0");
+}
+
+
+#[test]
+fn test_bin2hex_uppercase() {
+    let foo: &[u8] = &[0x12, 0x34, 0x0a, 0xb0];
+    let mut result = String::new();
+    tools::bin2hex(&mut result, foo, true);
+    assert_eq!(result, "12340AB0");
 }
 
 
@@ -14,7 +23,7 @@ fn test_bin2hex() {
 fn test_hex2bin() {
     let foo = "12340ab0";
     let mut result = Vec::<u8>::new();
-    match tools::hex2bin(&mut result, foo) {
+    match tools::hex2bin(&mut result, foo.as_bytes()) {
         Ok(_) => {},
         _ => unreachable!(),
     };
@@ -26,7 +35,7 @@ fn test_hex2bin() {
 fn test_hex2bin_err1() {
     let foo = "12340ab";
     let mut result = Vec::<u8>::new();
-    match tools::hex2bin(&mut result, foo) {
+    match tools::hex2bin(&mut result, foo.as_bytes()) {
         Err(tools::ParseHexError::Length) => {},
         _ => unreachable!(),
     };
@@ -38,7 +47,7 @@ fn test_hex2bin_err1() {
 fn test_hex2bin_err2() {
     let foo = "1234?ab0";
     let mut result = Vec::<u8>::new();
-    match tools::hex2bin(&mut result, foo) {
+    match tools::hex2bin(&mut result, foo.as_bytes()) {
         Err(tools::ParseHexError::Format) => {},
         _ => unreachable!(),
     };
@@ -50,7 +59,7 @@ fn test_hex2bin_err2() {
 fn test_hex2bin_err3() {
     let foo = "12340?b0";
     let mut result = Vec::<u8>::new();
-    match tools::hex2bin(&mut result, foo) {
+    match tools::hex2bin(&mut result, foo.as_bytes()) {
         Err(tools::ParseHexError::Format) => {},
         _ => unreachable!(),
     };

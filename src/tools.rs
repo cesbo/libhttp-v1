@@ -5,6 +5,8 @@ use std::{
 };
 
 
+/// Writes header key and value into dst
+/// Header key will be capitalized - first character and all characters after delimeter (`-`)
 pub (crate) fn header_write<W: io::Write>(dst: &mut W, key: &str, value: &str) -> io::Result<()> {
     for (step, part) in key.split('-').enumerate() {
         if step > 0 {
@@ -19,6 +21,7 @@ pub (crate) fn header_write<W: io::Write>(dst: &mut W, key: &str, value: &str) -
 }
 
 
+/// Errors that can occur on parsing hexadecimal string
 #[derive(Debug)]
 pub enum ParseHexError {
     Length,
@@ -36,23 +39,23 @@ impl fmt::Display for ParseHexError {
 }
 
 
-const HEXMAP: &[u8] = b"0123456789abcdef";
+const HEXMAP_L: &[u8] = b"0123456789abcdef";
+const HEXMAP_U: &[u8] = b"0123456789ABCDEF";
 
 
-pub fn bin2hex(dst: &mut String, src: &[u8]) {
+/// Converts bytes array into hexadecimal string
+pub fn bin2hex(dst: &mut String, src: &[u8], uppercase: bool) {
+    let hexmap = if uppercase { HEXMAP_U } else { HEXMAP_L };
     src.iter().fold(dst, |acc, b| {
-        acc.push(char::from(HEXMAP[(b >> 4) as usize]));
-        acc.push(char::from(HEXMAP[(b & 0x0F) as usize]));
+        acc.push(char::from(hexmap[(b >> 4) as usize]));
+        acc.push(char::from(hexmap[(b & 0x0F) as usize]));
         acc
     });
 }
 
 
-pub fn hex2bin<R>(dst: &mut Vec<u8>, src: R) -> result::Result<(), ParseHexError>
-where
-    R: AsRef<str>,
-{
-    let src = src.as_ref().as_bytes();
+/// Converts hexadecimal string into bytes array
+pub fn hex2bin(dst: &mut Vec<u8>, src: &[u8]) -> result::Result<(), ParseHexError> {
     let len = src.len();
     let mut skip = 0;
 

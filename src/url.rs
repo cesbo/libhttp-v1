@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::tools;
+
 
 #[inline]
 fn is_rfc3986(b: u8) -> bool {
@@ -16,40 +18,8 @@ fn is_rfc3986(b: u8) -> bool {
 }
 
 
-#[inline]
-fn hex2nibble(b: u8) -> Option<u8> {
-    match b {
-        b'0' ..= b'9' => Some(b - b'0'),
-        b'A' ..= b'F' => Some(b - b'A' + 10),
-        b'a' ..= b'f' => Some(b - b'a' + 10),
-        _ => None,
-    }
-}
-
-
-#[inline]
-fn hex2byte(buf: &[u8]) -> u8 {
-    if buf.len() >= 2 {
-        if let Some(n0) = hex2nibble(buf[0]) {
-            if let Some(n1) = hex2nibble(buf[1]) {
-                return n0 * 16 + n1;
-            }
-        }
-    }
-    b'-'
-}
-
-
-#[inline]
-fn byte2hex(b: u8) -> char {
-    if b < 0x0A {
-        char::from(b'0' + b)
-    } else {
-        char::from(b'A' - 0x0A + b)
-    }
-}
-
-
+/// Decodes URL-encoded string
+/// Supports RFC 3985 and HTML5 `+` symbol
 #[inline]
 pub fn urldecode(buf: &str) -> String {
     let mut result: Vec<u8> = Vec::new();
@@ -61,8 +31,11 @@ pub fn urldecode(buf: &str) -> String {
         skip += 1;
         match b {
             b'%' => {
-                result.push(hex2byte(&buf[skip ..]));
-                skip += 2;
+                let next = skip + 2;
+                if let Err(_) = tools::hex2bin(&mut result, &buf[skip .. next]) {
+                    result.push(b'-');
+                }
+                skip = next;
             },
             b'+' => result.push(b' '),
             _ => result.push(b),
@@ -74,6 +47,8 @@ pub fn urldecode(buf: &str) -> String {
 }
 
 
+/// URL-encodes string
+/// Supports RFC 3985. For better compatibility encodes space as `%20` (HTML5 `+` not supported)
 #[inline]
 pub fn urlencode(buf: &str) -> String {
     let mut result = String::new();
@@ -82,14 +57,16 @@ pub fn urlencode(buf: &str) -> String {
             result.push(char::from(b));
         } else {
             result.push('%');
-            result.push(byte2hex(b >> 4));
-            result.push(byte2hex(b & 0x0F));
+            tools::bin2hex(&mut result, &[b], true);
         }
     }
     result
 }
 
 
+/// Parses strings in query format - key-value tuples separated by '&',
+/// with a '=' between the key and the value.
+/// Such as url-query, urlencoded post body
 #[inline]
 pub fn parse_query(query: &str) -> HashMap<String, String> {
     let mut ret = HashMap::new();
@@ -107,7 +84,13 @@ pub fn parse_query(query: &str) -> HashMap<String, String> {
 }
 
 
-#[derive(Default, Debug)]
+/// A parsed URL record
+///
+/// URL parts: `scheme://prefix@host:port/path?query#fragment`
+/// All url parts are optional.
+/// If path, query, and fragment are defined, then value contains their delimiter as well
+/// If port not defined then value will be 0
+#[derive(Default, Debug, PartialEq)]
 pub struct Url {
     scheme: String,
     prefix: String,
@@ -120,16 +103,22 @@ pub struct Url {
 
 
 impl Url {
+    /// Allocate new object and parse url
     pub fn new(u: &str) -> Self {
         let mut url = Url::default();
-        if ! u.is_empty() {
-            url.set(u);
-        }
+        url.set(u);
         url
     }
 
+    /// Parse and absolute or relative URL from string
     pub fn set(&mut self, inp: &str) {
         let mut skip = 0;
+        // step values:
+        // 0 - prefix
+        // 1 - host:port
+        // 2 - /path
+        // 3 - ?query
+        // 4 - #fragment
         let mut step = 0;
         let mut prefix = 0;
         let mut path = 0;
@@ -138,8 +127,12 @@ impl Url {
         if let Some(v) = inp.find("://") {
             self.scheme += &inp[0 .. v];
             skip = v + 3;
+        } else {
+            step = 2;
         }
-        for (idx, part) in inp[skip ..].match_indices(|c: char| (c == '/' || c == '?' || c == '#' || c == '@')) {
+        for (idx, part) in inp[skip ..].match_indices(|c: char| {
+            c == '/' || c == '?' || c == '#' || c == '@'
+        }) {
             match part.as_bytes()[0] {
                 b'@' if step < 1 => { prefix = idx + skip; step = 1; },
                 b'/' if step < 2 => { path = idx + skip; step = 2; },
@@ -168,46 +161,47 @@ impl Url {
         if skip != 0 {
             let mut addr = inp[skip .. tail].splitn(2, ':');
             self.host = addr.next().unwrap().to_string();
-            self.port = match addr.next() {
-                Some(v) => match v.parse::<u16>() {
-                    Ok(v) => v,
-                    _ => 0,
-                },
-                None => 0,
-            };
+            self.port = addr.next().and_then(|v| v.parse::<u16>().ok()).unwrap_or(0);
         }
     }
 
+    /// Returns url scheme
     #[inline]
     pub fn get_scheme(&self) -> &str {
         self.scheme.as_str()
     }
 
+    /// Returns url prefix
     #[inline]
     pub fn get_prefix(&self) -> &str {
         self.prefix.as_str()
     }
 
+    /// Returns url host
     #[inline]
     pub fn get_host(&self) -> &str {
         self.host.as_str()
     }
 
+    /// Returns url port
     #[inline]
     pub fn get_port(&self) -> u16 {
         self.port
     }
 
+    /// Returns url path
     #[inline]
     pub fn get_path(&self) -> &str {
         self.path.as_str()
     }
 
+    /// Returns url query
     #[inline]
     pub fn get_query(&self) -> &str {
         self.query.as_str()
     }
 
+    /// Returns url fragment
     #[inline]
     pub fn get_fragment(&self) -> &str {
         self.fragment.as_str()

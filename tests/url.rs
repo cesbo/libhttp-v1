@@ -205,3 +205,11 @@ fn test_url_whithout_path_query_fragment() {
     assert_eq!(url.get_query(), "");
     assert_eq!(url.get_fragment(), "");
 }
+
+
+#[test]
+fn test_url_without_scheme() {
+    let url = Url::new("example.com/path?query");
+    assert_eq!(url.get_path(), "example.com/path");
+    assert_eq!(url.get_query(), "?query");
+}

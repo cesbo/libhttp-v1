@@ -8,6 +8,7 @@ use std::io::{
 use crate::tools;
 
 
+/// Parser and formatter for HTTP response line and headers
 #[derive(Debug)]
 pub struct Response {
     version: String,
@@ -30,9 +31,12 @@ impl Default for Response {
 
 
 impl Response {
+    /// Allocates new request object
     #[inline]
     pub fn new() -> Self { Response::default() }
 
+    /// Reads and parses response line and headers
+    /// Reads until empty line found
     pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> io::Result<()> {
         let mut first_line = true;
         let mut buffer = String::new();
@@ -62,6 +66,7 @@ impl Response {
         Ok(())
     }
 
+    /// Writes response line and headers to dst
     pub fn send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
         writeln!(dst, "{} {} {}\r",
             self.version,
@@ -75,6 +80,8 @@ impl Response {
         writeln!(dst, "\r")
     }
 
+    /// Sets response header
+    /// key should be in lowercase
     #[inline]
     pub fn set_header<R, S>(&mut self, key: R, value: S)
     where
@@ -84,37 +91,46 @@ impl Response {
         self.headers.insert(key.as_ref().to_lowercase(), value.to_string());
     }
 
+    /// Sets protocol version
+    /// Default: `HTTP/1.1`
     #[inline]
     pub fn set_version(&mut self, version: &str) {
         self.version.clear();
         self.version.push_str(version);
     }
 
-    #[inline]
-    pub fn set_reason(&mut self, version: &str) {
-        self.reason.push_str(version);
-    }
-
+    /// Sets response status code
     #[inline]
     pub fn set_code(&mut self, code: usize) {
         self.code = code;
     }
 
+    /// Sets response reason
+    #[inline]
+    pub fn set_reason(&mut self, version: &str) {
+        self.reason.push_str(version);
+    }
+
+    /// Returns reference to the response header value value corresponding to the key
+    /// key should be in lowercase
     #[inline]
     pub fn get_header(&self, header: &str) -> Option<&String> {
         self.headers.get(header)
     }
 
+    /// Returns response version
     #[inline]
     pub fn get_version(&self) -> &str {
         self.version.as_str()
     }
 
+    /// Returns response status code
     #[inline]
     pub fn get_code(&self) -> &usize {
         &(self.code)
     }
 
+    /// Returns response reason
     #[inline]
     pub fn get_reason(&self) -> &str {
         self.reason.as_str()

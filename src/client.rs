@@ -14,18 +14,43 @@ use crate::error::{
 };
 
 
+/// HTTP client
+///
+/// Usage:
+///
+/// ```
+/// use std::io::Read;
+/// use http::HttpClient;
+///
+/// fn main() -> http::Result<()> {
+///     let mut client = HttpClient::new();
+///     client.request.init("GET", "https://example.com");
+///     client.request.set_header("user-agent", "libhttp");
+///     client.send()?;
+///     client.receive()?;
+///     let mut body = String::new();
+///     client.read_to_string(&mut body)?;
+///     Ok(())
+/// }
+/// ```
 #[derive(Default)]
 pub struct HttpClient {
-    pub response: Response,
+    /// HTTP request
     pub request: Request,
+    /// received HTTP response
+    pub response: Response,
+    /// HTTP stream
     stream: HttpStream,
 }
 
 
 impl HttpClient {
+    /// Allocates new http client
     #[inline]
     pub fn new() -> Self { HttpClient::default() }
 
+    /// Connects to destination host, sends request line and headers
+    /// Prepares HTTP stream for writing data
     pub fn send(&mut self) -> Result<()> {
         let mut tls = false;
         let host = self.request.url.get_host();
@@ -52,6 +77,8 @@ impl HttpClient {
         Ok(())
     }
 
+    /// Flushes writing buffer, receives response line and headers
+    /// Prepares HTTP stream for reading data
     pub fn receive(&mut self) -> Result<()> {
         self.stream.flush()?;
         self.response.parse(&mut self.stream)?;
