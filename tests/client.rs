@@ -19,7 +19,7 @@ fn test_get_eof() {
     client.receive().unwrap();
 
     let mut body = String::new();
-    client.stream.read_to_string(&mut body).unwrap();
+    client.read_to_string(&mut body).unwrap();
     assert_eq!(HELLO_WORLD, body.as_bytes());
 }
 
@@ -32,11 +32,11 @@ fn test_post_length() {
     client.request.set("content-type", "text/plain");
     client.request.set("content-length", HELLO_WORLD.len());
     client.send().unwrap();
-    client.stream.write(HELLO_WORLD).unwrap();
+    client.write(HELLO_WORLD).unwrap();
     client.receive().unwrap();
 
     let mut body = String::new();
-    client.stream.read_to_string(&mut body).unwrap();
+    client.read_to_string(&mut body).unwrap();
     assert_eq!(HELLO_WORLD, body.as_bytes());
 }
 
@@ -49,11 +49,11 @@ fn test_post_chunked() {
     client.request.set("content-type", "text/plain");
     client.request.set("content-length", HELLO_WORLD.len());
     client.send().unwrap();
-    client.stream.write(HELLO_WORLD).unwrap();
+    client.write(HELLO_WORLD).unwrap();
     client.receive().unwrap();
 
     let mut count = 0;
-    for line in client.stream.lines() {
+    for line in client.lines() {
         match line {
             Ok(v) => {
                 count += 1;
@@ -75,7 +75,7 @@ fn test_get_chunked_lf_only() {
     client.receive().unwrap();
 
     let mut count = 0;
-    for line in client.stream.lines() {
+    for line in client.lines() {
         match line {
             Ok(v) => {
                 count += 1;
@@ -97,7 +97,7 @@ fn test_get_chunked_wo_trailer() {
     client.receive().unwrap();
 
     let mut count = 0;
-    for line in client.stream.lines() {
+    for line in client.lines() {
         match line {
             Ok(v) => {
                 count += 1;
@@ -119,7 +119,7 @@ fn test_get_ssl() {
     client.receive().unwrap();
 
     let mut body = String::new();
-    client.stream.read_to_string(&mut body).unwrap();
+    client.read_to_string(&mut body).unwrap();
     assert_eq!(HELLO_WORLD, body.as_bytes());
 }
 
