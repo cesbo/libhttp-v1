@@ -1,7 +1,7 @@
 use std::net::TcpStream;
 use std::io::Write;
 
-use crate::authorization;
+use crate::auth;
 use crate::request::Request;
 use crate::response::Response;
 use crate::stream::HttpStream;
@@ -42,7 +42,7 @@ impl HttpClient {
             self.stream.clear();
         }
         if ! &self.request.url.get_prefix().is_empty() {
-            authorization::basic(&mut self.request);
+            auth::basic(&mut self.request);
         }
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;

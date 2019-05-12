@@ -1,4 +1,4 @@
-mod authorization;
+mod auth;
 
 mod request;
 pub use crate::request::Request;
