@@ -16,6 +16,7 @@ pub struct HttpClient {
     pub response: Response,
     pub request: Request,
     pub stream: HttpStream,
+    last_iter: bool,
 }
 
 
@@ -40,9 +41,6 @@ impl HttpClient {
             self.stream.set(TcpStream::connect((host, port))?);
         } else {
             self.stream.clear();
-        }
-        if ! &self.request.url.get_prefix().is_empty() {
-            auth::basic(&mut self.request);
         }
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;
@@ -72,6 +70,23 @@ impl HttpClient {
 
             self.stream.set_stream_eof();
             break;
+        }
+
+        let code = *self.response.get_code() as i32;
+        let head = match &self.response.get_header("www-authenticate") {
+            Some(v) => v,
+            _ => "",
+        };
+        let prefix = &self.request.url.get_prefix();
+        if  code == 401 && ! prefix.is_empty() && ! self.last_iter {
+            if head[.. 6].eq_ignore_ascii_case("digest") {
+                auth::digest(&mut self.response);
+            } else {
+                auth::basic(&mut self.request);
+            }
+            self.send();
+            self.last_iter = true;
+            self.receive();
         }
 
         Ok(())
