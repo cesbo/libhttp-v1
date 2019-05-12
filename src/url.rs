@@ -47,6 +47,9 @@ pub fn urldecode(buf: &str) -> String {
 }
 
 
+const HEXMAP: &[u8] = b"0123456789ABCDEF";
+
+
 /// URL-encodes string
 /// Supports RFC 3985. For better compatibility encodes space as `%20` (HTML5 `+` not supported)
 #[inline]
@@ -57,7 +60,8 @@ pub fn urlencode(buf: &str) -> String {
             result.push(char::from(b));
         } else {
             result.push('%');
-            tools::bin2hex(&mut result, &[b], true);
+            result.push(char::from(HEXMAP[(b >> 4) as usize]));
+            result.push(char::from(HEXMAP[(b & 0x0F) as usize]));
         }
     }
     result

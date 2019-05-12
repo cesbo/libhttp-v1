@@ -39,16 +39,14 @@ impl fmt::Display for ParseHexError {
 }
 
 
-const HEXMAP_L: &[u8] = b"0123456789abcdef";
-const HEXMAP_U: &[u8] = b"0123456789ABCDEF";
+const HEXMAP: &[u8] = b"0123456789abcdef";
 
 
 /// Converts bytes array into hexadecimal string
-pub fn bin2hex(dst: &mut String, src: &[u8], uppercase: bool) {
-    let hexmap = if uppercase { HEXMAP_U } else { HEXMAP_L };
+pub fn bin2hex(dst: &mut String, src: &[u8]) {
     src.iter().fold(dst, |acc, b| {
-        acc.push(char::from(hexmap[(b >> 4) as usize]));
-        acc.push(char::from(hexmap[(b & 0x0F) as usize]));
+        acc.push(char::from(HEXMAP[(b >> 4) as usize]));
+        acc.push(char::from(HEXMAP[(b & 0x0F) as usize]));
         acc
     });
 }

@@ -5,17 +5,8 @@ use http::tools;
 fn test_bin2hex() {
     let foo: &[u8] = &[0x12, 0x34, 0x0a, 0xb0];
     let mut result = String::new();
-    tools::bin2hex(&mut result, foo, false);
+    tools::bin2hex(&mut result, foo);
     assert_eq!(result, "12340ab0");
-}
-
-
-#[test]
-fn test_bin2hex_uppercase() {
-    let foo: &[u8] = &[0x12, 0x34, 0x0a, 0xb0];
-    let mut result = String::new();
-    tools::bin2hex(&mut result, foo, true);
-    assert_eq!(result, "12340AB0");
 }
 
 
