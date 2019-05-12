@@ -76,6 +76,26 @@ impl Default for HttpBuffer {
 /// - returns EOF if content completely readed or connection closed
 /// - keep-alive
 /// - TLS encryption
+///
+/// Usage:
+///
+/// ```
+/// use std::io::{Read, Write};
+/// use http::HttpStream;
+///
+/// fn main() -> http::Result<()> {
+///     let mut stream = HttpStream::default();
+///     stream.connect(true, "example.com", 443)?;
+///     stream.write_all(concat!("GET / HTTP/1.0\r\n",
+///         "Host: example.com\r\n",
+///         "User-Agent: libhttp\r\n",
+///         "\r\n").as_bytes())?;
+///     stream.flush()?;
+///     let mut body = String::new();
+///     stream.read_to_string(&mut body)?;
+///     Ok(())
+/// }
+/// ```
 pub struct HttpStream {
     timeout: Duration,
     ttl: u32,
