@@ -43,17 +43,18 @@ const HEXMAP: &[u8] = b"0123456789abcdef";
 
 
 /// Converts bytes array into hexadecimal string
-pub fn bin2hex(dst: &mut String, src: &[u8]) {
-    src.iter().fold(dst, |acc, b| {
-        acc.push(char::from(HEXMAP[(b >> 4) as usize]));
-        acc.push(char::from(HEXMAP[(b & 0x0F) as usize]));
-        acc
-    });
+pub fn bin2hex<R: AsRef<[u8]>>(dst: &mut String, src: R) {
+    let src = src.as_ref();
+    for b in src {
+        dst.push(char::from(HEXMAP[(b >> 4) as usize]));
+        dst.push(char::from(HEXMAP[(b & 0x0F) as usize]));
+    }
 }
 
 
 /// Converts hexadecimal string into bytes array
-pub fn hex2bin(dst: &mut Vec<u8>, src: &[u8]) -> result::Result<(), ParseHexError> {
+pub fn hex2bin<R: AsRef<[u8]>>(dst: &mut Vec<u8>, src: R) -> result::Result<(), ParseHexError> {
+    let src = src.as_ref();
     let len = src.len();
     let mut skip = 0;
 

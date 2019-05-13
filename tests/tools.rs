@@ -14,7 +14,7 @@ fn test_bin2hex() {
 fn test_hex2bin() {
     let foo = "12340ab0";
     let mut result = Vec::<u8>::new();
-    match tools::hex2bin(&mut result, foo.as_bytes()) {
+    match tools::hex2bin(&mut result, foo) {
         Ok(_) => {},
         _ => unreachable!(),
     };
@@ -26,7 +26,7 @@ fn test_hex2bin() {
 fn test_hex2bin_err1() {
     let foo = "12340ab";
     let mut result = Vec::<u8>::new();
-    match tools::hex2bin(&mut result, foo.as_bytes()) {
+    match tools::hex2bin(&mut result, foo) {
         Err(tools::ParseHexError::Length) => {},
         _ => unreachable!(),
     };
@@ -38,7 +38,7 @@ fn test_hex2bin_err1() {
 fn test_hex2bin_err2() {
     let foo = "1234?ab0";
     let mut result = Vec::<u8>::new();
-    match tools::hex2bin(&mut result, foo.as_bytes()) {
+    match tools::hex2bin(&mut result, foo) {
         Err(tools::ParseHexError::Format) => {},
         _ => unreachable!(),
     };
@@ -50,7 +50,7 @@ fn test_hex2bin_err2() {
 fn test_hex2bin_err3() {
     let foo = "12340?b0";
     let mut result = Vec::<u8>::new();
-    match tools::hex2bin(&mut result, foo.as_bytes()) {
+    match tools::hex2bin(&mut result, foo) {
         Err(tools::ParseHexError::Format) => {},
         _ => unreachable!(),
     };
