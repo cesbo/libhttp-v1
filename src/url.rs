@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use crate::tools;
-
 
 #[inline]
 fn is_rfc3986(b: u8) -> bool {
@@ -9,10 +7,7 @@ fn is_rfc3986(b: u8) -> bool {
         b'a' ..= b'z' => true,
         b'A' ..= b'Z' => true,
         b'0' ..= b'9' => true,
-        b'-' => true,
-        b'_' => true,
-        b'.' => true,
-        b'~' => true,
+        b'-' | b'_' | b'.' | b'~' => true,
         _ => false,
     }
 }
@@ -24,18 +19,26 @@ fn is_rfc3986(b: u8) -> bool {
 pub fn urldecode(buf: &str) -> String {
     let mut result: Vec<u8> = Vec::new();
     let buf = buf.as_bytes();
-    let mut skip = 0;
     let len = buf.len();
+    let mut skip = 0;
     while skip < len {
         let b = buf[skip];
         skip += 1;
         match b {
             b'%' => {
-                let next = skip + 2;
-                if let Err(_) = tools::hex2bin(&mut result, &buf[skip .. next]) {
-                    result.push(b'-');
-                }
-                skip = next;
+                if skip + 2 > len { break }
+
+                let n0 = match char::from(buf[skip]).to_digit(16) {
+                    Ok(v) => v,
+                    _ => break,
+                };
+                skip += 1;
+                let n1 = match char::from(buf[skip]).to_digit(16) {
+                    Ok(v) => v,
+                    _ => break,
+                };
+                skip += 1;
+                result.push(((n0 << 4) + n1) as u8);
             },
             b'+' => result.push(b' '),
             _ => result.push(b),
@@ -47,13 +50,11 @@ pub fn urldecode(buf: &str) -> String {
 }
 
 
-const HEXMAP: &[u8] = b"0123456789ABCDEF";
-
-
 /// URL-encodes string
 /// Supports RFC 3985. For better compatibility encodes space as `%20` (HTML5 `+` not supported)
 #[inline]
 pub fn urlencode(buf: &str) -> String {
+    static HEXMAP: &[u8] = b"0123456789ABCDEF";
     let mut result = String::new();
     for &b in buf.as_bytes() {
         if is_rfc3986(b) {
@@ -75,13 +76,17 @@ pub fn urlencode(buf: &str) -> String {
 pub fn parse_query(query: &str) -> HashMap<String, String> {
     let mut ret = HashMap::new();
     for data in query.split('&') {
+        if data.is_empty() {
+            continue;
+        }
         let mut i = data.splitn(2, '=');
-        let key = i.next().unwrap();
+        let key = i.next().unwrap().trim();
         if key.is_empty() {
             continue;
         }
         let key = urldecode(key);
-        let value = urldecode(i.next().unwrap_or(""));
+        let value = i.next().unwrap_or("").trim();
+        let value = urldecode(value);
         ret.insert(key, value);
     }
     ret
@@ -128,12 +133,16 @@ impl Url {
         let mut path = 0;
         let mut query = 0;
         let mut fragment = 0;
+
+        if inp.is_empty() { return () }
+
         if let Some(v) = inp.find("://") {
             self.scheme += &inp[0 .. v];
             skip = v + 3;
         } else {
             step = 2;
         }
+
         for (idx, part) in inp[skip ..].match_indices(|c: char| {
             c == '/' || c == '?' || c == '#' || c == '@'
         }) {
@@ -165,7 +174,10 @@ impl Url {
         if skip != 0 {
             let mut addr = inp[skip .. tail].splitn(2, ':');
             self.host = addr.next().unwrap().to_string();
-            self.port = addr.next().and_then(|v| v.parse::<u16>().ok()).unwrap_or(0);
+            self.port = match addr.next() {
+                Some(v) => v.parse::<u16>().unwrap_or(0),
+                _ => 0,
+            };
         }
     }
 

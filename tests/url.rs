@@ -5,7 +5,7 @@ use http::parse_query;
 
 
 #[test]
-fn pars_query_test() {
+fn test_parse_query() {
     let parse_query = parse_query("data=1&string=5&testing_кирилица=&&link=%26%26%26http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F?&test=not test string &&");
     println!("{:#?}", parse_query);
 }
@@ -209,7 +209,7 @@ fn test_url_whithout_path_query_fragment() {
 
 #[test]
 fn test_url_without_scheme() {
-    let url = Url::new("example.com/path?query");
-    assert_eq!(url.get_path(), "example.com/path");
+    let url = Url::new("/path?query");
+    assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "?query");
 }

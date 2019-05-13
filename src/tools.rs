@@ -1,8 +1,4 @@
-use std::{
-    fmt,
-    io,
-    result,
-};
+use std::io;
 
 
 /// Writes header key and value into dst
@@ -21,54 +17,14 @@ pub (crate) fn header_write<W: io::Write>(dst: &mut W, key: &str, value: &str) -
 }
 
 
-/// Errors that can occur on parsing hexadecimal string
-#[derive(Debug)]
-pub enum ParseHexError {
-    Length,
-    Format,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-
-impl fmt::Display for ParseHexError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ParseHexError::Length => write!(f, "ParseHex: string must have an even length"),
-            ParseHexError::Format => write!(f, "ParseHex: string must be hexadecimal"),
-        }
-    }
-}
-
-
-const HEXMAP: &[u8] = b"0123456789abcdef";
-
-
-/// Converts bytes array into hexadecimal string
-pub fn bin2hex<R: AsRef<[u8]>>(dst: &mut String, src: R) {
-    let src = src.as_ref();
-    for b in src {
-        dst.push(char::from(HEXMAP[(b >> 4) as usize]));
-        dst.push(char::from(HEXMAP[(b & 0x0F) as usize]));
-    }
-}
-
-
-/// Converts hexadecimal string into bytes array
-pub fn hex2bin<R: AsRef<[u8]>>(dst: &mut Vec<u8>, src: R) -> result::Result<(), ParseHexError> {
-    let src = src.as_ref();
-    let len = src.len();
-    let mut skip = 0;
-
-    while skip + 2 <= len {
-        let n0 = char::from(src[skip]).to_digit(16).ok_or(ParseHexError::Format)?;
-        skip += 1;
-        let n1 = char::from(src[skip]).to_digit(16).ok_or(ParseHexError::Format)?;
-        skip += 1;
-        dst.push(((n0 << 4) + n1) as u8);
-    }
-
-    if skip == len {
-        Ok(())
-    } else {
-        Err(ParseHexError::Length)
+    #[test]
+    fn test_header_write() {
+        let mut result = Vec::<u8>::new();
+        header_write(&mut result, "x-forwarded-for", "test").unwrap();
+        assert_eq!(&result, b"X-Forwarded-For: test\r\n");
     }
 }
