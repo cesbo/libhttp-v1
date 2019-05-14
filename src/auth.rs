@@ -44,9 +44,11 @@ pub fn digest(response: &mut Response, request: &mut Request) {
     let hresponse = hash_md5(format!("{}:{}:{}", ha1, nonce, ha2));
     let authorization_head = format!(concat!("Digest ",
         "username=\"{}\", ",
+        "realm=\"{}\", ",
+        "nonce=\"{}\", ",
         "uri=\"{}\", ",
         "response=\"{}\""),
-        username, uri, hresponse);
+        username, uri, realm, nonce, hresponse);
     request.set("authorization", authorization_head);
 }
 
@@ -54,5 +56,8 @@ pub fn digest(response: &mut Response, request: &mut Request) {
 fn hash_md5(s: String) -> String {  // TODO - fix return type if it need
     let data = s.as_bytes();
     let rez = hash(MessageDigest::md5(), data).unwrap();
-    String::from_utf8_lossy(&rez).to_string()
+    match String::from_utf8(rez.to_vec()){
+        Ok(v) => v,
+        _ => "".to_string(),
+    }
 }

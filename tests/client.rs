@@ -17,8 +17,28 @@ fn test_auth_basic() {
     client.request.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
+    println!("================================ basic:");
     println!("{:#?}", client.request);
     println!("{:#?}", client.response);
+    println!("================================ end basic");
+}
+
+#[test]
+fn test_auth_digest_simple() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "http://guest:guest@jigsaw.w3.org/HTTP/Digest/");
+    client.request.set("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+    println!("================================ digest:");
+    println!("{:#?}", client.request);
+    println!("{:#?}", client.response);
+    println!("================================ digest (step 2):");
+    client.send().unwrap();
+    client.receive().unwrap();
+    println!("{:#?}", client.request);
+    println!("{:#?}", client.response);
+    println!("================================ end digest");
 }
 
 #[test]
