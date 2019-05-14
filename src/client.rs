@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::{
     self,
     BufRead,
@@ -7,10 +8,9 @@ use std::io::{
 
 use crate::request::Request;
 use crate::response::Response;
-use crate::stream::HttpStream;
-use crate::error::{
-    Error,
-    Result,
+use crate::stream::{
+    HttpStream,
+    HttpStreamError,
 };
 
 
@@ -20,9 +20,12 @@ use crate::error::{
 ///
 /// ```
 /// use std::io::Read;
-/// use http::HttpClient;
+/// use http::{
+///     HttpClient,
+///     HttpClientError,
+/// };
 ///
-/// fn main() -> http::Result<()> {
+/// fn main() -> Result<(), HttpClientError> {
 ///     let mut client = HttpClient::new();
 ///     client.request.init("GET", "https://example.com");
 ///     client.request.set_header("user-agent", "libhttp");
@@ -51,7 +54,7 @@ impl HttpClient {
 
     /// Connects to destination host, sends request line and headers
     /// Prepares HTTP stream for writing data
-    pub fn send(&mut self) -> Result<()> {
+    pub fn send(&mut self) -> Result<(), HttpClientError> {
         let mut tls = false;
         let host = self.request.url.get_host();
         let mut port = self.request.url.get_port();
@@ -68,18 +71,19 @@ impl HttpClient {
                 }
                 tls = true;
             }
-            _ => return Err(Error::Custom("HttpClient: unknown scheme")),
+            _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid protocol").into()),
         };
 
         self.stream.connect(tls, host, port)?;
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;
+
         Ok(())
     }
 
     /// Flushes writing buffer, receives response line and headers
     /// Prepares HTTP stream for reading data
-    pub fn receive(&mut self) -> Result<()> {
+    pub fn receive(&mut self) -> Result<(), HttpClientError> {
         self.stream.flush()?;
         self.response.parse(&mut self.stream)?;
         self.stream.configure(&self.response)?;
@@ -118,5 +122,38 @@ impl Write for HttpClient {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         self.stream.flush()
+    }
+}
+
+
+#[derive(Debug)]
+pub enum HttpClientError {
+    Io(io::Error),
+    HttpStream(HttpStreamError),
+}
+
+
+impl fmt::Display for HttpClientError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            HttpClientError::Io(ref e) => write!(f, "HTTP IO Error: {}", e),
+            HttpClientError::HttpStream(ref e) => write!(f, "HTTP Error: {}", e),
+        }
+    }
+}
+
+
+impl From<io::Error> for HttpClientError {
+    #[inline]
+    fn from(e: io::Error) -> HttpClientError {
+        HttpClientError::Io(e)
+    }
+}
+
+
+impl From<HttpStreamError> for HttpClientError {
+    #[inline]
+    fn from(e: HttpStreamError) -> HttpClientError {
+        HttpClientError::HttpStream(e)
     }
 }

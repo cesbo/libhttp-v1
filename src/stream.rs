@@ -4,7 +4,10 @@ use std::io::{
     BufRead,
     Write,
 };
-use std::cmp;
+use std::{
+    cmp,
+    fmt,
+};
 use std::net::{
     ToSocketAddrs,
     TcpStream,
@@ -15,10 +18,11 @@ use openssl::ssl::{
     SslMethod,
     SslConnector,
     SslStream,
+    HandshakeError,
 };
+use openssl::error::ErrorStack as SslErrorStack;
 
 use crate::response::Response;
-use crate::error::Result;
 
 
 const DEFAULT_IP_TTL: u32 = 64;
@@ -81,9 +85,12 @@ impl Default for HttpBuffer {
 ///
 /// ```
 /// use std::io::{Read, Write};
-/// use http::HttpStream;
+/// use http::{
+///     HttpStream,
+///     HttpStreamError,
+/// };
 ///
-/// fn main() -> http::Result<()> {
+/// fn main() -> Result<(), HttpStreamError> {
 ///     let mut stream = HttpStream::default();
 ///     stream.connect(true, "example.com", 443)?;
 ///     stream.write_all(concat!("GET / HTTP/1.0\r\n",
@@ -150,7 +157,7 @@ impl HttpStream {
 
     /// Opens a TCP connection to a remote host
     /// If connection already opened just clears read/write buffers
-    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<()> {
+    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<(), HttpStreamError> {
         self.rbuf.pos = 0;
         self.rbuf.cap = 0;
         self.wbuf.pos = 0;
@@ -201,7 +208,7 @@ impl HttpStream {
     }
 
     /// Checks response headers and set content parser behavior
-    pub fn configure(&mut self, response: &Response) -> Result<()> {
+    pub fn configure(&mut self, response: &Response) -> Result<(), HttpStreamError> {
         self.transfer = HttpTransferEncoding::Eof;
 
         if let Some(len) = response.get_header("content-length") {
@@ -414,5 +421,80 @@ impl Write for HttpStream {
         self.wbuf.pos = 0;
         self.wbuf.cap = 0;
         inner.flush()
+    }
+}
+
+
+#[derive(Debug)]
+pub enum HttpStreamError {
+    Io(io::Error),
+    Ssl(SslErrorStack),
+    Handshake(HandshakeError<std::net::TcpStream>),
+}
+
+
+impl fmt::Display for HttpStreamError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            HttpStreamError::Io(ref e) => write!(f, "Stream IO Error: {}", e),
+            HttpStreamError::Ssl(ref e) => {
+                let s = e.errors().get(0)
+                    .and_then(|ee| ee.reason())
+                    .unwrap_or("");
+                write!(f, "Stream SSL Error: {}", s)
+            }
+            HttpStreamError::Handshake(ref e) => {
+                match e {
+                    HandshakeError::SetupFailure(ee) => {
+                        let s = ee.errors().get(0)
+                            .and_then(|eee| eee.reason())
+                            .unwrap_or("");
+                        write!(f, "Stream Handshake Setup Failure: {}", s)
+                    }
+                    HandshakeError::Failure(ee) => {
+                        write!(f, "Stream Handshake Failure: ")?;
+                        let inner_error = ee.error();
+                        if let Some(io_ee) = inner_error.io_error() {
+                            write!(f, "{}", io_ee)?;
+                        } else if let Some(ssl_ee) = inner_error.ssl_error() {
+                            let s = ssl_ee.errors().get(0)
+                                .and_then(|eee| eee.reason())
+                                .unwrap_or("unknown");
+                            write!(f, "{}", s)?;
+                            let v = ee.ssl().verify_result();
+                            if v.as_raw() != 0 {
+                                write!(f, ": {}", v.error_string())?;
+                            }
+                        }
+                        Ok(())
+                    }
+                    _ => unimplemented!(),
+                }
+            }
+        }
+    }
+}
+
+
+impl From<io::Error> for HttpStreamError {
+    #[inline]
+    fn from(e: io::Error) -> HttpStreamError {
+        HttpStreamError::Io(e)
+    }
+}
+
+
+impl From<SslErrorStack> for HttpStreamError {
+    #[inline]
+    fn from(e: SslErrorStack) -> HttpStreamError {
+        HttpStreamError::Ssl(e)
+    }
+}
+
+
+impl From<HandshakeError<TcpStream>> for HttpStreamError {
+    #[inline]
+    fn from(e: HandshakeError<TcpStream>) -> HttpStreamError {
+        HttpStreamError::Handshake(e)
     }
 }

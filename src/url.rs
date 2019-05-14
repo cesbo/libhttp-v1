@@ -29,12 +29,12 @@ pub fn urldecode(buf: &str) -> String {
                 if skip + 2 > len { break }
 
                 let n0 = match char::from(buf[skip]).to_digit(16) {
-                    Ok(v) => v,
+                    Some(v) => v,
                     _ => break,
                 };
                 skip += 1;
                 let n1 = match char::from(buf[skip]).to_digit(16) {
-                    Ok(v) => v,
+                    Some(v) => v,
                     _ => break,
                 };
                 skip += 1;

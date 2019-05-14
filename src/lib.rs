@@ -7,10 +7,16 @@ mod response;
 pub use crate::response::Response;
 
 mod stream;
-pub use crate::stream::HttpStream;
+pub use crate::stream::{
+    HttpStream,
+    HttpStreamError,
+};
 
 mod client;
-pub use crate::client::HttpClient;
+pub use crate::client::{
+    HttpClient,
+    HttpClientError,
+};
 
 mod url;
 pub use crate::url::{
@@ -18,10 +24,4 @@ pub use crate::url::{
     urlencode,
     urldecode,
     parse_query,
-};
-
-mod error;
-pub use crate::error::{
-    Error,
-    Result,
 };
