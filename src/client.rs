@@ -50,7 +50,7 @@ impl HttpClient {
                         _ => "",
                     };
                     if head[.. 6].eq_ignore_ascii_case("digest") {
-                        auth::digest(&mut self.response);
+                        auth::digest(&mut self.response, &mut self.request);
                     }
                 }
                 _ => auth::basic(&mut self.request),
