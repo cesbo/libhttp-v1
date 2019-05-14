@@ -53,28 +53,41 @@ impl Request {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            if reader.read_line(&mut buffer)? == 0 { break }
+            reader.read_line(&mut buffer)?;
+
             let s = buffer.trim();
-            if s.is_empty() { break }
+            if s.is_empty() {
+                if first_line {
+                    return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "invalid request"));
+                }
+                break;
+            }
+
             if first_line {
+                first_line = false;
+
+                self.method.clear();
+                self.version.clear();
+
                 for (step, part) in s.split_whitespace().enumerate() {
                     match step {
-                        0 => self.method = part.to_string(),
+                        0 => self.method.push_str(part),
                         1 => self.url.set(part),
-                        2 => self.version = part.to_string(),
+                        2 => self.version.push_str(part),
                         _ => break,
                      }
                 }
-                first_line = false;
             } else {
-                if let Some(flag) = s.find(':') {
-                    self.headers.insert(
-                        s[.. flag].trim_end().to_lowercase(),
-                        s[flag + 1 ..].trim_start().to_string()
-                    );
+                if let Some(skip) = s.find(':') {
+                    let key = s[.. skip].trim_end();
+                    if ! key.is_empty() {
+                        let value = s[skip + 1 ..].trim_start();
+                        self.headers.insert(key.to_lowercase(), value.to_string());
+                    }
                 }
             }
         }
+
         Ok(())
     }
 

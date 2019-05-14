@@ -42,27 +42,52 @@ impl Response {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            if reader.read_line(&mut buffer)? == 0 { break }
+            reader.read_line(&mut buffer)?;
+
             let s = buffer.trim();
-            if s.is_empty() { break }
-            if first_line {
-                for (step, part) in s.split_whitespace().enumerate() {
-                    match step {
-                        0 => self.version = part.to_string(),
-                        1 => self.code = part.parse().unwrap_or(0),
-                        _ => self.reason += part,
-                     }
+            if s.is_empty() {
+                if first_line {
+                    return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "invalid response"));
                 }
+                break;
+            }
+
+            if first_line {
                 first_line = false;
+
+                self.version.clear();
+                self.code = 0;
+                self.reason.clear();
+
+                let skip = match s.find(char::is_whitespace) {
+                    Some(v) => v,
+                    None => return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid response format")),
+                };
+                self.version.push_str(&s[.. skip]);
+                let s = s[skip + 1 ..].trim_start();
+                let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
+                self.code = s[.. skip].parse().unwrap_or(0);
+                if self.code < 100 || self.code >= 600 {
+                    return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid response code"));
+                }
+
+                if s.len() > skip {
+                    let s = s[skip + 1 ..].trim_start();
+                    if ! s.is_empty() {
+                        self.reason.push_str(s);
+                    }
+                }
             } else {
-                if let Some(flag) = s.find(':') {
-                    self.headers.insert(
-                        s[.. flag].trim_end().to_lowercase(),
-                        s[flag + 1 ..].trim_start().to_string()
-                    );
+                if let Some(skip) = s.find(':') {
+                    let key = s[.. skip].trim_end();
+                    if ! key.is_empty() {
+                        let value = s[skip + 1 ..].trim_start();
+                        self.headers.insert(key.to_lowercase(), value.to_string());
+                    }
                 }
             }
         }
+
         Ok(())
     }
 
@@ -126,8 +151,8 @@ impl Response {
 
     /// Returns response status code
     #[inline]
-    pub fn get_code(&self) -> &usize {
-        &(self.code)
+    pub fn get_code(&self) -> usize {
+        self.code
     }
 
     /// Returns response reason
