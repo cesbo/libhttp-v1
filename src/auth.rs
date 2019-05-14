@@ -25,18 +25,18 @@ pub fn digest(response: &mut Response, request: &mut Request) {
         Some(v) => v.as_str(),
         _ => "",
     };
-    for data in header[.. 7].split(',') {
+    for data in header[7 ..].split(',') {
         let mut i = data.splitn(2, '=');
         let key = i.next().unwrap();
         if key.is_empty() {
             continue;
         }
         let value = i.next().unwrap_or("");
-        if key.eq_ignore_ascii_case("realm") {
-            realm = value
+        if key.trim().eq_ignore_ascii_case("realm") {
+            realm = value.trim().trim_matches('\"')
         };
-        if key.eq_ignore_ascii_case("nonce") {
-            nonce = value
+        if key.trim().eq_ignore_ascii_case("nonce") {
+            nonce = value.trim().trim_matches('\"')
         };     
     }
     let ha1 = hash_md5(format!("{}:{}:{}", username, realm, password));
@@ -48,7 +48,7 @@ pub fn digest(response: &mut Response, request: &mut Request) {
         "nonce=\"{}\", ",
         "uri=\"{}\", ",
         "response=\"{}\""),
-        username, uri, realm, nonce, hresponse);
+        username, realm, nonce, uri, hresponse);
     request.set("authorization", authorization_head);
 }
 
