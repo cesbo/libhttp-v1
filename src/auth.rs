@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use openssl::hash::{
-    hash, 
+    Hasher, 
     MessageDigest,
 };
 use base64::encode;
@@ -39,9 +39,22 @@ pub fn digest(response: &mut Response, request: &mut Request) {
             nonce = value.trim().trim_matches('\"')
         };     
     }
-    let ha1 = hash_md5(format!("{}:{}:{}", username, realm, password));
-    let ha2 = hash_md5(format!("{}:{}", request.get_method(), uri));
-    let hresponse = hash_md5(format!("{}:{}:{}", ha1, nonce, ha2));
+
+    let mut h = DigesHaser::new();
+    h.add_str(username);
+    h.add_str(realm);
+    h.add_str(password);
+    let ha1 = h.finish();
+    
+    h.add_str(request.get_method());
+    h.add_str(uri);
+    let ha2 = h.finish();
+
+    h.add_byte(&ha1);
+    h.add_str(nonce);
+    h.add_byte(&ha2);
+    let hresponse = h.out_string();
+
     let authorization_head = format!(concat!("Digest ",
         "username=\"{}\", ",
         "realm=\"{}\", ",
@@ -52,12 +65,48 @@ pub fn digest(response: &mut Response, request: &mut Request) {
     request.set("authorization", authorization_head);
 }
 
+struct DigesHaser {
+    h: Hasher,
+    empty: bool,
+}
 
-fn hash_md5(s: String) -> String {  // TODO - fix return type if it need
-    let data = s.as_bytes();
-    let rez = hash(MessageDigest::md5(), data).unwrap();
-    match String::from_utf8(rez.to_vec()){
-        Ok(v) => v,
-        _ => "".to_string(),
+impl DigesHaser {
+    pub fn new() -> Self { 
+        DigesHaser {
+            h: Hasher::new(MessageDigest::md5()).unwrap(),
+            empty: true,
+        }
+    }
+
+    pub fn add_str(&mut self, s: &str) {
+        self.colon();
+        self.h.update(s.as_bytes()).unwrap();
+    }
+
+    pub fn add_byte(&mut self, h: &[u8]) {
+        static HEXMAP: &[u8] = b"0123456789abcdef";
+        for b in h.as_ref() {
+            self.h.update(&[
+                HEXMAP[(b >> 4) as usize],
+                HEXMAP[(b & 0x0F) as usize],
+            ]).unwrap();
+        }
+    }
+
+    fn colon(&mut self) {
+        match self.empty {
+            true => self.empty = false,
+            false => self.h.update(b":").unwrap(),
+        };
+    }
+
+    pub fn finish(&mut self) -> openssl::hash::DigestBytes {
+        self.empty = true;
+        self.h.finish().unwrap()
+    }
+
+    pub fn out_string(&self) -> String {
+        // TODO - write this!
+        "".to_string()
     }
 }
