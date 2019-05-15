@@ -3,9 +3,9 @@ use std::collections::HashMap;
 
 use failure::{
     ensure,
-    Compat,
     Error,
     Fail,
+    ResultExt,
 };
 
 
@@ -29,6 +29,10 @@ pub struct UrlDecodeError;
 /// Decodes URL-encoded string
 /// Supports RFC 3985 and HTML5 `+` symbol
 pub fn urldecode(buf: &str) -> Result<String, Error> {
+    if buf.is_empty() {
+        return Ok(String::new());
+    }
+
     let mut result: Vec<u8> = Vec::new();
     let buf = buf.as_bytes();
     let len = buf.len();
@@ -76,9 +80,9 @@ pub fn urlencode(buf: &str) -> String {
 
 
 #[derive(Debug, Fail)]
-pub enum QueryError {
-    #[fail(display = "ParseQuery: {}", 0)]
-    Compat(Compat<Error>),
+pub enum ParseQueryError {
+    #[fail(display = "ParseQuery Error")]
+    Context,
 }
 
 
@@ -103,9 +107,9 @@ impl Query {
             let mut i = data.splitn(2, '=');
             let key = i.next().unwrap().trim();
             if key.is_empty() { continue }
-            let key = urldecode(key).map_err(|e| QueryError::Compat(e.compat()))?;
+            let key = urldecode(key).context(ParseQueryError::Context)?;
             let value = i.next().unwrap_or("").trim();
-            let value = urldecode(value).map_err(|e| QueryError::Compat(e.compat()))?;
+            let value = urldecode(value).context(ParseQueryError::Context)?;
             map.insert(key, value);
         }
 
@@ -124,8 +128,8 @@ pub enum UrlError {
     RelativeUrl,
     #[fail(display = "Url: invalid port")]
     InvalidPort,
-    #[fail(display = "Url: {}", 0)]
-    Compat(Compat<Error>),
+    #[fail(display = "Url Error")]
+    Context,
 }
 
 
@@ -203,7 +207,7 @@ impl Url {
             tail = query;
         }
         if path > 0 || skip == 0 {
-            self.path = urldecode(&inp[path .. tail]).map_err(|e| UrlError::Compat(e.compat()))?;
+            self.path = urldecode(&inp[path .. tail]).context(UrlError::Context)?;
             tail = path;
         }
         if prefix > 0 {
