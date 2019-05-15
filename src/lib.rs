@@ -1,4 +1,5 @@
 mod auth;
+pub use crate::auth::DigesHaser;
 
 mod request;
 pub use crate::request::Request;

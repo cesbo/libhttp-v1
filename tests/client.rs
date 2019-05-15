@@ -5,10 +5,25 @@ use std::io::{
 };
 
 use http::HttpClient;
+use http::DigesHaser;
 
 
 const HELLO_WORLD: &[u8] = b"Hello, world!";
 
+
+#[test]
+fn test_md5() {
+    let mut testh = DigesHaser::new();
+    testh.add(&["tt"]);
+    assert_eq!("accc9105df5383111407fd5b41255e23", testh.out_string().as_str());
+}
+
+#[test]
+fn test_md5md5() {
+    let mut testh = DigesHaser::new();
+    testh.add(&["accc9105df5383111407fd5b41255e23"]);
+    assert_eq!("984834368b1cd16f2482c411f6424112", testh.out_string().as_str());
+}
 
 #[test]
 fn test_auth_basic() {
