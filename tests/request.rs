@@ -69,10 +69,7 @@ fn parseer_parse() {
 #[test]
 fn parseer_broken() {
     let mut request = Request::new();
-    request.parse(&mut BufReader::new(TEST_BROKEN.as_bytes())).unwrap();
-    assert_eq!(request.get_method(), "GET");
-    assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
-    assert_eq!(request.get_header("user-agent").unwrap(), "lib");
+    assert!(request.parse(&mut BufReader::new(TEST_BROKEN.as_bytes())).is_err());
 }
 
 #[test]

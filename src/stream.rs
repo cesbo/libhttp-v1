@@ -429,7 +429,7 @@ impl Write for HttpStream {
 pub enum HttpStreamError {
     Io(io::Error),
     Ssl(SslErrorStack),
-    Handshake(HandshakeError<std::net::TcpStream>),
+    Handshake(HandshakeError<TcpStream>),
 }
 
 

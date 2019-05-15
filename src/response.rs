@@ -42,11 +42,11 @@ impl Response {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            reader.read_line(&mut buffer)?;
+            let r = reader.read_line(&mut buffer)?;
 
             let s = buffer.trim();
             if s.is_empty() {
-                if first_line {
+                if first_line || r == 0 {
                     return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "invalid response"));
                 }
                 break;

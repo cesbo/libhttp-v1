@@ -1,4 +1,12 @@
+use std::fmt;
 use std::collections::HashMap;
+
+use failure::{
+    ensure,
+    Compat,
+    Error,
+    Fail,
+};
 
 
 #[inline]
@@ -13,30 +21,28 @@ fn is_rfc3986(b: u8) -> bool {
 }
 
 
+#[derive(Debug, Fail)]
+#[fail(display = "UrlDecode: invalid hexadecimal code")]
+pub struct UrlDecodeError;
+
+
 /// Decodes URL-encoded string
 /// Supports RFC 3985 and HTML5 `+` symbol
-#[inline]
-pub fn urldecode(buf: &str) -> String {
+pub fn urldecode(buf: &str) -> Result<String, Error> {
     let mut result: Vec<u8> = Vec::new();
     let buf = buf.as_bytes();
     let len = buf.len();
     let mut skip = 0;
+
     while skip < len {
         let b = buf[skip];
         skip += 1;
         match b {
             b'%' => {
-                if skip + 2 > len { break }
-
-                let n0 = match char::from(buf[skip]).to_digit(16) {
-                    Some(v) => v,
-                    _ => break,
-                };
+                ensure!(len >= skip + 2, UrlDecodeError);
+                let n0 = char::from(buf[skip]).to_digit(16).ok_or(UrlDecodeError)?;
                 skip += 1;
-                let n1 = match char::from(buf[skip]).to_digit(16) {
-                    Some(v) => v,
-                    _ => break,
-                };
+                let n1 = char::from(buf[skip]).to_digit(16).ok_or(UrlDecodeError)?;
                 skip += 1;
                 result.push(((n0 << 4) + n1) as u8);
             },
@@ -44,15 +50,15 @@ pub fn urldecode(buf: &str) -> String {
             _ => result.push(b),
         }
     }
-    unsafe {
+
+    Ok(unsafe {
         String::from_utf8_unchecked(result)
-    }
+    })
 }
 
 
 /// URL-encodes string
 /// Supports RFC 3985. For better compatibility encodes space as `%20` (HTML5 `+` not supported)
-#[inline]
 pub fn urlencode(buf: &str) -> String {
     static HEXMAP: &[u8] = b"0123456789ABCDEF";
     let mut result = String::new();
@@ -69,27 +75,57 @@ pub fn urlencode(buf: &str) -> String {
 }
 
 
-/// Parses strings in query format - key-value tuples separated by '&',
+#[derive(Debug, Fail)]
+pub enum QueryError {
+    #[fail(display = "ParseQuery: {}", 0)]
+    Compat(Compat<Error>),
+}
+
+
+/// Strings in query format - key-value tuples separated by '&',
 /// with a '=' between the key and the value.
 /// Such as url-query, urlencoded post body
-#[inline]
-pub fn parse_query(query: &str) -> HashMap<String, String> {
-    let mut ret = HashMap::new();
-    for data in query.split('&') {
-        if data.is_empty() {
-            continue;
-        }
-        let mut i = data.splitn(2, '=');
-        let key = i.next().unwrap().trim();
-        if key.is_empty() {
-            continue;
-        }
-        let key = urldecode(key);
-        let value = i.next().unwrap_or("").trim();
-        let value = urldecode(value);
-        ret.insert(key, value);
+pub struct Query(HashMap<String, String>);
+
+
+impl fmt::Debug for Query {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
-    ret
+}
+
+
+impl Query {
+    pub fn new(query: &str) -> Result<Query, Error> {
+        let mut map = HashMap::new();
+
+        for data in query.split('&').filter(|s| !s.is_empty()) {
+            let mut i = data.splitn(2, '=');
+            let key = i.next().unwrap().trim();
+            if key.is_empty() { continue }
+            let key = urldecode(key).map_err(|e| QueryError::Compat(e.compat()))?;
+            let value = i.next().unwrap_or("").trim();
+            let value = urldecode(value).map_err(|e| QueryError::Compat(e.compat()))?;
+            map.insert(key, value);
+        }
+
+        Ok(Query(map))
+    }
+}
+
+
+#[derive(Debug, Fail)]
+pub enum UrlError {
+    #[fail(display = "Url: length limit")]
+    LengthLimit,
+    #[fail(display = "Url: empty url")]
+    EmptyUrl,
+    #[fail(display = "Url: unexpected relative path")]
+    RelativeUrl,
+    #[fail(display = "Url: invalid port")]
+    InvalidPort,
+    #[fail(display = "Url: {}", 0)]
+    Compat(Compat<Error>),
 }
 
 
@@ -113,14 +149,14 @@ pub struct Url {
 
 impl Url {
     /// Allocate new object and parse url
-    pub fn new(u: &str) -> Self {
+    pub fn new(u: &str) -> Result<Self, Error> {
         let mut url = Url::default();
-        url.set(u);
-        url
+        url.set(u)?;
+        Ok(url)
     }
 
     /// Parse and absolute or relative URL from string
-    pub fn set(&mut self, inp: &str) {
+    pub fn set(&mut self, inp: &str) -> Result<(), Error> {
         let mut skip = 0;
         // step values:
         // 0 - prefix
@@ -134,12 +170,15 @@ impl Url {
         let mut query = 0;
         let mut fragment = 0;
 
-        if inp.is_empty() { return () }
+        ensure!(!inp.is_empty(), UrlError::EmptyUrl);
+        ensure!(inp.len() < 2048, UrlError::LengthLimit);
 
         if let Some(v) = inp.find("://") {
             self.scheme += &inp[0 .. v];
             skip = v + 3;
         } else {
+            // TODO: relative url
+            ensure!(inp.starts_with('/'), UrlError::RelativeUrl);
             step = 2;
         }
 
@@ -164,7 +203,7 @@ impl Url {
             tail = query;
         }
         if path > 0 || skip == 0 {
-            self.path = urldecode(&inp[path .. tail]);
+            self.path = urldecode(&inp[path .. tail]).map_err(|e| UrlError::Compat(e.compat()))?;
             tail = path;
         }
         if prefix > 0 {
@@ -174,11 +213,13 @@ impl Url {
         if skip != 0 {
             let mut addr = inp[skip .. tail].splitn(2, ':');
             self.host = addr.next().unwrap().to_string();
-            self.port = match addr.next() {
-                Some(v) => v.parse::<u16>().unwrap_or(0),
-                _ => 0,
+            if let Some(port) = addr.next() {
+                self.port = port.parse::<u16>().unwrap_or(0);
+                ensure!(self.port > 0, UrlError::InvalidPort);
             };
         }
+
+        Ok(())
     }
 
     /// Returns url scheme

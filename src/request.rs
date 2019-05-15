@@ -43,7 +43,7 @@ impl Request {
         S: Into<String>,
     {
         self.method = method.into();
-        self.url.set(url);
+        self.url.set(url).unwrap(); // TODO: error
     }
 
     /// Reads and parses request line and headers
@@ -53,11 +53,11 @@ impl Request {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            reader.read_line(&mut buffer)?;
+            let r = reader.read_line(&mut buffer)?;
 
             let s = buffer.trim();
             if s.is_empty() {
-                if first_line {
+                if first_line || r == 0 {
                     return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "invalid request"));
                 }
                 break;
@@ -72,7 +72,7 @@ impl Request {
                 for (step, part) in s.split_whitespace().enumerate() {
                     match step {
                         0 => self.method.push_str(part),
-                        1 => self.url.set(part),
+                        1 => self.url.set(part).unwrap(), // TODO: error
                         2 => self.version.push_str(part),
                         _ => break,
                      }

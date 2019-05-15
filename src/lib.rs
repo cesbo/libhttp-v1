@@ -23,5 +23,5 @@ pub use crate::url::{
     Url,
     urlencode,
     urldecode,
-    parse_query,
+    Query,
 };
