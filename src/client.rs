@@ -19,9 +19,9 @@ use crate::stream::HttpStream;
 
 #[derive(Debug, Fail)]
 enum HttpClientError {
-    #[fail(display = "Http Client Error")]
+    #[fail(display = "HttpClient Error")]
     Context,
-    #[fail(display = "Http Client: invalid protocol")]
+    #[fail(display = "HttpClient: invalid protocol")]
     InvalidProtocol,
 }
 

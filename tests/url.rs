@@ -140,7 +140,7 @@ fn test_2() {
 fn test_1() {
     let url = Url::new("http://127.0.0.1/path?qwery#fragment").unwrap();
     assert_eq!(url.get_scheme(), "http");
-    assert_eq!(url.get_addr(), "127.0.0.1");
+    assert_eq!(url.get_address(), "127.0.0.1");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "?qwery");
@@ -152,7 +152,7 @@ fn test_1() {
 fn test_url_full() {
     let url = Url::new("http://127.0.0.1:8000/path?query#fragment").unwrap();
     assert_eq!(url.get_scheme(), "http");
-    assert_eq!(url.get_addr(), "127.0.0.1:8000");
+    assert_eq!(url.get_address(), "127.0.0.1:8000");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_port(), 8000);
     assert_eq!(url.get_path(), "/path");

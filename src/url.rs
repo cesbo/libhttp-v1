@@ -181,8 +181,8 @@ impl Url {
             self.address.clear();
             self.host_len = 0;
             self.port = 0;
-            self.request_uri.clear();
-            self.path_len = 0;
+            self.path.clear();
+            self.query.clear();
             self.fragment.clear();
 
             self.scheme.push_str(&inp[0 .. v]);
@@ -191,8 +191,8 @@ impl Url {
             // TODO: relative url
             ensure!(inp.starts_with('/'), UrlError::RelativeUrl);
 
-            self.request_uri.clear();
-            self.path_len = 0;
+            self.path.clear();
+            self.query.clear();
             self.fragment.clear();
 
             step = 2;
@@ -227,11 +227,11 @@ impl Url {
             skip = prefix + 1;
         }
         if skip != 0 {
-            self.addr.push_str(&inp[skip .. tail]);
-            let addr_len = self.addr.len();
-            self.host_len = self.addr.find(':').unwrap_or(addr_len);
-            if addr_len > self.host_len {
-                self.port = self.addr[self.host_len + 1 ..].parse::<u16>().unwrap_or(0);
+            self.address.push_str(&inp[skip .. tail]);
+            let address_len = self.address.len();
+            self.host_len = self.address.find(':').unwrap_or(address_len);
+            if address_len > self.host_len {
+                self.port = self.address[self.host_len + 1 ..].parse::<u16>().unwrap_or(0);
                 ensure!(self.port > 0, UrlError::InvalidPort);
             }
         }

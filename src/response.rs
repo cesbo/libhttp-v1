@@ -17,13 +17,13 @@ use crate::tools;
 
 #[derive(Debug, Fail)]
 enum ResponseError {
-    #[fail(display = "HTTP Response Error")]
+    #[fail(display = "Response Error")]
     Context,
-    #[fail(display = "HTTP Response: unexpected EOF")]
+    #[fail(display = "Response: unexpected EOF")]
     UnexpectedEof,
-    #[fail(display = "HTTP Response: invalid format")]
+    #[fail(display = "Response: invalid format")]
     InvalidFormat,
-    #[fail(display = "HTTP Response: invalid status code")]
+    #[fail(display = "Response: invalid status code")]
     InvalidCode,
 }
 

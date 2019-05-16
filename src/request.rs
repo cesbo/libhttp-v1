@@ -18,11 +18,11 @@ use crate::url::Url;
 
 #[derive(Debug, Fail)]
 enum RequestError {
-    #[fail(display = "HTTP Request Error")]
+    #[fail(display = "Request Error")]
     Context,
-    #[fail(display = "HTTP Request: unexpected eof")]
+    #[fail(display = "Request: unexpected eof")]
     UnexpectedEof,
-    #[fail(display = "HTTP Request: invalid format")]
+    #[fail(display = "Request: invalid format")]
     InvalidFormat,
 }
 
@@ -121,7 +121,7 @@ impl Request {
             self.url.get_query(),
             self.version)?;
 
-        writeln!(dst, "Host: {}\r", self.url.get_addr())?;
+        writeln!(dst, "Host: {}\r", self.url.get_address())?;
 
         for (key, value) in self.headers.iter() {
             tools::header_write(dst, key, value)?;
