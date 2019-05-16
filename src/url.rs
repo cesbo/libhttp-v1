@@ -160,6 +160,17 @@ impl Url {
     /// Parse and absolute or relative URL from string
     pub fn set(&mut self, inp: &str) -> Result<(), Error> {
         let mut skip = 0;
+        // step values:
+        // 0 - prefix
+        // 1 - addr (host:port)
+        // 2 - /path
+        // 3 - ?query
+        // 4 - #fragment
+        let mut step = 0;
+        let mut prefix = 0;
+        let mut path = 0;
+        let mut query = 0;
+        let mut fragment = 0;
 
         ensure!(!inp.is_empty(), UrlError::EmptyUrl);
         ensure!(inp.len() < 2048, UrlError::LengthLimit);
