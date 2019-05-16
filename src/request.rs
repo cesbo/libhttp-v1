@@ -121,12 +121,7 @@ impl Request {
             self.url.get_query(),
             self.version)?;
 
-        write!(dst, "Host: {}", self.url.get_host())?;
-        let port = self.url.get_port();
-        if port != 0 {
-            write!(dst, ":{}", port)?;
-        }
-        writeln!(dst, "\r")?;
+        writeln!(dst, "Host: {}\r", self.url.get_addr())?;
 
         for (key, value) in self.headers.iter() {
             tools::header_write(dst, key, value)?;

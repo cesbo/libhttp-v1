@@ -135,15 +135,15 @@ enum UrlError {
 
 /// A parsed URL record
 ///
-/// URL parts: `scheme://prefix@host:port/path?query#fragment`
+/// URL parts: `scheme://prefix@addr/path?query#fragment`
 /// All url parts are optional.
 /// If path, query, and fragment are defined, then value contains their delimiter as well
-/// If port not defined then value will be 0
 #[derive(Default, Debug, PartialEq)]
 pub struct Url {
     scheme: String,
     prefix: String,
-    host: String,
+    addr: String,
+    host_len: usize, // self.addr[.. self.host_len]
     port: u16,
     path: String,
     query: String,
@@ -164,7 +164,7 @@ impl Url {
         let mut skip = 0;
         // step values:
         // 0 - prefix
-        // 1 - host:port
+        // 1 - addr (host:port)
         // 2 - /path
         // 3 - ?query
         // 4 - #fragment
@@ -215,12 +215,13 @@ impl Url {
             skip = prefix + 1;
         }
         if skip != 0 {
-            let mut addr = inp[skip .. tail].splitn(2, ':');
-            self.host = addr.next().unwrap().to_string();
-            if let Some(port) = addr.next() {
-                self.port = port.parse::<u16>().unwrap_or(0);
+            self.addr += &inp[skip .. tail];
+            let addr_len = self.addr.len();
+            self.host_len = self.addr.find(':').unwrap_or(addr_len);
+            if addr_len > self.host_len {
+                self.port = self.addr[self.host_len + 1 ..].parse::<u16>().unwrap_or(0);
                 ensure!(self.port > 0, UrlError::InvalidPort);
-            };
+            }
         }
 
         Ok(())
@@ -229,19 +230,25 @@ impl Url {
     /// Returns url scheme
     #[inline]
     pub fn get_scheme(&self) -> &str {
-        self.scheme.as_str()
+        &self.scheme
     }
 
     /// Returns url prefix
     #[inline]
     pub fn get_prefix(&self) -> &str {
-        self.prefix.as_str()
+        &self.prefix
+    }
+
+    /// Returns url addr
+    #[inline]
+    pub fn get_addr(&self) -> &str {
+        &self.addr
     }
 
     /// Returns url host
     #[inline]
     pub fn get_host(&self) -> &str {
-        self.host.as_str()
+        &self.addr[.. self.host_len]
     }
 
     /// Returns url port
@@ -253,18 +260,18 @@ impl Url {
     /// Returns url path
     #[inline]
     pub fn get_path(&self) -> &str {
-        self.path.as_str()
+        &self.path
     }
 
     /// Returns url query
     #[inline]
     pub fn get_query(&self) -> &str {
-        self.query.as_str()
+        &self.query
     }
 
     /// Returns url fragment
     #[inline]
     pub fn get_fragment(&self) -> &str {
-        self.fragment.as_str()
+        &self.fragment
     }
 }
