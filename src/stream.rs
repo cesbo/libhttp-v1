@@ -14,13 +14,19 @@ use std::net::{
 };
 use std::time::Duration;
 
+use failure::{
+    Error,
+    Fail,
+    ResultExt,
+};
+
 use openssl::ssl::{
     SslMethod,
     SslConnector,
     SslStream,
     HandshakeError,
 };
-use openssl::error::ErrorStack as SslErrorStack;
+use openssl::error::ErrorStack;
 
 use crate::response::Response;
 
@@ -33,6 +39,11 @@ const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 trait Stream: Read + Write {}
 impl Stream for TcpStream {}
 impl Stream for SslStream<TcpStream> {}
+
+
+#[derive(Debug, Fail)]
+#[fail(display = "HttpStream Error")]
+struct HttpStreamError;
 
 
 /// Internal transfer state
@@ -85,22 +96,18 @@ impl Default for HttpBuffer {
 ///
 /// ```
 /// use std::io::{Read, Write};
-/// use http::{
-///     HttpStream,
-///     HttpStreamError,
-/// };
+/// use http::HttpStream;
 ///
-/// fn main() -> Result<(), HttpStreamError> {
+/// fn main() {
 ///     let mut stream = HttpStream::default();
-///     stream.connect(true, "example.com", 443)?;
+///     stream.connect(true, "example.com", 443).unwrap();
 ///     stream.write_all(concat!("GET / HTTP/1.0\r\n",
 ///         "Host: example.com\r\n",
 ///         "User-Agent: libhttp\r\n",
-///         "\r\n").as_bytes())?;
-///     stream.flush()?;
+///         "\r\n").as_bytes()).unwrap();
+///     stream.flush().unwrap();
 ///     let mut body = String::new();
-///     stream.read_to_string(&mut body)?;
-///     Ok(())
+///     stream.read_to_string(&mut body).unwrap();
 /// }
 /// ```
 pub struct HttpStream {
@@ -155,9 +162,23 @@ impl HttpStream {
         self.nodelay = nodelay
     }
 
+    fn io_connect(&self, host: &str, port: u16) -> io::Result<TcpStream> {
+        let mut last_err = None;
+        let addrs = (host, port).to_socket_addrs()?;
+        for addr in addrs {
+            match TcpStream::connect_timeout(&addr, self.timeout) {
+                Ok(v) => return Ok(v),
+                Err(e) => last_err = Some(e),
+            }
+        }
+
+        Err(last_err.unwrap_or_else(||
+            io::Error::new(io::ErrorKind::InvalidInput, "address resolve failed")))
+    }
+
     /// Opens a TCP connection to a remote host
     /// If connection already opened just clears read/write buffers
-    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<(), HttpStreamError> {
+    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<(), Error> {
         self.rbuf.pos = 0;
         self.rbuf.cap = 0;
         self.wbuf.pos = 0;
@@ -167,37 +188,28 @@ impl HttpStream {
         if self.inner.is_some() {
             // keep-alive
         } else {
-            let addrs = (host, port).to_socket_addrs()?;
-            let get_stream = || -> io::Result<TcpStream> {
-                let mut last_err = None;
-                for addr in addrs {
-                    match TcpStream::connect_timeout(&addr, self.timeout) {
-                        Ok(v) => return Ok(v),
-                        Err(e) => last_err = Some(e),
-                    };
-                }
-                Err(last_err.unwrap_or_else(|| {
-                    io::Error::new(io::ErrorKind::InvalidInput,
-                        "could not resolve to any addresses")
-                }))
-            };
+            let stream = self.io_connect(host, port).context(HttpStreamError)?;
 
-            let stream = get_stream()?;
             if self.ttl != DEFAULT_IP_TTL {
-                stream.set_ttl(self.ttl)?;
+                stream.set_ttl(self.ttl).context(HttpStreamError)?;
             }
+
             if self.nodelay != DEFAULT_TCP_NODELAY {
-                stream.set_nodelay(self.nodelay)?;
+                stream.set_nodelay(self.nodelay).context(HttpStreamError)?;
             }
-            stream.set_read_timeout(Some(self.timeout))?;
-            stream.set_write_timeout(Some(self.timeout))?;
+
+            stream.set_read_timeout(Some(self.timeout)).context(HttpStreamError)?;
+            stream.set_write_timeout(Some(self.timeout)).context(HttpStreamError)?;
 
             if tls {
-                let connector = SslConnector::builder(SslMethod::tls())?;
-                let mut ssl = connector.build().configure()?;
+                let connector = SslConnector::builder(SslMethod::tls())
+                    .map_err(|e| SslError::Ssl(e))?;
+                let mut ssl = connector.build().configure()
+                    .map_err(|e| SslError::Ssl(e))?;
                 ssl.set_use_server_name_indication(true);
                 ssl.set_verify_hostname(true);
-                let stream = ssl.connect(host, stream)?;
+                let stream = ssl.connect(host, stream)
+                    .map_err(|e| SslError::Handshake(e))?;
                 self.inner = Some(Box::new(stream));
             } else {
                 self.inner = Some(Box::new(stream));
@@ -208,7 +220,7 @@ impl HttpStream {
     }
 
     /// Checks response headers and set content parser behavior
-    pub fn configure(&mut self, response: &Response) -> Result<(), HttpStreamError> {
+    pub fn configure(&mut self, response: &Response) -> Result<(), Error> {
         self.transfer = HttpTransferEncoding::Eof;
 
         if let Some(len) = response.get_header("content-length") {
@@ -425,34 +437,34 @@ impl Write for HttpStream {
 }
 
 
-#[derive(Debug)]
-pub enum HttpStreamError {
-    Io(io::Error),
-    Ssl(SslErrorStack),
+#[derive(Debug, Fail)]
+enum SslError {
+    #[cause]
+    Ssl(ErrorStack),
+    #[cause]
     Handshake(HandshakeError<TcpStream>),
 }
 
 
-impl fmt::Display for HttpStreamError {
+impl fmt::Display for SslError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            HttpStreamError::Io(ref e) => write!(f, "Stream IO Error: {}", e),
-            HttpStreamError::Ssl(ref e) => {
+            SslError::Ssl(ref e) => {
                 let s = e.errors().get(0)
                     .and_then(|ee| ee.reason())
                     .unwrap_or("");
-                write!(f, "Stream SSL Error: {}", s)
+                write!(f, "HttpStream SSL Error: {}", s)
             }
-            HttpStreamError::Handshake(ref e) => {
+            SslError::Handshake(ref e) => {
                 match e {
                     HandshakeError::SetupFailure(ee) => {
                         let s = ee.errors().get(0)
                             .and_then(|eee| eee.reason())
                             .unwrap_or("");
-                        write!(f, "Stream Handshake Setup Failure: {}", s)
+                        write!(f, "HttpStream Handshake Setup Failure: {}", s)
                     }
                     HandshakeError::Failure(ee) => {
-                        write!(f, "Stream Handshake Failure: ")?;
+                        write!(f, "HttpStream Handshake Failure: ")?;
                         let inner_error = ee.error();
                         if let Some(io_ee) = inner_error.io_error() {
                             write!(f, "{}", io_ee)?;
@@ -472,29 +484,5 @@ impl fmt::Display for HttpStreamError {
                 }
             }
         }
-    }
-}
-
-
-impl From<io::Error> for HttpStreamError {
-    #[inline]
-    fn from(e: io::Error) -> HttpStreamError {
-        HttpStreamError::Io(e)
-    }
-}
-
-
-impl From<SslErrorStack> for HttpStreamError {
-    #[inline]
-    fn from(e: SslErrorStack) -> HttpStreamError {
-        HttpStreamError::Ssl(e)
-    }
-}
-
-
-impl From<HandshakeError<TcpStream>> for HttpStreamError {
-    #[inline]
-    fn from(e: HandshakeError<TcpStream>) -> HttpStreamError {
-        HttpStreamError::Handshake(e)
     }
 }
