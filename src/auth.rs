@@ -9,11 +9,15 @@ use crate::request::Request;
 use crate::response::Response;
 
 
+/// This mod implement HTTP authorization
+///
+/// Basic access authentication (RFC 2617)
 pub fn basic(request: &mut Request) {
     request.set("authorization", format!("Basic {}", encode(request.url.get_prefix())));
 }
 
 
+/// Digest Access Authentication (RFC 2069)
 pub fn digest(response: &mut Response, request: &mut Request) {
     let mut realm = "";
     let mut nonce = "";
@@ -40,17 +44,28 @@ pub fn digest(response: &mut Response, request: &mut Request) {
         };     
     }
 
-    let mut h = DigesHaser::new();
-    h.add(&[username, realm, password]);
-    let ha1 = h.finish();
-    h.add(&[request.get_method(), uri]);
-    let ha2 = h.finish();
-    //h.add(&[&ha1, nonce, &ha2]); TODO - fix this may be work
-    h.add(&[&ha1]);
-    h.add(&[nonce]);
-    h.add(&[&ha2]);
-    let hresponse = h.out_string();
-     
+    let mut h = Hasher::new(MessageDigest::md5()).unwrap();
+    h.update(username.as_bytes()).unwrap();
+    h.update(b":").unwrap();
+    h.update(realm.as_bytes()).unwrap();
+    h.update(b":").unwrap();
+    h.update(password.as_bytes()).unwrap();
+    let ha1 = h.finish().unwrap();
+
+    h.update(request.get_method().as_bytes()).unwrap();
+    h.update(b":").unwrap();
+    h.update(uri.as_bytes()).unwrap();
+    let ha2 = h.finish().unwrap();
+
+    update_hex(ha1.as_ref(), &mut h);
+    h.update(b":").unwrap();
+    h.update(nonce.as_bytes()).unwrap();
+    h.update(b":").unwrap();
+    update_hex(ha2.as_ref(), &mut h);
+
+    let hr = h.finish().unwrap();
+    let hresponse = hex2string(hr.as_ref());
+        
     let authorization_head = format!(concat!("Digest ",
         "username=\"{}\", ",
         "realm=\"{}\", ",
@@ -65,69 +80,21 @@ pub fn digest(response: &mut Response, request: &mut Request) {
 static HEXMAP: &[u8] = b"0123456789abcdef";
 
 
-pub struct DigesHaser {
-    h: Hasher,
-    empty: bool,
-}
-
-
-pub trait PushHex {
-    fn push_hex(&self, h: &mut Hasher);
-}
-
-
-impl PushHex for &str {
-    fn push_hex(&self, h: &mut Hasher) {
-        h.update(self.as_bytes()).unwrap();
+fn update_hex(bytes: &[u8], h: &mut Hasher) {
+    for b in bytes {
+        h.update(&[
+            HEXMAP[(b >> 4) as usize],
+            HEXMAP[(b & 0x0F) as usize],
+        ]).unwrap();
     }
 }
 
 
-impl PushHex for &openssl::hash::DigestBytes {
-    fn push_hex(&self, h: &mut Hasher) {
-        for b in self.as_ref() {
-            h.update(&[
-                HEXMAP[(b >> 4) as usize],
-                HEXMAP[(b & 0x0F) as usize],
-            ]).unwrap();
-        }
+pub fn hex2string(bytes: &[u8]) -> String {
+    let mut ret = String::new();
+    for b in bytes {
+        ret.push(char::from(HEXMAP[(b >> 4) as usize]));
+        ret.push(char::from(HEXMAP[(b & 0x0F) as usize]));
     }
-} 
-
-
-impl DigesHaser {
-    pub fn new() -> Self { 
-        DigesHaser {
-            h: Hasher::new(MessageDigest::md5()).unwrap(),
-            empty: true,
-        }
-    }
-
-    pub fn add<T>(&mut self, hvec: &[T]) 
-    where
-        T: PushHex    
-    {
-        match self.empty {
-            true => self.empty = false,
-            false => self.h.update(b":").unwrap(),
-        };
-        for a in hvec {
-            a.push_hex(&mut self.h);
-        }
-    }
-
-    pub fn finish(&mut self) -> openssl::hash::DigestBytes {
-        self.empty = true;
-        self.h.finish().unwrap()
-    }
-
-    pub fn out_string(&mut self) -> String {
-        let rez = self.finish();
-        let mut ret = String::new();
-        for b in rez.as_ref() {
-            ret.push(char::from(HEXMAP[(b >> 4) as usize]));
-            ret.push(char::from(HEXMAP[(b & 0x0F) as usize]));
-        }
-        ret
-    }
+    ret
 }
