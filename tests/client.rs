@@ -131,7 +131,10 @@ fn test_get_expired_ssl() {
     client.request.set_header("user-agent", "libhttp");
     match client.send() {
         Ok(_) => unreachable!(),
-        Err(ref e) => println!("{}", e),
+        Err(ref e) => {
+            println!("test_get_expired_ssl()");
+            e.iter_chain().for_each(|err| println!("\t{}", err));
+        }
     }
 }
 
@@ -144,6 +147,9 @@ fn test_get_timeout() {
     client.send().unwrap();
     match client.receive() {
         Ok(_) => unreachable!(),
-        Err(ref e) => println!("{}", e),
+        Err(ref e) => {
+            println!("test_get_timeout()");
+            e.iter_chain().for_each(|err| println!("\t{}", err));
+        }
     }
 }
