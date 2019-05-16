@@ -6,6 +6,7 @@ use std::io::{
 };
 
 use failure::{
+    bail,
     Error,
     Fail,
     ResultExt,
@@ -17,8 +18,12 @@ use crate::stream::HttpStream;
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "HttpClient Error")]
-pub struct HttpClientError;
+enum HttpClientError {
+    #[fail(display = "Http Client Error")]
+    Context,
+    #[fail(display = "Http Client: invalid protocol")]
+    InvalidProtocol,
+}
 
 
 /// HTTP client
@@ -74,12 +79,12 @@ impl HttpClient {
                 }
                 tls = true;
             }
-            _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid protocol").into()),
+            _ => bail!(HttpClientError::InvalidProtocol),
         };
 
-        self.stream.connect(tls, host, port).context(HttpClientError)?;
-        self.request.send(&mut self.stream).context(HttpClientError)?;
-        self.stream.flush().context(HttpClientError)?;
+        self.stream.connect(tls, host, port).context(HttpClientError::Context)?;
+        self.request.send(&mut self.stream).context(HttpClientError::Context)?;
+        self.stream.flush().context(HttpClientError::Context)?;
 
         Ok(())
     }
@@ -87,9 +92,10 @@ impl HttpClient {
     /// Flushes writing buffer, receives response line and headers
     /// Prepares HTTP stream for reading data
     pub fn receive(&mut self) -> Result<(), Error> {
-        self.stream.flush().context(HttpClientError)?;
-        self.response.parse(&mut self.stream).context(HttpClientError)?;
-        self.stream.configure(&self.response).context(HttpClientError)?;
+        self.stream.flush().context(HttpClientError::Context)?;
+        self.response.parse(&mut self.stream).context(HttpClientError::Context)?;
+        self.stream.configure(&self.response).context(HttpClientError::Context)?;
+
         Ok(())
     }
 }

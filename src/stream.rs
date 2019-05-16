@@ -43,7 +43,7 @@ impl Stream for SslStream<TcpStream> {}
 
 #[derive(Debug, Fail)]
 #[fail(display = "HttpStream Error")]
-pub struct HttpStreamError;
+struct HttpStreamError;
 
 
 /// Internal transfer state
@@ -96,10 +96,7 @@ impl Default for HttpBuffer {
 ///
 /// ```
 /// use std::io::{Read, Write};
-/// use http::{
-///     HttpStream,
-///     HttpStreamError,
-/// };
+/// use http::HttpStream;
 ///
 /// fn main() {
 ///     let mut stream = HttpStream::default();

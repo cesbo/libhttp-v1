@@ -5,7 +5,27 @@ use std::io::{
     Write
 };
 
+use failure::{
+    ensure,
+    Error,
+    Fail,
+    ResultExt,
+};
+
 use crate::tools;
+
+
+#[derive(Debug, Fail)]
+enum ResponseError {
+    #[fail(display = "HTTP Response Error")]
+    Context,
+    #[fail(display = "HTTP Response: unexpected EOF")]
+    UnexpectedEof,
+    #[fail(display = "HTTP Response: invalid format")]
+    InvalidFormat,
+    #[fail(display = "HTTP Response: invalid status code")]
+    InvalidCode,
+}
 
 
 /// Parser and formatter for HTTP response line and headers
@@ -37,7 +57,7 @@ impl Response {
 
     /// Reads and parses response line and headers
     /// Reads until empty line found
-    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> io::Result<()> {
+    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), Error> {
         let mut first_line = true;
         let mut buffer = String::new();
         loop {
@@ -46,9 +66,7 @@ impl Response {
 
             let s = buffer.trim();
             if s.is_empty() {
-                if first_line || r == 0 {
-                    return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "invalid response"));
-                }
+                ensure!(!first_line && r != 0, ResponseError::UnexpectedEof);
                 break;
             }
 
@@ -59,17 +77,12 @@ impl Response {
                 self.code = 0;
                 self.reason.clear();
 
-                let skip = match s.find(char::is_whitespace) {
-                    Some(v) => v,
-                    None => return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid response format")),
-                };
+                let skip = s.find(char::is_whitespace).ok_or(ResponseError::InvalidFormat)?;
                 self.version.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.code = s[.. skip].parse().unwrap_or(0);
-                if self.code < 100 || self.code >= 600 {
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid response code"));
-                }
+                ensure!(self.code >= 100 && self.code < 600, ResponseError::InvalidCode);
 
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
@@ -91,8 +104,7 @@ impl Response {
         Ok(())
     }
 
-    /// Writes response line and headers to dst
-    pub fn send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
+    fn io_send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
         writeln!(dst, "{} {} {}\r",
             self.version,
             self.code,
@@ -103,6 +115,13 @@ impl Response {
         }
 
         writeln!(dst, "\r")
+    }
+
+    /// Writes response line and headers to dst
+    #[inline]
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), Error> {
+        self.io_send(dst).context(ResponseError::Context)?;
+        Ok(())
     }
 
     /// Sets response header

@@ -23,7 +23,7 @@ fn is_rfc3986(b: u8) -> bool {
 
 #[derive(Debug, Fail)]
 #[fail(display = "UrlDecode: invalid hexadecimal code")]
-pub struct UrlDecodeError;
+struct UrlDecodeError;
 
 
 /// Decodes URL-encoded string
@@ -80,7 +80,7 @@ pub fn urlencode(buf: &str) -> String {
 
 
 #[derive(Debug, Fail)]
-pub enum ParseQueryError {
+enum ParseQueryError {
     #[fail(display = "ParseQuery Error")]
     Context,
 }
@@ -119,7 +119,7 @@ impl Query {
 
 
 #[derive(Debug, Fail)]
-pub enum UrlError {
+enum UrlError {
     #[fail(display = "Url: length limit")]
     LengthLimit,
     #[fail(display = "Url: empty url")]

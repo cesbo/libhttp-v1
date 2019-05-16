@@ -5,8 +5,26 @@ use std::io::{
     Write
 };
 
+use failure::{
+    ensure,
+    Error,
+    Fail,
+    ResultExt,
+};
+
 use crate::tools;
 use crate::url::Url;
+
+
+#[derive(Debug, Fail)]
+enum RequestError {
+    #[fail(display = "HTTP Request Error")]
+    Context,
+    #[fail(display = "HTTP Request: unexpected eof")]
+    UnexpectedEof,
+    #[fail(display = "HTTP Request: invalid format")]
+    InvalidFormat,
+}
 
 
 /// Parser and formatter for HTTP request line and headers
@@ -38,17 +56,18 @@ impl Request {
 
     /// Sets request method and url
     /// method should be in uppercase
-    pub fn init<S>(&mut self, method: S, url: &str)
+    pub fn init<S>(&mut self, method: S, url: &str) -> Result<(), Error>
     where
         S: Into<String>,
     {
         self.method = method.into();
-        self.url.set(url).unwrap(); // TODO: error
+        self.url.set(url).context(RequestError::Context)?;
+        Ok(())
     }
 
     /// Reads and parses request line and headers
     /// Reads until empty line found
-    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> io::Result<()> {
+    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), Error> {
         let mut first_line = true;
         let mut buffer = String::new();
         loop {
@@ -57,9 +76,7 @@ impl Request {
 
             let s = buffer.trim();
             if s.is_empty() {
-                if first_line || r == 0 {
-                    return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "invalid request"));
-                }
+                ensure!(!first_line && r != 0, RequestError::UnexpectedEof);
                 break;
             }
 
@@ -67,15 +84,18 @@ impl Request {
                 first_line = false;
 
                 self.method.clear();
-                self.version.clear();
+                let skip = s.find(char::is_whitespace).ok_or(RequestError::InvalidFormat)?;
+                self.method.push_str(&s[.. skip]);
+                let s = s[skip + 1 ..].trim_start();
+                let skip = s.find(char::is_whitespace).ok_or(RequestError::InvalidFormat)?;
+                self.url.set(&s[.. skip]).context(RequestError::Context)?;
 
-                for (step, part) in s.split_whitespace().enumerate() {
-                    match step {
-                        0 => self.method.push_str(part),
-                        1 => self.url.set(part).unwrap(), // TODO: error
-                        2 => self.version.push_str(part),
-                        _ => break,
-                     }
+                if s.len() > skip {
+                    let s = s[skip + 1 ..].trim_start();
+                    if ! s.is_empty() {
+                        self.version.clear();
+                        self.version.push_str(s);
+                    }
                 }
             } else {
                 if let Some(skip) = s.find(':') {
@@ -91,8 +111,7 @@ impl Request {
         Ok(())
     }
 
-    /// Writes request line and headers to dst
-    pub fn send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
+    fn io_send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
         let path = self.url.get_path();
         let path = if path.is_empty() { "/" } else { path };
 
@@ -114,6 +133,13 @@ impl Request {
         }
 
         writeln!(dst, "\r")
+    }
+
+    /// Writes request line and headers to dst
+    #[inline]
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), Error> {
+        self.io_send(dst).context(RequestError::Context)?;
+        Ok(())
     }
 
     /// Sets request header
