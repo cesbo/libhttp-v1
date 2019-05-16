@@ -41,22 +41,8 @@ impl HttpClient {
         } else {
             self.stream.clear();
         }
-                
-        if  ! &self.request.url.get_prefix().is_empty() {
-            match *self.response.get_code() as i32 {
-                401 => {
-                    let head = match &self.response.get_header("www-authenticate") {
-                        Some(v) => v,
-                        _ => "",
-                    };
-                    if head[.. 6].eq_ignore_ascii_case("digest") {
-                        auth::digest(&mut self.response, &mut self.request);
-                    }
-                }
-                _ => auth::basic(&mut self.request),
-            }
-        }
 
+        auth::auth_switch(&mut self.response, &mut self.request);     
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;
         Ok(())

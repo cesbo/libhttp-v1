@@ -10,7 +10,27 @@ use crate::response::Response;
 
 
 /// This mod implement HTTP authorization
-///
+
+
+/// Switch authentication type by request code
+pub fn auth_switch(response: &mut Response, request: &mut Request) {
+    if  ! &request.url.get_prefix().is_empty() {
+        match *response.get_code() as i32 {
+            401 => {
+                let head = match &response.get_header("www-authenticate") {
+                    Some(v) => v,
+                    _ => "",
+                };
+                if head[.. 6].eq_ignore_ascii_case("digest") {
+                    digest(response, request);
+                }
+            }
+            _ => basic(request),
+        }
+    }
+}
+
+
 /// Basic access authentication (RFC 2617)
 pub fn basic(request: &mut Request) {
     request.set("authorization", format!("Basic {}", encode(request.url.get_prefix())));
@@ -45,22 +65,14 @@ pub fn digest(response: &mut Response, request: &mut Request) {
     }
 
     let mut h = Hasher::new(MessageDigest::md5()).unwrap();
-    h.update(username.as_bytes()).unwrap();
-    h.update(b":").unwrap();
-    h.update(realm.as_bytes()).unwrap();
-    h.update(b":").unwrap();
-    h.update(password.as_bytes()).unwrap();
+    [username, ":", realm, ":", password].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     let ha1 = h.finish().unwrap();
 
-    h.update(request.get_method().as_bytes()).unwrap();
-    h.update(b":").unwrap();
-    h.update(uri.as_bytes()).unwrap();
+    [request.get_method(), ":", uri].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     let ha2 = h.finish().unwrap();
 
     update_hex(ha1.as_ref(), &mut h);
-    h.update(b":").unwrap();
-    h.update(nonce.as_bytes()).unwrap();
-    h.update(b":").unwrap();
+    [ ":", nonce, ":"].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     update_hex(ha2.as_ref(), &mut h);
 
     let hr = h.finish().unwrap();

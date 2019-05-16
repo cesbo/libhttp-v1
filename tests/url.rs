@@ -7,7 +7,11 @@ use http::parse_query;
 #[test]
 fn pars_query_test() {
     let parse_query = parse_query("data=1&string=5&testing_кирилица=&&link=%26%26%26http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F?&test=not test string &&");
-    println!("{:#?}", parse_query);
+    let link = match parse_query.get("link") {
+        Some(v) => v,
+        _ => "",
+    };
+    assert_eq!(link, "&&&http://foo bar/тест/🍔/?");
 }
 
 #[test]
