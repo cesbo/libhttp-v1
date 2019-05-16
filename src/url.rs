@@ -80,10 +80,8 @@ pub fn urlencode(buf: &str) -> String {
 
 
 #[derive(Debug, Fail)]
-enum ParseQueryError {
-    #[fail(display = "ParseQuery Error")]
-    Context,
-}
+#[fail(display = "ParseQuery Error")]
+struct ParseQueryError;
 
 
 /// Strings in query format - key-value tuples separated by '&',
@@ -107,9 +105,9 @@ impl Query {
             let mut i = data.splitn(2, '=');
             let key = i.next().unwrap().trim();
             if key.is_empty() { continue }
-            let key = urldecode(key).context(ParseQueryError::Context)?;
+            let key = urldecode(key).context(ParseQueryError)?;
             let value = i.next().unwrap_or("").trim();
-            let value = urldecode(value).context(ParseQueryError::Context)?;
+            let value = urldecode(value).context(ParseQueryError)?;
             map.insert(key, value);
         }
 
@@ -135,15 +133,15 @@ enum UrlError {
 
 /// A parsed URL record
 ///
-/// URL parts: `scheme://prefix@addr/path?query#fragment`
+/// URL parts: `scheme://prefix@address/path?query#fragment`
 /// All url parts are optional.
 /// If path, query, and fragment are defined, then value contains their delimiter as well
 #[derive(Default, Debug, PartialEq)]
 pub struct Url {
     scheme: String,
     prefix: String,
-    addr: String,
-    host_len: usize, // self.addr[.. self.host_len]
+    address: String,        // host:port
+    host_len: usize,        // self.address[.. self.host_len]
     port: u16,
     path: String,
     query: String,
@@ -162,31 +160,34 @@ impl Url {
     /// Parse and absolute or relative URL from string
     pub fn set(&mut self, inp: &str) -> Result<(), Error> {
         let mut skip = 0;
-        // step values:
-        // 0 - prefix
-        // 1 - addr (host:port)
-        // 2 - /path
-        // 3 - ?query
-        // 4 - #fragment
-        let mut step = 0;
-        let mut prefix = 0;
-        let mut path = 0;
-        let mut query = 0;
-        let mut fragment = 0;
 
         ensure!(!inp.is_empty(), UrlError::EmptyUrl);
         ensure!(inp.len() < 2048, UrlError::LengthLimit);
 
         if let Some(v) = inp.find("://") {
-            self.scheme += &inp[0 .. v];
+            self.scheme.clear();
+            self.prefix.clear();
+            self.address.clear();
+            self.host_len = 0;
+            self.port = 0;
+            self.request_uri.clear();
+            self.path_len = 0;
+            self.fragment.clear();
+
+            self.scheme.push_str(&inp[0 .. v]);
             skip = v + 3;
         } else {
             // TODO: relative url
             ensure!(inp.starts_with('/'), UrlError::RelativeUrl);
+
+            self.request_uri.clear();
+            self.path_len = 0;
+            self.fragment.clear();
+
             step = 2;
         }
 
-        for (idx, part) in inp[skip ..].match_indices(|c: char| {
+        for (idx, part) in inp[skip ..].match_indices(|c| {
             c == '/' || c == '?' || c == '#' || c == '@'
         }) {
             match part.as_bytes()[0] {
@@ -199,11 +200,11 @@ impl Url {
         }
         let mut tail = inp.len();
         if fragment > 0 {
-            self.fragment += &inp[fragment .. tail];
+            self.fragment.push_str(&inp[fragment .. tail]);
             tail = fragment;
         }
         if query > 0 {
-            self.query += &inp[query .. tail];
+            self.query.push_str(&inp[query .. tail]);
             tail = query;
         }
         if path > 0 || skip == 0 {
@@ -211,11 +212,11 @@ impl Url {
             tail = path;
         }
         if prefix > 0 {
-            self.prefix += &inp[path .. tail];
+            self.prefix.push_str(&inp[path .. tail]);
             skip = prefix + 1;
         }
         if skip != 0 {
-            self.addr += &inp[skip .. tail];
+            self.addr.push_str(&inp[skip .. tail]);
             let addr_len = self.addr.len();
             self.host_len = self.addr.find(':').unwrap_or(addr_len);
             if addr_len > self.host_len {
@@ -239,16 +240,16 @@ impl Url {
         &self.prefix
     }
 
-    /// Returns url addr
+    /// Returns url address
     #[inline]
-    pub fn get_addr(&self) -> &str {
-        &self.addr
+    pub fn get_address(&self) -> &str {
+        &self.address
     }
 
     /// Returns url host
     #[inline]
     pub fn get_host(&self) -> &str {
-        &self.addr[.. self.host_len]
+        &self.address[.. self.host_len]
     }
 
     /// Returns url port
