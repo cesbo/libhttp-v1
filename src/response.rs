@@ -22,25 +22,19 @@ struct ResponseError(Error);
 
 impl From<Error> for ResponseError {
     #[inline]
-    fn from(e: Error) -> ResponseError {
-        ResponseError(e)
-    }
+    fn from(e: Error) -> ResponseError { ResponseError(e) }
 }
 
 
 impl From<io::Error> for ResponseError {
     #[inline]
-    fn from(e: io::Error) -> ResponseError {
-        ResponseError(e.into())
-    }
+    fn from(e: io::Error) -> ResponseError { ResponseError(e.into()) }
 }
 
 
 impl From<&str> for ResponseError {
     #[inline]
-    fn from(e: &str) -> ResponseError {
-        ResponseError(format_err!("{}", e))
-    }
+    fn from(e: &str) -> ResponseError { ResponseError(format_err!("{}", e)) }
 }
 
 

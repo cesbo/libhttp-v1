@@ -56,7 +56,7 @@ impl From<&str> for HttpClientError {
 ///
 /// fn main() {
 ///     let mut client = HttpClient::new();
-///     client.request.init("GET", "https://example.com");
+///     client.request.init("https://example.com");
 ///     client.request.set_header("user-agent", "libhttp");
 ///     client.send().unwrap();
 ///     client.receive().unwrap();

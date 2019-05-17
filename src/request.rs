@@ -23,25 +23,19 @@ struct RequestError(Error);
 
 impl From<Error> for RequestError {
     #[inline]
-    fn from(e: Error) -> RequestError {
-        RequestError(e)
-    }
+    fn from(e: Error) -> RequestError { RequestError(e) }
 }
 
 
 impl From<io::Error> for RequestError {
     #[inline]
-    fn from(e: io::Error) -> RequestError {
-        RequestError(e.into())
-    }
+    fn from(e: io::Error) -> RequestError { RequestError(e.into()) }
 }
 
 
 impl From<&str> for RequestError {
     #[inline]
-    fn from(e: &str) -> RequestError {
-        RequestError(format_err!("{}", e))
-    }
+    fn from(e: &str) -> RequestError { RequestError(format_err!("{}", e)) }
 }
 
 
@@ -58,9 +52,9 @@ pub struct Request {
 impl Default for Request {
     fn default() -> Request {
         Request {
-            method: String::new(),
+            method: "GET".to_owned(),
             url: Url::default(),
-            version: "HTTP/1.1".to_string(),
+            version: "HTTP/1.1".to_owned(),
             headers: HashMap::new(),
         }
     }
@@ -72,13 +66,8 @@ impl Request {
     #[inline]
     pub fn new() -> Self { Request::default() }
 
-    /// Sets request method and url
-    /// method should be in uppercase
-    pub fn init<S>(&mut self, method: S, url: &str) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        self.method = method.into();
+    /// Sets request url
+    pub fn init(&mut self, url: &str) -> Result<(), Error> {
         self.url.set(url).map_err(RequestError::from)?;
         Ok(())
     }
@@ -165,6 +154,15 @@ impl Request {
         S: ToString,
     {
         self.headers.insert(key.as_ref().to_lowercase(), value.to_string());
+    }
+
+    /// Sets request method
+    /// method should be in uppercase
+    /// Default: `GET`
+    #[inline]
+    pub fn set_method(&mut self, method: &str) {
+        self.method.clear();
+        self.method.push_str(method);
     }
 
     /// Sets protocol version
