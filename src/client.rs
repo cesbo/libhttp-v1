@@ -7,9 +7,9 @@ use std::io::{
 
 use failure::{
     bail,
+    format_err,
     Error,
     Fail,
-    ResultExt,
 };
 
 use crate::request::Request;
@@ -18,13 +18,31 @@ use crate::stream::HttpStream;
 
 
 #[derive(Debug, Fail)]
-enum HttpClientError {
-    #[fail(display = "HttpClient Error")]
-    Context,
-    #[fail(display = "HttpClient IO Error: {}", 0)]
-    Io(io::Error),
-    #[fail(display = "HttpClient: invalid protocol")]
-    InvalidProtocol,
+#[fail(display = "HttpClient Error: {}", 0)]
+struct HttpClientError(Error);
+
+
+impl From<Error> for HttpClientError {
+    #[inline]
+    fn from(e: Error) -> HttpClientError {
+        HttpClientError(e)
+    }
+}
+
+
+impl From<io::Error> for HttpClientError {
+    #[inline]
+    fn from(e: io::Error) -> HttpClientError {
+        HttpClientError(e.into())
+    }
+}
+
+
+impl From<&str> for HttpClientError {
+    #[inline]
+    fn from(e: &str) -> HttpClientError {
+        HttpClientError(format_err!("{}", e))
+    }
 }
 
 
@@ -81,12 +99,12 @@ impl HttpClient {
                 }
                 tls = true;
             }
-            _ => bail!(HttpClientError::InvalidProtocol),
+            _ => bail!(HttpClientError::from("invalid protocol")),
         };
 
-        self.stream.connect(tls, host, port).context(HttpClientError::Context)?;
-        self.request.send(&mut self.stream).context(HttpClientError::Context)?;
-        self.stream.flush().map_err(|e| HttpClientError::Io(e))?;
+        self.stream.connect(tls, host, port).map_err(HttpClientError::from)?;
+        self.request.send(&mut self.stream).map_err(HttpClientError::from)?;
+        self.stream.flush().map_err(HttpClientError::from)?;
 
         Ok(())
     }
@@ -94,9 +112,9 @@ impl HttpClient {
     /// Flushes writing buffer, receives response line and headers
     /// Prepares HTTP stream for reading data
     pub fn receive(&mut self) -> Result<(), Error> {
-        self.stream.flush().map_err(|e| HttpClientError::Io(e))?;
-        self.response.parse(&mut self.stream).context(HttpClientError::Context)?;
-        self.stream.configure(&self.response).context(HttpClientError::Context)?;
+        self.stream.flush().map_err(HttpClientError::from)?;
+        self.response.parse(&mut self.stream).map_err(HttpClientError::from)?;
+        self.stream.configure(&self.response).map_err(HttpClientError::from)?;
 
         Ok(())
     }

@@ -3,9 +3,9 @@ use std::collections::HashMap;
 
 use failure::{
     ensure,
+    format_err,
     Error,
     Fail,
-    ResultExt,
 };
 
 
@@ -22,7 +22,7 @@ fn is_rfc3986(b: u8) -> bool {
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "UrlDecode: invalid hexadecimal code")]
+#[fail(display = "urldecode: invalid hexadecimal code")]
 struct UrlDecodeError;
 
 
@@ -80,8 +80,16 @@ pub fn urlencode(buf: &str) -> String {
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "ParseQuery Error")]
-struct ParseQueryError;
+#[fail(display = "ParseQuery Error: {}", 0)]
+struct ParseQueryError(Error);
+
+
+impl From<Error> for ParseQueryError {
+    #[inline]
+    fn from(e: Error) -> ParseQueryError {
+        ParseQueryError(e)
+    }
+}
 
 
 /// Strings in query format - key-value tuples separated by '&',
@@ -105,9 +113,9 @@ impl Query {
             let mut i = data.splitn(2, '=');
             let key = i.next().unwrap().trim();
             if key.is_empty() { continue }
-            let key = urldecode(key).context(ParseQueryError)?;
+            let key = urldecode(key).map_err(ParseQueryError::from)?;
             let value = i.next().unwrap_or("").trim();
-            let value = urldecode(value).context(ParseQueryError)?;
+            let value = urldecode(value).map_err(ParseQueryError::from)?;
             map.insert(key, value);
         }
 
@@ -117,17 +125,23 @@ impl Query {
 
 
 #[derive(Debug, Fail)]
-enum UrlError {
-    #[fail(display = "Url: length limit")]
-    LengthLimit,
-    #[fail(display = "Url: empty url")]
-    EmptyUrl,
-    #[fail(display = "Url: unexpected relative path")]
-    RelativeUrl,
-    #[fail(display = "Url: invalid port")]
-    InvalidPort,
-    #[fail(display = "Url Error")]
-    Context,
+#[fail(display = "Url Error: {}", 0)]
+struct UrlError(Error);
+
+
+impl From<Error> for UrlError {
+    #[inline]
+    fn from(e: Error) -> UrlError {
+        UrlError(e)
+    }
+}
+
+
+impl From<&str> for UrlError {
+    #[inline]
+    fn from(e: &str) -> UrlError {
+        UrlError(format_err!("{}", e))
+    }
 }
 
 
@@ -172,8 +186,8 @@ impl Url {
         let mut query = 0;
         let mut fragment = 0;
 
-        ensure!(!inp.is_empty(), UrlError::EmptyUrl);
-        ensure!(inp.len() < 2048, UrlError::LengthLimit);
+        ensure!(!inp.is_empty(), UrlError::from("empty url"));
+        ensure!(inp.len() < 2048, UrlError::from("length limit"));
 
         if let Some(v) = inp.find("://") {
             self.scheme.clear();
@@ -189,7 +203,7 @@ impl Url {
             skip = v + 3;
         } else {
             // TODO: relative url
-            ensure!(inp.starts_with('/'), UrlError::RelativeUrl);
+            ensure!(inp.starts_with('/'), UrlError::from("unexpected relative path"));
 
             self.path.clear();
             self.query.clear();
@@ -219,7 +233,7 @@ impl Url {
             tail = query;
         }
         if path > 0 || skip == 0 {
-            self.path = urldecode(&inp[path .. tail]).context(UrlError::Context)?;
+            self.path = urldecode(&inp[path .. tail]).map_err(UrlError::from)?;
             tail = path;
         }
         if prefix > 0 {
@@ -232,7 +246,7 @@ impl Url {
             self.host_len = self.address.find(':').unwrap_or(address_len);
             if address_len > self.host_len {
                 self.port = self.address[self.host_len + 1 ..].parse::<u16>().unwrap_or(0);
-                ensure!(self.port > 0, UrlError::InvalidPort);
+                ensure!(self.port > 0, UrlError::from("invalid port"));
             }
         }
 

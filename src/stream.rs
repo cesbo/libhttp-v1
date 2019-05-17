@@ -39,9 +39,31 @@ impl Stream for SslStream<TcpStream> {}
 
 
 #[derive(Debug, Fail)]
-enum HttpStreamError {
-    #[fail(display = "HttpStream IO Error: {}", 0)]
-    Io(io::Error),
+#[fail(display = "HttpStream Error: {}", 0)]
+struct HttpStreamError(Error);
+
+
+impl From<io::Error> for HttpStreamError {
+    #[inline]
+    fn from(e: io::Error) -> HttpStreamError {
+        HttpStreamError(e.into())
+    }
+}
+
+
+impl From<openssl::error::ErrorStack> for HttpStreamError {
+    #[inline]
+    fn from(e: openssl::error::ErrorStack) -> HttpStreamError {
+        HttpStreamError(SslError(e).into())
+    }
+}
+
+
+impl From<openssl::ssl::HandshakeError<TcpStream>> for HttpStreamError {
+    #[inline]
+    fn from(e: openssl::ssl::HandshakeError<TcpStream>) -> HttpStreamError {
+        HttpStreamError(HandshakeError(e).into())
+    }
 }
 
 
@@ -194,14 +216,14 @@ impl HttpStream {
         if self.inner.is_some() {
             // keep-alive
         } else {
-            let stream = self.io_connect(host, port).map_err(|e| HttpStreamError::Io(e))?;
+            let stream = self.io_connect(host, port).map_err(HttpStreamError::from)?;
 
             if tls {
-                let connector = SslConnector::builder(SslMethod::tls()).map_err(|e| SslError(e))?;
-                let mut ssl = connector.build().configure().map_err(|e| SslError(e))?;
+                let connector = SslConnector::builder(SslMethod::tls()).map_err(HttpStreamError::from)?;
+                let mut ssl = connector.build().configure().map_err(HttpStreamError::from)?;
                 ssl.set_use_server_name_indication(true);
                 ssl.set_verify_hostname(true);
-                let stream = ssl.connect(host, stream).map_err(|e| HandshakeError(e))?;
+                let stream = ssl.connect(host, stream).map_err(HttpStreamError::from)?;
                 self.inner = Some(Box::new(stream));
             } else {
                 self.inner = Some(Box::new(stream));
@@ -438,7 +460,7 @@ impl fmt::Display for SslError {
         let s = self.0.errors().get(0)
             .and_then(|ee| ee.reason())
             .unwrap_or("");
-        write!(f, "HttpStream SSL Error: {}", s)
+        write!(f, "SSL Error: {}", s)
     }
 }
 
@@ -454,10 +476,10 @@ impl fmt::Display for HandshakeError {
                 let s = ee.errors().get(0)
                     .and_then(|eee| eee.reason())
                     .unwrap_or("");
-                write!(f, "HttpStream Handshake Setup Failure: {}", s)
+                write!(f, "Handshake Setup Failure: {}", s)
             }
             openssl::ssl::HandshakeError::Failure(ee) => {
-                write!(f, "HttpStream Handshake Failure: ")?;
+                write!(f, "Handshake Failure: ")?;
                 let inner_error = ee.error();
                 if let Some(io_ee) = inner_error.io_error() {
                     write!(f, "{}", io_ee)?;

@@ -7,9 +7,9 @@ use std::io::{
 
 use failure::{
     ensure,
+    format_err,
     Error,
     Fail,
-    ResultExt,
 };
 
 use crate::tools;
@@ -17,15 +17,31 @@ use crate::url::Url;
 
 
 #[derive(Debug, Fail)]
-enum RequestError {
-    #[fail(display = "Request Error")]
-    Context,
-    #[fail(display = "Request IO Error: {}", 0)]
-    Io(io::Error),
-    #[fail(display = "Request: unexpected eof")]
-    UnexpectedEof,
-    #[fail(display = "Request: invalid format")]
-    InvalidFormat,
+#[fail(display = "Request Error: {}", 0)]
+struct RequestError(Error);
+
+
+impl From<Error> for RequestError {
+    #[inline]
+    fn from(e: Error) -> RequestError {
+        RequestError(e)
+    }
+}
+
+
+impl From<io::Error> for RequestError {
+    #[inline]
+    fn from(e: io::Error) -> RequestError {
+        RequestError(e.into())
+    }
+}
+
+
+impl From<&str> for RequestError {
+    #[inline]
+    fn from(e: &str) -> RequestError {
+        RequestError(format_err!("{}", e))
+    }
 }
 
 
@@ -63,7 +79,7 @@ impl Request {
         S: Into<String>,
     {
         self.method = method.into();
-        self.url.set(url).context(RequestError::Context)?;
+        self.url.set(url).map_err(RequestError::from)?;
         Ok(())
     }
 
@@ -74,11 +90,11 @@ impl Request {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            let r = reader.read_line(&mut buffer).map_err(|e| RequestError::Io(e))?;
+            let r = reader.read_line(&mut buffer).map_err(RequestError::from)?;
 
             let s = buffer.trim();
             if s.is_empty() {
-                ensure!(!first_line && r != 0, RequestError::UnexpectedEof);
+                ensure!(!first_line && r != 0, RequestError::from("unexpected eof"));
                 break;
             }
 
@@ -86,11 +102,12 @@ impl Request {
                 first_line = false;
 
                 self.method.clear();
-                let skip = s.find(char::is_whitespace).ok_or(RequestError::InvalidFormat)?;
+
+                let skip = s.find(char::is_whitespace).ok_or_else(|| RequestError::from("invalid format"))?;
                 self.method.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
-                let skip = s.find(char::is_whitespace).ok_or(RequestError::InvalidFormat)?;
-                self.url.set(&s[.. skip]).context(RequestError::Context)?;
+                let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
+                self.url.set(&s[.. skip]).map_err(RequestError::from)?;
 
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
@@ -135,7 +152,7 @@ impl Request {
     /// Writes request line and headers to dst
     #[inline]
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), Error> {
-        self.io_send(dst).map_err(|e| RequestError::Io(e))?;
+        self.io_send(dst).map_err(RequestError::from)?;
         Ok(())
     }
 

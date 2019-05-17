@@ -7,6 +7,7 @@ use std::io::{
 
 use failure::{
     ensure,
+    format_err,
     Error,
     Fail,
 };
@@ -15,15 +16,31 @@ use crate::tools;
 
 
 #[derive(Debug, Fail)]
-enum ResponseError {
-    #[fail(display = "Response IO Error: {}", 0)]
-    Io(io::Error),
-    #[fail(display = "Response: unexpected EOF")]
-    UnexpectedEof,
-    #[fail(display = "Response: invalid format")]
-    InvalidFormat,
-    #[fail(display = "Response: invalid status code")]
-    InvalidCode,
+#[fail(display = "Response Error: {}", 0)]
+struct ResponseError(Error);
+
+
+impl From<Error> for ResponseError {
+    #[inline]
+    fn from(e: Error) -> ResponseError {
+        ResponseError(e)
+    }
+}
+
+
+impl From<io::Error> for ResponseError {
+    #[inline]
+    fn from(e: io::Error) -> ResponseError {
+        ResponseError(e.into())
+    }
+}
+
+
+impl From<&str> for ResponseError {
+    #[inline]
+    fn from(e: &str) -> ResponseError {
+        ResponseError(format_err!("{}", e))
+    }
 }
 
 
@@ -61,11 +78,11 @@ impl Response {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            let r = reader.read_line(&mut buffer).map_err(|e| ResponseError::Io(e))?;
+            let r = reader.read_line(&mut buffer).map_err(ResponseError::from)?;
 
             let s = buffer.trim();
             if s.is_empty() {
-                ensure!(!first_line && r != 0, ResponseError::UnexpectedEof);
+                ensure!(!first_line && r != 0, ResponseError::from("unexpected eof"));
                 break;
             }
 
@@ -76,12 +93,12 @@ impl Response {
                 self.code = 0;
                 self.reason.clear();
 
-                let skip = s.find(char::is_whitespace).ok_or(ResponseError::InvalidFormat)?;
+                let skip = s.find(char::is_whitespace).ok_or_else(|| ResponseError::from("invalid format"))?;
                 self.version.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.code = s[.. skip].parse().unwrap_or(0);
-                ensure!(self.code >= 100 && self.code < 600, ResponseError::InvalidCode);
+                ensure!(self.code >= 100 && self.code < 600, ResponseError::from("invalid status code"));
 
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
@@ -119,7 +136,7 @@ impl Response {
     /// Writes response line and headers to dst
     #[inline]
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), Error> {
-        self.io_send(dst).map_err(|e| ResponseError::Io(e))?;
+        self.io_send(dst).map_err(ResponseError::from)?;
         Ok(())
     }
 
