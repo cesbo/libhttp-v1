@@ -20,6 +20,8 @@ use crate::url::Url;
 enum RequestError {
     #[fail(display = "Request Error")]
     Context,
+    #[fail(display = "Request IO Error: {}", 0)]
+    Io(io::Error),
     #[fail(display = "Request: unexpected eof")]
     UnexpectedEof,
     #[fail(display = "Request: invalid format")]
@@ -72,7 +74,7 @@ impl Request {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            let r = reader.read_line(&mut buffer)?;
+            let r = reader.read_line(&mut buffer).map_err(|e| RequestError::Io(e))?;
 
             let s = buffer.trim();
             if s.is_empty() {
@@ -133,7 +135,7 @@ impl Request {
     /// Writes request line and headers to dst
     #[inline]
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), Error> {
-        self.io_send(dst).context(RequestError::Context)?;
+        self.io_send(dst).map_err(|e| RequestError::Io(e))?;
         Ok(())
     }
 

@@ -17,7 +17,6 @@ use std::time::Duration;
 use failure::{
     Error,
     Fail,
-    ResultExt,
 };
 
 use openssl::ssl::{
@@ -40,8 +39,10 @@ impl Stream for SslStream<TcpStream> {}
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "HttpStream Error")]
-struct HttpStreamError;
+enum HttpStreamError {
+    #[fail(display = "HttpStream IO Error: {}", 0)]
+    Io(io::Error),
+}
 
 
 /// Internal transfer state
@@ -165,7 +166,14 @@ impl HttpStream {
         let addrs = (host, port).to_socket_addrs()?;
         for addr in addrs {
             match TcpStream::connect_timeout(&addr, self.timeout) {
-                Ok(v) => return Ok(v),
+                Ok(v) => {
+                    if self.ttl != DEFAULT_IP_TTL { v.set_ttl(self.ttl)? }
+                    if self.nodelay != DEFAULT_TCP_NODELAY { v.set_nodelay(self.nodelay)? }
+                    v.set_read_timeout(Some(self.timeout))?;
+                    v.set_write_timeout(Some(self.timeout))?;
+
+                    return Ok(v)
+                },
                 Err(e) => last_err = Some(e),
             }
         }
@@ -186,25 +194,14 @@ impl HttpStream {
         if self.inner.is_some() {
             // keep-alive
         } else {
-            let stream = self.io_connect(host, port).context(HttpStreamError)?;
-
-            if self.ttl != DEFAULT_IP_TTL {
-                stream.set_ttl(self.ttl).context(HttpStreamError)?;
-            }
-
-            if self.nodelay != DEFAULT_TCP_NODELAY {
-                stream.set_nodelay(self.nodelay).context(HttpStreamError)?;
-            }
-
-            stream.set_read_timeout(Some(self.timeout)).context(HttpStreamError)?;
-            stream.set_write_timeout(Some(self.timeout)).context(HttpStreamError)?;
+            let stream = self.io_connect(host, port).map_err(|e| HttpStreamError::Io(e))?;
 
             if tls {
-                let connector = SslConnector::builder(SslMethod::tls())?;
-                let mut ssl = connector.build().configure()?;
+                let connector = SslConnector::builder(SslMethod::tls()).map_err(|e| SslError(e))?;
+                let mut ssl = connector.build().configure().map_err(|e| SslError(e))?;
                 ssl.set_use_server_name_indication(true);
                 ssl.set_verify_hostname(true);
-                let stream = ssl.connect(host, stream)?;
+                let stream = ssl.connect(host, stream).map_err(|e| HandshakeError(e))?;
                 self.inner = Some(Box::new(stream));
             } else {
                 self.inner = Some(Box::new(stream));
@@ -433,7 +430,6 @@ impl Write for HttpStream {
 
 
 #[derive(Debug, Fail)]
-#[cause]
 struct SslError(openssl::error::ErrorStack);
 
 
@@ -447,15 +443,7 @@ impl fmt::Display for SslError {
 }
 
 
-impl From<openssl::error::ErrorStack> for SslError {
-    fn from(e: openssl::error::ErrorStack) -> SslError {
-        SslError(e)
-    }
-}
-
-
 #[derive(Debug, Fail)]
-#[cause]
 struct HandshakeError(openssl::ssl::HandshakeError<TcpStream>);
 
 
@@ -487,12 +475,5 @@ impl fmt::Display for HandshakeError {
             }
             _ => unimplemented!(),
         }
-    }
-}
-
-
-impl From<openssl::ssl::HandshakeError<TcpStream>> for HandshakeError {
-    fn from(e: openssl::ssl::HandshakeError<TcpStream>) -> HandshakeError {
-        HandshakeError(e)
     }
 }

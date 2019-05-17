@@ -9,7 +9,6 @@ use failure::{
     ensure,
     Error,
     Fail,
-    ResultExt,
 };
 
 use crate::tools;
@@ -17,8 +16,8 @@ use crate::tools;
 
 #[derive(Debug, Fail)]
 enum ResponseError {
-    #[fail(display = "Response Error")]
-    Context,
+    #[fail(display = "Response IO Error: {}", 0)]
+    Io(io::Error),
     #[fail(display = "Response: unexpected EOF")]
     UnexpectedEof,
     #[fail(display = "Response: invalid format")]
@@ -62,7 +61,7 @@ impl Response {
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            let r = reader.read_line(&mut buffer)?;
+            let r = reader.read_line(&mut buffer).map_err(|e| ResponseError::Io(e))?;
 
             let s = buffer.trim();
             if s.is_empty() {
@@ -120,7 +119,7 @@ impl Response {
     /// Writes response line and headers to dst
     #[inline]
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), Error> {
-        self.io_send(dst).context(ResponseError::Context)?;
+        self.io_send(dst).map_err(|e| ResponseError::Io(e))?;
         Ok(())
     }
 

@@ -21,6 +21,8 @@ use crate::stream::HttpStream;
 enum HttpClientError {
     #[fail(display = "HttpClient Error")]
     Context,
+    #[fail(display = "HttpClient IO Error: {}", 0)]
+    Io(io::Error),
     #[fail(display = "HttpClient: invalid protocol")]
     InvalidProtocol,
 }
@@ -84,7 +86,7 @@ impl HttpClient {
 
         self.stream.connect(tls, host, port).context(HttpClientError::Context)?;
         self.request.send(&mut self.stream).context(HttpClientError::Context)?;
-        self.stream.flush().context(HttpClientError::Context)?;
+        self.stream.flush().map_err(|e| HttpClientError::Io(e))?;
 
         Ok(())
     }
@@ -92,7 +94,7 @@ impl HttpClient {
     /// Flushes writing buffer, receives response line and headers
     /// Prepares HTTP stream for reading data
     pub fn receive(&mut self) -> Result<(), Error> {
-        self.stream.flush().context(HttpClientError::Context)?;
+        self.stream.flush().map_err(|e| HttpClientError::Io(e))?;
         self.response.parse(&mut self.stream).context(HttpClientError::Context)?;
         self.stream.configure(&self.response).context(HttpClientError::Context)?;
 
