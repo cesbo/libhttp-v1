@@ -51,7 +51,7 @@ fn response_parse() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST1.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
-    assert_eq!(response.get_code(), &CODE200);
+    assert_eq!(response.get_code(), CODE200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.get_header("server").unwrap(), "libhttp");
     assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
@@ -62,7 +62,7 @@ fn response_parse_spaces() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_SPACES.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
-    assert_eq!(response.get_code(), &CODE200);
+    assert_eq!(response.get_code(), CODE200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.get_header("server").unwrap(), "libhttp");
     assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
@@ -73,7 +73,7 @@ fn response_parse_tabs() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_TABS.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
-    assert_eq!(response.get_code(), &CODE200);
+    assert_eq!(response.get_code(), CODE200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.get_header("server").unwrap(), "libhttp");
     assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
@@ -84,7 +84,7 @@ fn response_parse_tabs_case() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_TABS_CASE.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
-    assert_eq!(response.get_code(), &CODE200);
+    assert_eq!(response.get_code(), CODE200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.get_header("server-name").unwrap(), "libhttp");
     assert_eq!(response.get_header("date_date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
@@ -95,7 +95,7 @@ fn response_parse_unix() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_UNIX.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "HTTP/1.1");
-    assert_eq!(response.get_code(), &CODE200);
+    assert_eq!(response.get_code(), CODE200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.get_header("server").unwrap(), "libhttp");
     assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
@@ -106,7 +106,7 @@ fn response_parse_bad_code() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST3.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "RTSP/1.0");
-    assert_eq!(response.get_code(), &CODE0);
+    assert_eq!(response.get_code(), CODE0);
     assert_eq!(response.get_reason(), "");
     assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
 }
@@ -117,7 +117,7 @@ fn response_parse_test4() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST4.as_bytes())).unwrap();
     assert_eq!(response.get_version(), "RTSP/1.0");
-    assert_eq!(response.get_code(), &CODE404);
+    assert_eq!(response.get_code(), CODE404);
 }
 
 #[test]

@@ -16,14 +16,14 @@ use crate::response::Response;
 /// Switch authentication type by request code
 pub fn auth_switch(response: &mut Response, request: &mut Request) {
     if  ! &request.url.get_prefix().is_empty() {
-        match *response.get_code() as i32 {
+        match response.get_code() {
             401 => {
-                let head = match &response.get_header("www-authenticate") {
+                let head = match response.get_header("www-authenticate") {
                     Some(v) => v,
-                    _ => "",
+                    _ => return,
                 };
                 if head[.. 6].eq_ignore_ascii_case("digest") {
-                    digest(response, request);
+                    digest(head, request);
                 }
             }
             _ => basic(request),
@@ -39,7 +39,7 @@ pub fn basic(request: &mut Request) {
 
 
 /// Digest Access Authentication (RFC 2069)
-pub fn digest(response: &mut Response, request: &mut Request) {
+pub fn digest(head: &String, request: &mut Request) {
     let mut realm = "";
     let mut nonce = "";
     let mut qop = "";
@@ -51,11 +51,7 @@ pub fn digest(response: &mut Response, request: &mut Request) {
     let mut i = request.url.get_prefix().splitn(2, ':');
     let username = i.next().unwrap_or("");
     let password = i.next().unwrap_or("");
-    let header = match response.get_header("www-authenticate") {
-        Some(v) => v.as_str(),
-        _ => "",
-    };
-    for data in header[7 ..].split(',') {
+    for data in head[7 ..].split(',') {
         let mut i = data.splitn(2, '=');
         let key = i.next().unwrap();
         if key.is_empty() {

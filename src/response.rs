@@ -108,8 +108,8 @@ impl Response {
     }
 
     #[inline]
-    pub fn get_code(&self) -> &usize {
-        &(self.code)
+    pub fn get_code(&self) -> usize {
+        self.code as usize
     }
 
     #[inline]

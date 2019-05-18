@@ -17,7 +17,7 @@ fn test_auth_basic() {
     client.request.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
-    assert_eq!(200, *client.response.get_code() as i32);
+    assert_eq!(200, client.response.get_code());
 }
 
 #[test]
@@ -27,10 +27,10 @@ fn test_auth_digest_simple() {
     client.request.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
-    assert_eq!(401, *client.response.get_code() as i32);
+    assert_eq!(401, client.response.get_code());
     client.send().unwrap();
     client.receive().unwrap();
-    assert_eq!(200, *client.response.get_code() as i32);
+    assert_eq!(200, client.response.get_code());
 }
 
 #[test]
