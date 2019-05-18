@@ -17,7 +17,7 @@ use crate::url::Url;
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "Request Error: {}", 0)]
+#[fail(display = "Request: {}", 0)]
 struct RequestError(Error);
 
 
@@ -175,20 +175,14 @@ impl Request {
 
     /// Returns request method
     #[inline]
-    pub fn get_method(&self) -> &str {
-        self.method.as_str()
-    }
+    pub fn get_method(&self) -> &str { self.method.as_str() }
 
     /// Returns request version
     #[inline]
-    pub fn get_version(&self) -> &str {
-        self.version.as_str()
-    }
+    pub fn get_version(&self) -> &str { self.version.as_str() }
 
     /// Returns reference to the request header value value corresponding to the key
     /// key should be in lowercase
     #[inline]
-    pub fn get_header(&self, key: &str) -> Option<&String> {
-        self.headers.get(key)
-    }
+    pub fn get_header(&self, key: &str) -> Option<&String> { self.headers.get(key) }
 }

@@ -80,15 +80,13 @@ pub fn urlencode(buf: &str) -> String {
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "ParseQuery Error: {}", 0)]
+#[fail(display = "ParseQuery: {}", 0)]
 struct ParseQueryError(Error);
 
 
 impl From<Error> for ParseQueryError {
     #[inline]
-    fn from(e: Error) -> ParseQueryError {
-        ParseQueryError(e)
-    }
+    fn from(e: Error) -> ParseQueryError { ParseQueryError(e) }
 }
 
 
@@ -125,23 +123,19 @@ impl Query {
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "Url Error: {}", 0)]
+#[fail(display = "Url: {}", 0)]
 struct UrlError(Error);
 
 
 impl From<Error> for UrlError {
     #[inline]
-    fn from(e: Error) -> UrlError {
-        UrlError(e)
-    }
+    fn from(e: Error) -> UrlError { UrlError(e) }
 }
 
 
 impl From<&str> for UrlError {
     #[inline]
-    fn from(e: &str) -> UrlError {
-        UrlError(format_err!("{}", e))
-    }
+    fn from(e: &str) -> UrlError { UrlError(format_err!("{}", e)) }
 }
 
 
@@ -255,49 +249,33 @@ impl Url {
 
     /// Returns url scheme
     #[inline]
-    pub fn get_scheme(&self) -> &str {
-        &self.scheme
-    }
+    pub fn get_scheme(&self) -> &str { &self.scheme }
 
     /// Returns url prefix
     #[inline]
-    pub fn get_prefix(&self) -> &str {
-        &self.prefix
-    }
+    pub fn get_prefix(&self) -> &str { &self.prefix }
 
     /// Returns url address
     #[inline]
-    pub fn get_address(&self) -> &str {
-        &self.address
-    }
+    pub fn get_address(&self) -> &str { &self.address }
 
     /// Returns url host
     #[inline]
-    pub fn get_host(&self) -> &str {
-        &self.address[.. self.host_len]
-    }
+    pub fn get_host(&self) -> &str { &self.address[.. self.host_len] }
 
     /// Returns url port
     #[inline]
-    pub fn get_port(&self) -> u16 {
-        self.port
-    }
+    pub fn get_port(&self) -> u16 { self.port }
 
     /// Returns url path
     #[inline]
-    pub fn get_path(&self) -> &str {
-        &self.path
-    }
+    pub fn get_path(&self) -> &str { &self.path }
 
     /// Returns url query
     #[inline]
-    pub fn get_query(&self) -> &str {
-        &self.query
-    }
+    pub fn get_query(&self) -> &str { &self.query }
 
     /// Returns url fragment
     #[inline]
-    pub fn get_fragment(&self) -> &str {
-        &self.fragment
-    }
+    pub fn get_fragment(&self) -> &str { &self.fragment }
 }

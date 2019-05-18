@@ -39,7 +39,7 @@ impl Stream for SslStream<TcpStream> {}
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "HttpStream Error: {}", 0)]
+#[fail(display = "HttpStream: {}", 0)]
 struct HttpStreamError(Error);
 
 
@@ -460,7 +460,7 @@ impl fmt::Display for SslError {
         let s = self.0.errors().get(0)
             .and_then(|ee| ee.reason())
             .unwrap_or("");
-        write!(f, "SSL Error: {}", s)
+        write!(f, "SSL: {}", s)
     }
 }
 
@@ -471,15 +471,15 @@ struct HandshakeError(openssl::ssl::HandshakeError<TcpStream>);
 
 impl fmt::Display for HandshakeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Handshake: ")?;
         match &self.0 {
             openssl::ssl::HandshakeError::SetupFailure(ee) => {
                 let s = ee.errors().get(0)
                     .and_then(|eee| eee.reason())
                     .unwrap_or("");
-                write!(f, "Handshake Setup Failure: {}", s)
+                write!(f, "{}", s)
             }
             openssl::ssl::HandshakeError::Failure(ee) => {
-                write!(f, "Handshake Failure: ")?;
                 let inner_error = ee.error();
                 if let Some(io_ee) = inner_error.io_error() {
                     write!(f, "{}", io_ee)?;

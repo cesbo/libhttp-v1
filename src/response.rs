@@ -16,7 +16,7 @@ use crate::tools;
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "Response Error: {}", 0)]
+#[fail(display = "Response: {}", 0)]
 struct ResponseError(Error);
 
 
@@ -155,38 +155,26 @@ impl Response {
 
     /// Sets response status code
     #[inline]
-    pub fn set_code(&mut self, code: usize) {
-        self.code = code;
-    }
+    pub fn set_code(&mut self, code: usize) { self.code = code }
 
     /// Sets response reason
     #[inline]
-    pub fn set_reason(&mut self, version: &str) {
-        self.reason.push_str(version);
-    }
+    pub fn set_reason(&mut self, version: &str) { self.reason.push_str(version) }
 
     /// Returns reference to the response header value value corresponding to the key
     /// key should be in lowercase
     #[inline]
-    pub fn get_header(&self, header: &str) -> Option<&String> {
-        self.headers.get(header)
-    }
+    pub fn get_header(&self, header: &str) -> Option<&String> { self.headers.get(header) }
 
     /// Returns response version
     #[inline]
-    pub fn get_version(&self) -> &str {
-        self.version.as_str()
-    }
+    pub fn get_version(&self) -> &str { self.version.as_str() }
 
     /// Returns response status code
     #[inline]
-    pub fn get_code(&self) -> usize {
-        self.code
-    }
+    pub fn get_code(&self) -> usize { self.code }
 
     /// Returns response reason
     #[inline]
-    pub fn get_reason(&self) -> &str {
-        self.reason.as_str()
-    }
+    pub fn get_reason(&self) -> &str { self.reason.as_str() }
 }

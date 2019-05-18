@@ -18,31 +18,25 @@ use crate::stream::HttpStream;
 
 
 #[derive(Debug, Fail)]
-#[fail(display = "HttpClient Error: {}", 0)]
+#[fail(display = "HttpClient: {}", 0)]
 struct HttpClientError(Error);
 
 
 impl From<Error> for HttpClientError {
     #[inline]
-    fn from(e: Error) -> HttpClientError {
-        HttpClientError(e)
-    }
+    fn from(e: Error) -> HttpClientError { HttpClientError(e) }
 }
 
 
 impl From<io::Error> for HttpClientError {
     #[inline]
-    fn from(e: io::Error) -> HttpClientError {
-        HttpClientError(e.into())
-    }
+    fn from(e: io::Error) -> HttpClientError { HttpClientError(e.into()) }
 }
 
 
 impl From<&str> for HttpClientError {
     #[inline]
-    fn from(e: &str) -> HttpClientError {
-        HttpClientError(format_err!("{}", e))
-    }
+    fn from(e: &str) -> HttpClientError { HttpClientError(format_err!("{}", e)) }
 }
 
 
