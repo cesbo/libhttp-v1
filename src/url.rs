@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use failure::{
     ensure,
-    format_err,
     Error,
     Fail,
 };
@@ -135,7 +134,7 @@ impl From<Error> for UrlError {
 
 impl From<&str> for UrlError {
     #[inline]
-    fn from(e: &str) -> UrlError { UrlError(format_err!("{}", e)) }
+    fn from(e: &str) -> UrlError { UrlError(failure::err_msg(e.to_owned())) }
 }
 
 

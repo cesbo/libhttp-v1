@@ -7,7 +7,6 @@ use std::io::{
 
 use failure::{
     ensure,
-    format_err,
     Error,
     Fail,
 };
@@ -35,7 +34,7 @@ impl From<io::Error> for RequestError {
 
 impl From<&str> for RequestError {
     #[inline]
-    fn from(e: &str) -> RequestError { RequestError(format_err!("{}", e)) }
+    fn from(e: &str) -> RequestError { RequestError(failure::err_msg(e.to_owned())) }
 }
 
 

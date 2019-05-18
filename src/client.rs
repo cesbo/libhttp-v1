@@ -7,7 +7,6 @@ use std::io::{
 
 use failure::{
     bail,
-    format_err,
     Error,
     Fail,
 };
@@ -36,7 +35,7 @@ impl From<io::Error> for HttpClientError {
 
 impl From<&str> for HttpClientError {
     #[inline]
-    fn from(e: &str) -> HttpClientError { HttpClientError(format_err!("{}", e)) }
+    fn from(e: &str) -> HttpClientError { HttpClientError(failure::err_msg(e.to_owned())) }
 }
 
 
