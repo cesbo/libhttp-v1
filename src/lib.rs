@@ -12,10 +12,14 @@ pub use crate::stream::HttpStream;
 mod client;
 pub use crate::client::HttpClient;
 
+mod urldecode;
+pub use crate::urldecode::urldecode;
+
+mod urlencode;
+pub use crate::urlencode::urlencode;
+
 mod url;
-pub use crate::url::{
-    Url,
-    urlencode,
-    urldecode,
-    Query,
-};
+pub use crate::url::Url;
+
+mod query;
+pub use crate::query::Query;
