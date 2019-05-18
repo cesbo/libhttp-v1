@@ -34,6 +34,32 @@ fn test_auth_digest_simple() {
 }
 
 #[test]
+fn test_auth_digest_auth() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "http://us:testpass@httpbin.org/digest-auth/auth/us/testpass");
+    client.request.set("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(401, client.response.get_code());
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(200, client.response.get_code());
+}
+
+#[test]
+fn test_auth_digest_authint() {
+    let mut client = HttpClient::new();
+    client.request.init("GET", "http://us:testpass@httpbin.org/digest-auth/auth-int/us/testpass");
+    client.request.set("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(401, client.response.get_code());
+    client.send().unwrap();
+    client.receive().unwrap();
+    //assert_eq!(200, client.response.get_code());
+}
+
+#[test]
 fn test_get_eof() {
     let mut client = HttpClient::new();
     client.request.init("GET", "http://127.0.0.1:9090/get");
