@@ -3,6 +3,7 @@ use openssl::hash::{
     Hasher, 
     MessageDigest,
 };
+use openssl::rand::rand_bytes;
 use base64::encode;
 
 use crate::request::Request;
@@ -41,6 +42,11 @@ pub fn basic(request: &mut Request) {
 pub fn digest(response: &mut Response, request: &mut Request) {
     let mut realm = "";
     let mut nonce = "";
+    let mut qop = "";
+    let mut opaque = "";
+    let mut md5_entitu_body = ""; //TODO write fn md5_entitu_body(body: ?) -> str {...}
+    let mut nonce_count = String::new(); // TODO - write fn
+    let mut client_nonce = String::new(); // TODO - write fn
     let uri = request.url.get_path();
     let mut i = request.url.get_prefix().splitn(2, ':');
     let username = i.next().unwrap_or("");
@@ -61,30 +67,74 @@ pub fn digest(response: &mut Response, request: &mut Request) {
         };
         if key.trim().eq_ignore_ascii_case("nonce") {
             nonce = value.trim().trim_matches('\"')
-        };     
+        };
+        if key.trim().eq_ignore_ascii_case("qop") {
+            qop = value.trim().trim_matches('\"')
+        };
+        if key.trim().eq_ignore_ascii_case("opaque") {
+            opaque = value.trim().trim_matches('\"')
+        };    
     }
+
+    if ! qop.is_empty() {
+        if request.nonce_count > 99999998 {
+            request.nonce_count = 0;
+        }
+        request.nonce_count += 1;
+        let mut deltax = 99999999;
+        while deltax > request.nonce_count {
+            deltax = deltax / 10;
+            nonce_count += "0";
+        }
+        nonce_count += &request.nonce_count.to_string();
+    }
+
+    let mut buf = [0; 4];
+    rand_bytes(&mut buf).unwrap();
+    client_nonce = hex2string(&buf);
 
     let mut h = Hasher::new(MessageDigest::md5()).unwrap();
     [username, ":", realm, ":", password].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     let ha1 = h.finish().unwrap();
-
-    [request.get_method(), ":", uri].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+    
+    match qop {
+        "auth-int" => {
+            [request.get_method(), ":", uri, ":", md5_entitu_body].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+        }
+        _ => {
+            [request.get_method(), ":", uri].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+        }
+    };
     let ha2 = h.finish().unwrap();
 
     update_hex(ha1.as_ref(), &mut h);
-    [ ":", nonce, ":"].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+    match qop {
+        "auth" | "auth-int" => {
+            [ ":", nonce, ":", nonce_count.as_str(), ":", client_nonce.as_str(), ":", qop, ":"].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+        }
+        _ => {
+            [ ":", nonce, ":"].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+        }
+    };
     update_hex(ha2.as_ref(), &mut h);
 
     let hr = h.finish().unwrap();
     let hresponse = hex2string(hr.as_ref());
         
-    let authorization_head = format!(concat!("Digest ",
+    let mut authorization_head = format!(concat!("Digest ",
         "username=\"{}\", ",
         "realm=\"{}\", ",
         "nonce=\"{}\", ",
         "uri=\"{}\", ",
         "response=\"{}\""),
         username, realm, nonce, uri, hresponse);
+    if qop == "auth" || qop == "auth-int" {
+        authorization_head += &format! (", qop=\"{}\", nc={}, cnonce=\"{}\"",
+            qop, nonce_count.as_str(), client_nonce.as_str());
+    }
+    if ! opaque.is_empty() {
+        authorization_head += &format! (", opaque=\"{}\"", opaque);
+    }
     request.set("authorization", authorization_head);
 }
 
@@ -110,3 +160,4 @@ pub fn hex2string(bytes: &[u8]) -> String {
     }
     ret
 }
+

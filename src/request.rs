@@ -18,6 +18,7 @@ pub struct Request {
     pub url: Url,
     version: String,
     headers: HashMap<String, String>,
+    pub nonce_count: usize
 }
 
 
@@ -28,6 +29,7 @@ impl Default for Request {
             url: Url::new(""),
             version: "HTTP/1.1".to_string(),
             headers: HashMap::new(),
+            nonce_count: 0,
         }
     }
 }
