@@ -53,9 +53,16 @@ fn test_auth_digest_authint() {
     client.request.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
+    println!("================================ digest_authint (step 1):");
+    println!("{:#?}", client.request);
+    println!("{:#?}", client.response);
     assert_eq!(401, client.response.get_code());
     client.send().unwrap();
     client.receive().unwrap();
+    println!("================================ digest_authint (step 2):");
+    println!("{:#?}", client.request);
+    println!("{:#?}", client.response);
+    println!("================================ end digest_authint");
     //assert_eq!(200, client.response.get_code());
 }
 
