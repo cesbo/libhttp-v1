@@ -11,6 +11,42 @@ const HELLO_WORLD: &[u8] = b"Hello, world!";
 
 
 #[test]
+fn test_auth_basic() {
+    let mut client = HttpClient::new();
+    client.request.init("http://test:testpass@httpbin.org/basic-auth/test/testpass").unwrap();
+    client.request.set_header("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(200, client.response.get_code());
+}
+
+#[test]
+fn test_auth_digest_simple() {
+    let mut client = HttpClient::new();
+    client.request.init("http://guest:guest@jigsaw.w3.org/HTTP/Digest/").unwrap();
+    client.request.set_header("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(401, client.response.get_code());
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(200, client.response.get_code());
+}
+
+#[test]
+fn test_auth_digest_auth() {
+    let mut client = HttpClient::new();
+    client.request.init("http://us:testpass@httpbin.org/digest-auth/auth/us/testpass").unwrap();
+    client.request.set_header("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(401, client.response.get_code());
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(200, client.response.get_code());
+}
+
+#[test]
 fn test_get_eof() {
     let mut client = HttpClient::new();
     client.request.init("http://127.0.0.1:9090/get").unwrap();

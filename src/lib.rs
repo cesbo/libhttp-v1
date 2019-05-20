@@ -1,4 +1,5 @@
-pub mod tools;
+mod tools;
+mod auth;
 
 mod request;
 pub use crate::request::Request;

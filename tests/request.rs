@@ -88,7 +88,6 @@ fn parseer_unix() {
     request.parse(&mut BufReader::new(TEST_TAB_UNIX.as_bytes())).unwrap();
     assert_eq!(request.get_method(), "POST");
     assert_eq!(request.get_version(), "RTSP/1.0");
-    println!("{:#?}", request.url);
     assert_eq!(request.url.get_query(), "?query");
     assert_eq!(request.url.get_path(), "/path");
     assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");

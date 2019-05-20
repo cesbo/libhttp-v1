@@ -117,7 +117,7 @@ impl Url {
             tail = path;
         }
         if prefix > 0 {
-            self.prefix.push_str(&inp[path .. tail]);
+            self.prefix.push_str(&inp[skip .. prefix]);
             skip = prefix + 1;
         }
         if skip != 0 {
