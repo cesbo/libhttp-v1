@@ -92,20 +92,12 @@ pub fn digest(head: &String, request: &mut Request) {
     let mut h = Hasher::new(MessageDigest::md5()).unwrap();
     [username, ":", realm, ":", password].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     let ha1 = h.finish().unwrap();
-    
-    match qop {
-        "auth-int" => {
-            [request.get_method(), ":", uri, ":", md5_entitu_body].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
-        }
-        _ => {
-            [request.get_method(), ":", uri].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
-        }
-    };
+    [request.get_method(), ":", uri].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     let ha2 = h.finish().unwrap();
 
     update_hex(ha1.as_ref(), &mut h);
     match qop {
-        "auth" | "auth-int" => {
+        "auth" => {
             [ ":", nonce, ":", nonce_count.as_str(), ":", client_nonce.as_str(), ":", qop, ":"].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
         }
         _ => {
