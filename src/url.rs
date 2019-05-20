@@ -1,26 +1,27 @@
-use failure::{
-    ensure,
-    Error,
-    Fail,
+use std::fmt;
+
+use crate::urldecode::{
+    urldecode,
+    UrlDecodeError,
 };
 
-use crate::urldecode::urldecode;
+
+#[derive(Debug)]
+pub struct UrlError(String);
 
 
-#[derive(Debug, Fail)]
-#[fail(display = "Url: {}", 0)]
-struct UrlError(Error);
-
-
-impl From<Error> for UrlError {
-    #[inline]
-    fn from(e: Error) -> UrlError { UrlError(e) }
+impl fmt::Display for UrlError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Url: {}", self.0) }
 }
 
 
 impl From<&str> for UrlError {
-    #[inline]
-    fn from(e: &str) -> UrlError { UrlError(failure::err_msg(e.to_owned())) }
+    fn from(e: &str) -> UrlError { UrlError(e.to_string()) }
+}
+
+
+impl From<UrlDecodeError> for UrlError {
+    fn from(e: UrlDecodeError) -> UrlError { UrlError(e.to_string()) }
 }
 
 
@@ -44,14 +45,14 @@ pub struct Url {
 
 impl Url {
     /// Allocate new object and parse url
-    pub fn new(u: &str) -> Result<Self, Error> {
+    pub fn new(u: &str) -> Result<Self, UrlError> {
         let mut url = Url::default();
         url.set(u)?;
         Ok(url)
     }
 
     /// Parse and absolute or relative URL from string
-    pub fn set(&mut self, inp: &str) -> Result<(), Error> {
+    pub fn set(&mut self, inp: &str) -> Result<(), UrlError> {
         let mut skip = 0;
         // step values:
         // 0 - prefix
@@ -65,8 +66,8 @@ impl Url {
         let mut query = 0;
         let mut fragment = 0;
 
-        ensure!(!inp.is_empty(), UrlError::from("empty url"));
-        ensure!(inp.len() < 2048, UrlError::from("length limit"));
+        if inp.is_empty() { Err("empty url")? }
+        if inp.len() > 2048 { Err("length limit")? }
 
         if let Some(v) = inp.find("://") {
             self.scheme.clear();
@@ -82,7 +83,7 @@ impl Url {
             skip = v + 3;
         } else {
             // TODO: relative url
-            ensure!(inp.starts_with('/'), UrlError::from("unexpected relative path"));
+            if ! inp.starts_with('/') { Err("unexpected relative path")? }
 
             self.path.clear();
             self.query.clear();
@@ -112,7 +113,7 @@ impl Url {
             tail = query;
         }
         if path > 0 || skip == 0 {
-            self.path = urldecode(&inp[path .. tail]).map_err(UrlError::from)?;
+            self.path = urldecode(&inp[path .. tail])?;
             tail = path;
         }
         if prefix > 0 {
@@ -125,7 +126,7 @@ impl Url {
             self.host_len = self.address.find(':').unwrap_or(address_len);
             if address_len > self.host_len {
                 self.port = self.address[self.host_len + 1 ..].parse::<u16>().unwrap_or(0);
-                ensure!(self.port > 0, UrlError::from("invalid port"));
+                if self.port == 0 { Err("invalid port")? }
             }
         }
 

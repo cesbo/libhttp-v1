@@ -133,10 +133,7 @@ fn test_get_expired_ssl() {
     client.request.set_header("user-agent", "libhttp");
     match client.send() {
         Ok(_) => unreachable!(),
-        Err(ref e) => {
-            println!("test_get_expired_ssl()");
-            e.iter_chain().for_each(|err| println!("\t{}", err));
-        }
+        Err(ref e) => println!("test_get_expired_ssl(): {}", e),
     }
 }
 
@@ -149,10 +146,7 @@ fn test_get_timeout() {
     client.send().unwrap();
     match client.receive() {
         Ok(_) => unreachable!(),
-        Err(ref e) => {
-            println!("test_get_timeout()");
-            e.iter_chain().for_each(|err| println!("\t{}", err));
-        }
+        Err(ref e) => println!("test_get_timeout(): {}", e),
     }
 }
 
@@ -162,9 +156,6 @@ fn test_invalid_url() {
     let mut client = HttpClient::new();
     match client.request.init("http://127.0.0.1:9090/test%QQ") {
         Ok(_) => unreachable!(),
-        Err(ref e) => {
-            println!("test_invalid_url()");
-            e.iter_chain().for_each(|err| println!("\t{}", err));
-        }
+        Err(ref e) => println!("test_invalid_url(): {}", e),
     }
 }

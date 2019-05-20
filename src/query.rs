@@ -1,22 +1,23 @@
 use std::fmt;
 use std::collections::HashMap;
 
-use failure::{
-    Error,
-    Fail,
+use crate::urldecode::{
+    urldecode,
+    UrlDecodeError,
 };
 
-use crate::urldecode::urldecode;
+
+#[derive(Debug)]
+pub struct ParseQueryError(String);
 
 
-#[derive(Debug, Fail)]
-#[fail(display = "ParseQuery: {}", 0)]
-struct ParseQueryError(Error);
+impl fmt::Display for ParseQueryError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "ParseQuery: {}", self.0) }
+}
 
 
-impl From<Error> for ParseQueryError {
-    #[inline]
-    fn from(e: Error) -> ParseQueryError { ParseQueryError(e) }
+impl From<UrlDecodeError> for ParseQueryError {
+    fn from(e: UrlDecodeError) -> ParseQueryError { ParseQueryError(e.to_string()) }
 }
 
 
@@ -34,16 +35,16 @@ impl fmt::Debug for Query {
 
 
 impl Query {
-    pub fn new(query: &str) -> Result<Query, Error> {
+    pub fn new(query: &str) -> Result<Query, ParseQueryError> {
         let mut map = HashMap::new();
 
         for data in query.split('&').filter(|s| !s.is_empty()) {
             let mut i = data.splitn(2, '=');
             let key = i.next().unwrap().trim();
             if key.is_empty() { continue }
-            let key = urldecode(key).map_err(ParseQueryError::from)?;
+            let key = urldecode(key)?;
             let value = i.next().unwrap_or("").trim();
-            let value = urldecode(value).map_err(ParseQueryError::from)?;
+            let value = urldecode(value)?;
             map.insert(key, value);
         }
 

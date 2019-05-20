@@ -1,39 +1,30 @@
-use std::collections::HashMap;
+use std::fmt;
 use std::io::{
     self,
     BufRead,
     Write
 };
-
-use failure::{
-    ensure,
-    Error,
-    Fail,
-};
+use std::collections::HashMap;
 
 use crate::tools;
 
 
-#[derive(Debug, Fail)]
-#[fail(display = "Response: {}", 0)]
-struct ResponseError(Error);
+#[derive(Debug)]
+pub struct ResponseError(String);
 
 
-impl From<Error> for ResponseError {
-    #[inline]
-    fn from(e: Error) -> ResponseError { ResponseError(e) }
+impl fmt::Display for ResponseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Response: {}", self.0) }
 }
 
 
 impl From<io::Error> for ResponseError {
-    #[inline]
-    fn from(e: io::Error) -> ResponseError { ResponseError(e.into()) }
+    fn from(e: io::Error) -> ResponseError { ResponseError(e.to_string()) }
 }
 
 
 impl From<&str> for ResponseError {
-    #[inline]
-    fn from(e: &str) -> ResponseError { ResponseError(failure::err_msg(e.to_owned())) }
+    fn from(e: &str) -> ResponseError { ResponseError(e.to_string()) }
 }
 
 
@@ -66,16 +57,16 @@ impl Response {
 
     /// Reads and parses response line and headers
     /// Reads until empty line found
-    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), Error> {
+    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), ResponseError> {
         let mut first_line = true;
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            let r = reader.read_line(&mut buffer).map_err(ResponseError::from)?;
+            let r = reader.read_line(&mut buffer)?;
 
             let s = buffer.trim();
             if s.is_empty() {
-                ensure!(!first_line && r != 0, ResponseError::from("unexpected eof"));
+                if first_line || r == 0 { Err("unexpected eof")? }
                 break;
             }
 
@@ -86,12 +77,12 @@ impl Response {
                 self.code = 0;
                 self.reason.clear();
 
-                let skip = s.find(char::is_whitespace).ok_or_else(|| ResponseError::from("invalid format"))?;
+                let skip = s.find(char::is_whitespace).ok_or_else(|| "invalid format")?;
                 self.version.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.code = s[.. skip].parse().unwrap_or(0);
-                ensure!(self.code >= 100 && self.code < 600, ResponseError::from("invalid status code"));
+                if self.code < 100 || self.code >= 600 { Err("invalid status code")? }
 
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
@@ -128,8 +119,8 @@ impl Response {
 
     /// Writes response line and headers to dst
     #[inline]
-    pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), Error> {
-        self.io_send(dst).map_err(ResponseError::from)?;
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), ResponseError> {
+        self.io_send(dst)?;
         Ok(())
     }
 

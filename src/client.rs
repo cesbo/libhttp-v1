@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::{
     self,
     BufRead,
@@ -5,37 +6,51 @@ use std::io::{
     Write,
 };
 
-use failure::{
-    bail,
-    Error,
-    Fail,
+use crate::request::{
+    Request,
+    RequestError,
+};
+use crate::response::{
+    Response,
+    ResponseError,
+};
+use crate::stream::{
+    HttpStream,
+    HttpStreamError,
 };
 
-use crate::request::Request;
-use crate::response::Response;
-use crate::stream::HttpStream;
+
+#[derive(Debug)]
+pub struct HttpClientError(String);
 
 
-#[derive(Debug, Fail)]
-#[fail(display = "HttpClient: {}", 0)]
-struct HttpClientError(Error);
-
-
-impl From<Error> for HttpClientError {
-    #[inline]
-    fn from(e: Error) -> HttpClientError { HttpClientError(e) }
+impl fmt::Display for HttpClientError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "HttpClient: {}", self.0) }
 }
 
 
 impl From<io::Error> for HttpClientError {
-    #[inline]
-    fn from(e: io::Error) -> HttpClientError { HttpClientError(e.into()) }
+    fn from(e: io::Error) -> Self { HttpClientError(e.to_string()) }
 }
 
 
 impl From<&str> for HttpClientError {
-    #[inline]
-    fn from(e: &str) -> HttpClientError { HttpClientError(failure::err_msg(e.to_owned())) }
+    fn from(e: &str) -> Self { HttpClientError(e.to_string()) }
+}
+
+
+impl From<RequestError> for HttpClientError {
+    fn from(e: RequestError) -> Self { HttpClientError(e.to_string()) }
+}
+
+
+impl From<ResponseError> for HttpClientError {
+    fn from(e: ResponseError) -> Self { HttpClientError(e.to_string()) }
+}
+
+
+impl From<HttpStreamError> for HttpClientError {
+    fn from(e: HttpStreamError) -> Self { HttpClientError(e.to_string()) }
 }
 
 
@@ -75,7 +90,7 @@ impl HttpClient {
 
     /// Connects to destination host, sends request line and headers
     /// Prepares HTTP stream for writing data
-    pub fn send(&mut self) -> Result<(), Error> {
+    pub fn send(&mut self) -> Result<(), HttpClientError> {
         let mut tls = false;
         let host = self.request.url.get_host();
         let mut port = self.request.url.get_port();
@@ -92,22 +107,22 @@ impl HttpClient {
                 }
                 tls = true;
             }
-            _ => bail!(HttpClientError::from("invalid protocol")),
+            _ => Err("invalid protocol")?,
         };
 
-        self.stream.connect(tls, host, port).map_err(HttpClientError::from)?;
-        self.request.send(&mut self.stream).map_err(HttpClientError::from)?;
-        self.stream.flush().map_err(HttpClientError::from)?;
+        self.stream.connect(tls, host, port)?;
+        self.request.send(&mut self.stream)?;
+        self.stream.flush()?;
 
         Ok(())
     }
 
     /// Flushes writing buffer, receives response line and headers
     /// Prepares HTTP stream for reading data
-    pub fn receive(&mut self) -> Result<(), Error> {
-        self.stream.flush().map_err(HttpClientError::from)?;
-        self.response.parse(&mut self.stream).map_err(HttpClientError::from)?;
-        self.stream.configure(&self.response).map_err(HttpClientError::from)?;
+    pub fn receive(&mut self) -> Result<(), HttpClientError> {
+        self.stream.flush()?;
+        self.response.parse(&mut self.stream)?;
+        self.stream.configure(&self.response)?;
 
         Ok(())
     }

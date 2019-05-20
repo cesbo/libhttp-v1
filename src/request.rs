@@ -1,40 +1,39 @@
-use std::collections::HashMap;
+use std::fmt;
 use std::io::{
     self,
     BufRead,
     Write
 };
-
-use failure::{
-    ensure,
-    Error,
-    Fail,
-};
+use std::collections::HashMap;
 
 use crate::tools;
-use crate::url::Url;
+use crate::url::{
+    Url,
+    UrlError,
+};
 
 
-#[derive(Debug, Fail)]
-#[fail(display = "Request: {}", 0)]
-struct RequestError(Error);
+#[derive(Debug)]
+pub struct RequestError(String);
 
 
-impl From<Error> for RequestError {
-    #[inline]
-    fn from(e: Error) -> RequestError { RequestError(e) }
+impl fmt::Display for RequestError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Request: {}", self.0) }
 }
 
 
 impl From<io::Error> for RequestError {
-    #[inline]
-    fn from(e: io::Error) -> RequestError { RequestError(e.into()) }
+    fn from(e: io::Error) -> RequestError { RequestError(e.to_string()) }
 }
 
 
 impl From<&str> for RequestError {
-    #[inline]
-    fn from(e: &str) -> RequestError { RequestError(failure::err_msg(e.to_owned())) }
+    fn from(e: &str) -> RequestError { RequestError(e.to_string()) }
+}
+
+
+impl From<UrlError> for RequestError {
+    fn from(e: UrlError) -> RequestError { RequestError(e.to_string()) }
 }
 
 
@@ -66,23 +65,23 @@ impl Request {
     pub fn new() -> Self { Request::default() }
 
     /// Sets request url
-    pub fn init(&mut self, url: &str) -> Result<(), Error> {
-        self.url.set(url).map_err(RequestError::from)?;
+    pub fn init(&mut self, url: &str) -> Result<(), RequestError> {
+        self.url.set(url)?;
         Ok(())
     }
 
     /// Reads and parses request line and headers
     /// Reads until empty line found
-    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), Error> {
+    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), RequestError> {
         let mut first_line = true;
         let mut buffer = String::new();
         loop {
             buffer.clear();
-            let r = reader.read_line(&mut buffer).map_err(RequestError::from)?;
+            let r = reader.read_line(&mut buffer)?;
 
             let s = buffer.trim();
             if s.is_empty() {
-                ensure!(!first_line && r != 0, RequestError::from("unexpected eof"));
+                if first_line || r == 0 { Err("unexpected eof")? }
                 break;
             }
 
@@ -91,11 +90,11 @@ impl Request {
 
                 self.method.clear();
 
-                let skip = s.find(char::is_whitespace).ok_or_else(|| RequestError::from("invalid format"))?;
+                let skip = s.find(char::is_whitespace).ok_or_else(|| "invalid format")?;
                 self.method.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
-                self.url.set(&s[.. skip]).map_err(RequestError::from)?;
+                self.url.set(&s[.. skip])?;
 
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
@@ -139,8 +138,8 @@ impl Request {
 
     /// Writes request line and headers to dst
     #[inline]
-    pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), Error> {
-        self.io_send(dst).map_err(RequestError::from)?;
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), RequestError> {
+        self.io_send(dst)?;
         Ok(())
     }
 

@@ -14,11 +14,6 @@ use std::net::{
 };
 use std::time::Duration;
 
-use failure::{
-    Error,
-    Fail,
-};
-
 use openssl::ssl::{
     SslMethod,
     SslConnector,
@@ -38,31 +33,62 @@ impl Stream for TcpStream {}
 impl Stream for SslStream<TcpStream> {}
 
 
-#[derive(Debug, Fail)]
-#[fail(display = "HttpStream: {}", 0)]
-struct HttpStreamError(Error);
+#[derive(Debug)]
+pub struct HttpStreamError(String);
+
+
+impl fmt::Display for HttpStreamError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "HttpStream: {}", self.0) }
+}
 
 
 impl From<io::Error> for HttpStreamError {
-    #[inline]
-    fn from(e: io::Error) -> HttpStreamError {
-        HttpStreamError(e.into())
-    }
+    fn from(e: io::Error) -> Self { HttpStreamError(e.to_string()) }
 }
 
 
 impl From<openssl::error::ErrorStack> for HttpStreamError {
-    #[inline]
-    fn from(e: openssl::error::ErrorStack) -> HttpStreamError {
-        HttpStreamError(SslError(e).into())
+    fn from(e: openssl::error::ErrorStack) -> Self {
+        let s = e.errors().get(0)
+            .and_then(|ee| ee.reason())
+            .unwrap_or("");
+
+        HttpStreamError(format!("SSL: {}", s))
     }
 }
 
 
 impl From<openssl::ssl::HandshakeError<TcpStream>> for HttpStreamError {
-    #[inline]
-    fn from(e: openssl::ssl::HandshakeError<TcpStream>) -> HttpStreamError {
-        HttpStreamError(HandshakeError(e).into())
+    fn from(e: openssl::ssl::HandshakeError<TcpStream>) -> Self {
+        let mut result = String::from("Handshake: ");
+
+        match &e {
+            openssl::ssl::HandshakeError::SetupFailure(ee) => {
+                let s = ee.errors().get(0)
+                    .and_then(|eee| eee.reason())
+                    .unwrap_or("");
+                result.push_str(s);
+            }
+            openssl::ssl::HandshakeError::Failure(ee) => {
+                let inner_error = ee.error();
+                if let Some(io_ee) = inner_error.io_error() {
+                    result.push_str(&io_ee.to_string());
+                } else if let Some(ssl_ee) = inner_error.ssl_error() {
+                    let s = ssl_ee.errors().get(0)
+                        .and_then(|eee| eee.reason())
+                        .unwrap_or("unknown");
+                    result.push_str(s);
+                    let v = ee.ssl().verify_result();
+                    if v.as_raw() != 0 {
+                        result.push_str(": ");
+                        result.push_str(v.error_string());
+                    }
+                }
+            }
+            _ => unimplemented!(),
+        };
+
+        HttpStreamError(result)
     }
 }
 
@@ -206,7 +232,7 @@ impl HttpStream {
 
     /// Opens a TCP connection to a remote host
     /// If connection already opened just clears read/write buffers
-    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<(), Error> {
+    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<(), HttpStreamError> {
         self.rbuf.pos = 0;
         self.rbuf.cap = 0;
         self.wbuf.pos = 0;
@@ -216,14 +242,14 @@ impl HttpStream {
         if self.inner.is_some() {
             // keep-alive
         } else {
-            let stream = self.io_connect(host, port).map_err(HttpStreamError::from)?;
+            let stream = self.io_connect(host, port)?;
 
             if tls {
-                let connector = SslConnector::builder(SslMethod::tls()).map_err(HttpStreamError::from)?;
-                let mut ssl = connector.build().configure().map_err(HttpStreamError::from)?;
+                let connector = SslConnector::builder(SslMethod::tls())?;
+                let mut ssl = connector.build().configure()?;
                 ssl.set_use_server_name_indication(true);
                 ssl.set_verify_hostname(true);
-                let stream = ssl.connect(host, stream).map_err(HttpStreamError::from)?;
+                let stream = ssl.connect(host, stream)?;
                 self.inner = Some(Box::new(stream));
             } else {
                 self.inner = Some(Box::new(stream));
@@ -234,7 +260,7 @@ impl HttpStream {
     }
 
     /// Checks response headers and set content parser behavior
-    pub fn configure(&mut self, response: &Response) -> Result<(), Error> {
+    pub fn configure(&mut self, response: &Response) -> Result<(), HttpStreamError> {
         self.transfer = HttpTransferEncoding::Eof;
 
         if let Some(len) = response.get_header("content-length") {
@@ -447,55 +473,5 @@ impl Write for HttpStream {
         self.wbuf.pos = 0;
         self.wbuf.cap = 0;
         inner.flush()
-    }
-}
-
-
-#[derive(Debug, Fail)]
-struct SslError(openssl::error::ErrorStack);
-
-
-impl fmt::Display for SslError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = self.0.errors().get(0)
-            .and_then(|ee| ee.reason())
-            .unwrap_or("");
-        write!(f, "SSL: {}", s)
-    }
-}
-
-
-#[derive(Debug, Fail)]
-struct HandshakeError(openssl::ssl::HandshakeError<TcpStream>);
-
-
-impl fmt::Display for HandshakeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Handshake: ")?;
-        match &self.0 {
-            openssl::ssl::HandshakeError::SetupFailure(ee) => {
-                let s = ee.errors().get(0)
-                    .and_then(|eee| eee.reason())
-                    .unwrap_or("");
-                write!(f, "{}", s)
-            }
-            openssl::ssl::HandshakeError::Failure(ee) => {
-                let inner_error = ee.error();
-                if let Some(io_ee) = inner_error.io_error() {
-                    write!(f, "{}", io_ee)?;
-                } else if let Some(ssl_ee) = inner_error.ssl_error() {
-                    let s = ssl_ee.errors().get(0)
-                        .and_then(|eee| eee.reason())
-                        .unwrap_or("unknown");
-                    write!(f, "{}", s)?;
-                    let v = ee.ssl().verify_result();
-                    if v.as_raw() != 0 {
-                        write!(f, ": {}", v.error_string())?;
-                    }
-                }
-                Ok(())
-            }
-            _ => unimplemented!(),
-        }
     }
 }
