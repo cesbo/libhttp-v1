@@ -151,11 +151,6 @@ impl Response {
     #[inline]
     pub fn set_reason(&mut self, version: &str) { self.reason.push_str(version) }
 
-    /// Returns reference to the response header value value corresponding to the key
-    /// key should be in lowercase
-    #[inline]
-    pub fn get_header(&self, header: &str) -> Option<&String> { self.headers.get(header) }
-
     /// Returns response version
     #[inline]
     pub fn get_version(&self) -> &str { self.version.as_str() }
@@ -167,4 +162,11 @@ impl Response {
     /// Returns response reason
     #[inline]
     pub fn get_reason(&self) -> &str { self.reason.as_str() }
+
+    /// Returns reference to the response header value value corresponding to the key
+    /// key should be in lowercase
+    #[inline]
+    pub fn get_header(&self, key: &str) -> Option<&str> {
+        self.headers.get(key).map(|v| v.as_str())
+    }
 }

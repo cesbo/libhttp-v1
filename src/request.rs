@@ -184,5 +184,7 @@ impl Request {
     /// Returns reference to the request header value value corresponding to the key
     /// key should be in lowercase
     #[inline]
-    pub fn get_header(&self, key: &str) -> Option<&String> { self.headers.get(key) }
+    pub fn get_header(&self, key: &str) -> Option<&str> {
+        self.headers.get(key).map(|v| v.as_str())
+    }
 }
