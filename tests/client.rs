@@ -20,6 +20,7 @@ fn test_auth_basic() {
     assert_eq!(200, client.response.get_code());
 }
 
+
 #[test]
 fn test_auth_digest_simple() {
     let mut client = HttpClient::new();
@@ -33,6 +34,7 @@ fn test_auth_digest_simple() {
     assert_eq!(200, client.response.get_code());
 }
 
+
 #[test]
 fn test_auth_digest_auth() {
     let mut client = HttpClient::new();
@@ -45,6 +47,7 @@ fn test_auth_digest_auth() {
     client.receive().unwrap();
     assert_eq!(200, client.response.get_code());
 }
+
 
 #[test]
 fn test_get_eof() {

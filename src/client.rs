@@ -6,7 +6,7 @@ use std::io::{
     Write,
 };
 
-use crate::auth;
+use crate::auth::auth;
 use crate::request::{
     Request,
     RequestError,
@@ -112,7 +112,7 @@ impl HttpClient {
         };
 
         self.stream.connect(tls, host, port)?;
-        auth::auth(&mut self.request, &self.response);
+        auth(&mut self.request, &self.response);
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;
 

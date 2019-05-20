@@ -9,6 +9,29 @@ use crate::request::Request;
 use crate::response::Response;
 
 
+static HEXMAP: &[u8] = b"0123456789abcdef";
+
+
+fn hex2hash<R: AsRef<[u8]>>(h: &mut Hasher, bytes: R) {
+    for b in bytes.as_ref() {
+        h.update(&[
+            HEXMAP[(b >> 4) as usize],
+            HEXMAP[(b & 0x0F) as usize],
+        ]).unwrap();
+    }
+}
+
+
+fn hex2string<R: AsRef<[u8]>>(bytes: R) -> String {
+    let mut ret = String::new();
+    for b in bytes.as_ref() {
+        ret.push(char::from(HEXMAP[(b >> 4) as usize]));
+        ret.push(char::from(HEXMAP[(b & 0x0F) as usize]));
+    }
+    ret
+}
+
+
 /// This mod implement HTTP authorization
 
 
@@ -34,7 +57,7 @@ pub fn auth(request: &mut Request, response: &Response) {
 
 
 /// Basic access authentication (RFC 2617)
-pub fn basic(request: &mut Request) {
+fn basic(request: &mut Request) {
     let value = base64::encode(request.url.get_prefix());
     let value = format!("Basic {}", value);
     request.set_header("authorization", value);
@@ -42,16 +65,16 @@ pub fn basic(request: &mut Request) {
 
 
 /// Digest Access Authentication (RFC 2069)
-pub fn digest(request: &mut Request, head: &String) {
+fn digest(request: &mut Request, head: &String) {
     let mut realm = "";
     let mut nonce = "";
     let mut qop = "";
     let mut opaque = "";
-    let mut nonce_count = String::new(); // TODO - write fn
-    let uri = request.url.get_path();
+
     let mut i = request.url.get_prefix().splitn(2, ':');
     let username = i.next().unwrap_or("");
     let password = i.next().unwrap_or("");
+
     for data in head[7 ..].split(',') {
         let mut i = data.splitn(2, '=');
         let key = i.next().unwrap();
@@ -73,6 +96,28 @@ pub fn digest(request: &mut Request, head: &String) {
         };
     }
 
+    let mut h = Hasher::new(MessageDigest::md5()).unwrap();
+
+    [
+        username,
+        ":",
+        realm,
+        ":",
+        password,
+    ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+    let ha1 = h.finish().unwrap();
+
+    [
+        request.get_method(),
+        ":",
+        request.url.get_path(),
+    ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+    let ha2 = h.finish().unwrap();
+
+    hex2hash(&mut h, &ha1);
+
+    // TODO: tune
+    let mut nonce_count = String::new(); // TODO - write fn
     if ! qop.is_empty() {
         if request.nonce_count > 99999998 {
             request.nonce_count = 0;
@@ -90,62 +135,54 @@ pub fn digest(request: &mut Request, head: &String) {
     rand_bytes(&mut buf).unwrap();
     let client_nonce = hex2string(&buf);
 
-    let mut h = Hasher::new(MessageDigest::md5()).unwrap();
-    [username, ":", realm, ":", password].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
-    let ha1 = h.finish().unwrap();
-    [request.get_method(), ":", uri].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
-    let ha2 = h.finish().unwrap();
-
-    update_hex(ha1.as_ref(), &mut h);
     match qop {
         "auth" => {
-            [ ":", nonce, ":", nonce_count.as_str(), ":", client_nonce.as_str(), ":", qop, ":"].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+            [
+                ":",
+                nonce,
+                ":",
+                &nonce_count,
+                ":",
+                &client_nonce,
+                ":",
+                qop,
+                ":",
+            ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
         }
         _ => {
-            [ ":", nonce, ":"].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+            [
+                ":",
+                nonce,
+                ":",
+            ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
         }
     };
-    update_hex(ha2.as_ref(), &mut h);
+    hex2hash(&mut h, &ha2);
 
     let hr = h.finish().unwrap();
-    let hresponse = hex2string(hr.as_ref());
+    let hresponse = hex2string(&hr);
 
-    let mut authorization_head = format!(concat!("Digest ",
+    let mut value = format!(concat!("Digest ",
         "username=\"{}\", ",
         "realm=\"{}\", ",
         "nonce=\"{}\", ",
         "uri=\"{}\", ",
         "response=\"{}\""),
-        username, realm, nonce, uri, hresponse);
-    if qop == "auth" || qop == "auth-int" {
-        authorization_head += &format! (", qop=\"{}\", nc={}, cnonce=\"{}\"",
-            qop, nonce_count.as_str(), client_nonce.as_str());
+        username, realm, nonce, request.url.get_path(), hresponse);
+
+    if ! qop.is_empty() {
+        let qop = format!(concat!(", ",
+            "qop=\"{}\", ",
+            "nc={}, ",
+            "cnonce=\"{}\""),
+            qop, &nonce_count, &client_nonce);
+        value.push_str(&qop);
     }
+
     if ! opaque.is_empty() {
-        authorization_head += &format! (", opaque=\"{}\"", opaque);
+        let opaque = format!(", opaque=\"{}\"", opaque);
+        value.push_str(&opaque);
     }
-    request.set_header("authorization", authorization_head);
-}
 
-
-static HEXMAP: &[u8] = b"0123456789abcdef";
-
-
-fn update_hex(bytes: &[u8], h: &mut Hasher) {
-    for b in bytes {
-        h.update(&[
-            HEXMAP[(b >> 4) as usize],
-            HEXMAP[(b & 0x0F) as usize],
-        ]).unwrap();
-    }
-}
-
-
-pub fn hex2string(bytes: &[u8]) -> String {
-    let mut ret = String::new();
-    for b in bytes {
-        ret.push(char::from(HEXMAP[(b >> 4) as usize]));
-        ret.push(char::from(HEXMAP[(b & 0x0F) as usize]));
-    }
-    ret
+    request.set_header("authorization", value);
 }

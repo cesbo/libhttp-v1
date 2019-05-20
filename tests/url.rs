@@ -6,7 +6,14 @@ use http::Query;
 
 #[test]
 fn test_parse_query() {
-    let q = Query::new("data=1&string=5&testing_кирилица=&&link=%26%26%26http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F?&test=not test string &&").unwrap();
+    let q = Query::new(concat!(
+        "data=1&",
+        "string=5&",
+        "testing_кирилица=&",
+        "&",
+        "link=%26%26%26http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F?&",
+        "test=not test string &",
+        "&")).unwrap();
     let link = q.get("link").unwrap();
     assert_eq!(link, "&&&http://foo bar/тест/🍔/?");
 }
@@ -48,15 +55,10 @@ fn test_10() {
 
 
 #[test]
-fn test_9() {
-    let url = Url::new("udp://test:test@239.255.1.1:1234").unwrap();
-    assert_eq!(url.get_address(), "239.255.1.1:1234");
-    assert_eq!(url.get_scheme(), "udp");
-    assert_eq!(url.get_host(), "239.255.1.1");
-    assert_eq!(url.get_port(), 1234);
-    assert_eq!(url.get_path(), "");
-    assert_eq!(url.get_query(), "");
-    assert_eq!(url.get_fragment(), "");
+fn test_prefix() {
+    let url = Url::new("http://test:test@example.com").unwrap();
+    assert_eq!(url.get_scheme(), "http");
+    assert_eq!(url.get_address(), "example.com");
     assert_eq!(url.get_prefix(), "test:test");
 }
 
