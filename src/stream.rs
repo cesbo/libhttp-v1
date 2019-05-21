@@ -1,18 +1,18 @@
-use std::io::{
-    self,
-    Read,
-    BufRead,
-    Write,
-};
 use std::{
     cmp,
     fmt,
+    io::{
+        self,
+        Read,
+        BufRead,
+        Write,
+    },
+    net::{
+        ToSocketAddrs,
+        TcpStream,
+    },
+    time::Duration,
 };
-use std::net::{
-    ToSocketAddrs,
-    TcpStream,
-};
-use std::time::Duration;
 
 use openssl::ssl::{
     SslMethod,

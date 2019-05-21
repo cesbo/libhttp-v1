@@ -1,23 +1,27 @@
-use std::fmt;
-use std::io::{
-    self,
-    BufRead,
-    Read,
-    Write,
+use std::{
+    fmt,
+    io::{
+        self,
+        BufRead,
+        Read,
+        Write,
+    },
 };
 
-use crate::auth::auth;
-use crate::request::{
-    Request,
-    RequestError,
-};
-use crate::response::{
-    Response,
-    ResponseError,
-};
-use crate::stream::{
-    HttpStream,
-    HttpStreamError,
+use crate::{
+    auth::auth,
+    request::{
+        Request,
+        RequestError,
+    },
+    response::{
+        Response,
+        ResponseError,
+    },
+    stream::{
+        HttpStream,
+        HttpStreamError,
+    },
 };
 
 

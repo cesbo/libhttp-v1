@@ -1,14 +1,18 @@
 use std::fmt::Write;
 
-use openssl::hash::{
-    Hasher,
-    MessageDigest,
+use openssl::{
+    hash::{
+        Hasher,
+        MessageDigest,
+    },
+    rand::rand_bytes,
 };
-use openssl::rand::rand_bytes;
 use base64;
 
-use crate::request::Request;
-use crate::response::Response;
+use crate::{
+    request::Request,
+    response::Response,
+};
 
 
 static HEXMAP: &[u8] = b"0123456789abcdef";

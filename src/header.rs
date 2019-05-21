@@ -8,6 +8,7 @@ use std::{
 };
 
 
+/// Set of the headers for HTTP request and response
 #[derive(Default)]
 pub struct Header(HashMap<String, String>);
 
@@ -18,6 +19,7 @@ impl fmt::Debug for Header {
 
 
 impl Header {
+    /// Parses header line
     pub fn parse(&mut self, line: &str) {
         if let Some(skip) = line.find(':') {
             let key = line[.. skip].trim_end();

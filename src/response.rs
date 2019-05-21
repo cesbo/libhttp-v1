@@ -1,8 +1,10 @@
-use std::fmt;
-use std::io::{
-    self,
-    BufRead,
-    Write
+use std::{
+    fmt,
+    io::{
+        self,
+        BufRead,
+        Write,
+    },
 };
 
 use crate::header::Header;
