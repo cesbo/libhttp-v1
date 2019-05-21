@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use openssl::hash::{
     Hasher,
     MessageDigest,
@@ -71,14 +73,17 @@ fn basic(request: &mut Request) {
 
 /// Digest Access Authentication (RFC 2069)
 fn digest(request: &mut Request, token: &str) {
+    let mut result = String::from("Digest ");
+
     let mut realm = "";
     let mut nonce = "";
     let mut qop = "";
-    let mut opaque = "";
 
     let mut i = request.url.get_prefix().splitn(2, ':');
     let username = i.next().unwrap_or("");
     let password = i.next().unwrap_or("");
+
+    write!(result, "username=\"{}\", uri=\"{}\"", username, request.url.get_path()).unwrap();
 
     for data in token.split(',') {
         let data = data.trim();
@@ -96,13 +101,16 @@ fn digest(request: &mut Request, token: &str) {
         if value.is_empty() {
             continue
         } else if key.eq_ignore_ascii_case("realm") {
+            write!(result, ", realm=\"{}\"", value).unwrap();
             realm = value
         } else if key.eq_ignore_ascii_case("nonce") {
+            write!(result, ", nonce=\"{}\"", value).unwrap();
             nonce = value
         } else if key.eq_ignore_ascii_case("qop") {
+            write!(result, ", qop=\"{}\"", value).unwrap();
             qop = value
         } else if key.eq_ignore_ascii_case("opaque") {
-            opaque = value;
+            write!(result, ", opaque=\"{}\"", value).unwrap();
         }
     }
 
@@ -110,89 +118,54 @@ fn digest(request: &mut Request, token: &str) {
 
     [
         username,
-        ":",
-        realm,
-        ":",
-        password,
+        ":", realm,
+        ":", password,
     ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     let ha1 = h.finish().unwrap();
 
     [
         request.get_method(),
-        ":",
-        request.url.get_path(),
+        ":", request.url.get_path(),
     ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     let ha2 = h.finish().unwrap();
 
     hex2hash(&mut h, &ha1);
 
-    // TODO: tune
-    let mut nonce_count = String::new(); // TODO - write fn
-    if ! qop.is_empty() {
-        if request.nonce_count > 99999998 {
+    if qop.is_empty() {
+        [
+            ":", nonce,
+            ":",
+        ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+    } else if qop == "auth" {
+        if request.nonce_count < 99999999 {
+            request.nonce_count += 1;
+        } else {
             request.nonce_count = 0;
         }
-        request.nonce_count += 1;
-        let mut deltax = 99999999;
-        while deltax > request.nonce_count {
-            deltax = deltax / 10;
-            nonce_count += "0";
-        }
-        nonce_count += &request.nonce_count.to_string();
+        let nonce_count = format!("{:>08}", request.nonce_count);
+
+        let client_nonce = {
+            let mut buf = [0; 4];
+            rand_bytes(&mut buf).unwrap();
+            hex2string(&buf)
+        };
+
+        write!(result, ", nc={}, cnonce=\"{}\"",
+            &nonce_count, &client_nonce).unwrap();
+
+        [
+            ":", nonce,
+            ":", &nonce_count,
+            ":", &client_nonce,
+            ":", qop,
+            ":",
+        ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     }
-
-    let mut buf = [0; 4];
-    rand_bytes(&mut buf).unwrap();
-    let client_nonce = hex2string(&buf);
-
-    match qop {
-        "auth" => {
-            [
-                ":",
-                nonce,
-                ":",
-                &nonce_count,
-                ":",
-                &client_nonce,
-                ":",
-                qop,
-                ":",
-            ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
-        }
-        _ => {
-            [
-                ":",
-                nonce,
-                ":",
-            ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
-        }
-    };
     hex2hash(&mut h, &ha2);
 
     let hr = h.finish().unwrap();
     let hresponse = hex2string(&hr);
+    write!(result, ", response=\"{}\"", &hresponse).unwrap();
 
-    let mut value = format!(concat!("Digest ",
-        "username=\"{}\", ",
-        "realm=\"{}\", ",
-        "nonce=\"{}\", ",
-        "uri=\"{}\", ",
-        "response=\"{}\""),
-        username, realm, nonce, request.url.get_path(), hresponse);
-
-    if ! qop.is_empty() {
-        let qop = format!(concat!(", ",
-            "qop=\"{}\", ",
-            "nc={}, ",
-            "cnonce=\"{}\""),
-            qop, &nonce_count, &client_nonce);
-        value.push_str(&qop);
-    }
-
-    if ! opaque.is_empty() {
-        let opaque = format!(", opaque=\"{}\"", opaque);
-        value.push_str(&opaque);
-    }
-
-    request.set_header("authorization", value);
+    request.set_header("authorization", result);
 }

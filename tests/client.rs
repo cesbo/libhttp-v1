@@ -1,4 +1,5 @@
 use std::io::{
+    self,
     Write,
     Read,
     BufRead,
@@ -29,6 +30,22 @@ fn test_auth_digest_simple() {
     client.send().unwrap();
     client.receive().unwrap();
     assert_eq!(401, client.response.get_code());
+    io::copy(&mut client, &mut io::sink()).unwrap();
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(200, client.response.get_code());
+}
+
+
+#[test]
+fn test_auth_digest_qop_auth() {
+    let mut client = HttpClient::new();
+    client.request.url.set("http://guest:test@httpbin.org/digest-auth/auth/guest/test").unwrap();
+    client.request.set_header("user-agent", "libhttp");
+    client.send().unwrap();
+    client.receive().unwrap();
+    assert_eq!(401, client.response.get_code());
+    io::copy(&mut client, &mut io::sink()).unwrap();
     client.send().unwrap();
     client.receive().unwrap();
     assert_eq!(200, client.response.get_code());
