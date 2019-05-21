@@ -43,12 +43,17 @@ pub fn auth(request: &mut Request, response: &Response) {
 
     match response.get_code() {
         401 => {
-            let head = match response.get_header("www-authenticate") {
-                Some(v) => v,
-                _ => return,
-            };
-            if head[.. 6].eq_ignore_ascii_case("digest") {
-                digest(request, head);
+            let value = response.get_header("www-authenticate").unwrap_or("");
+            if value.is_empty() {
+                return;
+            }
+
+            let mut i = value.splitn(2, char::is_whitespace);
+            let mode = i.next().unwrap();
+            if let Some(token) = i.next() {
+                if mode.eq_ignore_ascii_case("digest") {
+                    digest(request, token.trim_start());
+                }
             }
         }
         _ => basic(request),
@@ -65,7 +70,7 @@ fn basic(request: &mut Request) {
 
 
 /// Digest Access Authentication (RFC 2069)
-fn digest(request: &mut Request, head: &String) {
+fn digest(request: &mut Request, token: &str) {
     let mut realm = "";
     let mut nonce = "";
     let mut qop = "";
@@ -75,25 +80,30 @@ fn digest(request: &mut Request, head: &String) {
     let username = i.next().unwrap_or("");
     let password = i.next().unwrap_or("");
 
-    for data in head[7 ..].split(',') {
-        let mut i = data.splitn(2, '=');
-        let key = i.next().unwrap();
-        if key.is_empty() {
-            continue;
+    for data in token.split(',') {
+        let data = data.trim();
+        if data.is_empty() {
+            continue
         }
-        let value = i.next().unwrap_or("");
-        if key.trim().eq_ignore_ascii_case("realm") {
-            realm = value.trim().trim_matches('\"')
-        };
-        if key.trim().eq_ignore_ascii_case("nonce") {
-            nonce = value.trim().trim_matches('\"')
-        };
-        if key.trim().eq_ignore_ascii_case("qop") {
-            qop = value.trim().trim_matches('\"')
-        };
-        if key.trim().eq_ignore_ascii_case("opaque") {
-            opaque = value.trim().trim_matches('\"')
-        };
+
+        let mut i = data.splitn(2, '=');
+        let key = i.next().unwrap().trim();
+        if key.is_empty() {
+            continue
+        }
+
+        let value = i.next().unwrap_or("").trim().trim_matches('"');
+        if value.is_empty() {
+            continue
+        } else if key.eq_ignore_ascii_case("realm") {
+            realm = value
+        } else if key.eq_ignore_ascii_case("nonce") {
+            nonce = value
+        } else if key.eq_ignore_ascii_case("qop") {
+            qop = value
+        } else if key.eq_ignore_ascii_case("opaque") {
+            opaque = value;
+        }
     }
 
     let mut h = Hasher::new(MessageDigest::md5()).unwrap();
