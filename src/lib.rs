@@ -1,3 +1,4 @@
+mod tools;
 mod auth;
 
 mod request;
@@ -7,22 +8,19 @@ mod response;
 pub use crate::response::Response;
 
 mod stream;
+pub use crate::stream::HttpStream;
 
 mod client;
 pub use crate::client::HttpClient;
 
-mod header;
+mod urldecode;
+pub use crate::urldecode::urldecode;
+
+mod urlencode;
+pub use crate::urlencode::urlencode;
 
 mod url;
-pub use crate::url::{
-    Url,
-    urlencode,
-    urldecode,
-    parse_query,
-};
+pub use crate::url::Url;
 
-mod error;
-pub use crate::error::{
-    Error,
-    Result,
-};
+mod query;
+pub use crate::query::Query;

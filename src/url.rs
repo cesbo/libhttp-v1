@@ -1,120 +1,41 @@
-use std::io::Write;
-use std::collections::HashMap;
+use std::fmt;
 
-use crate::error::Result;
+use crate::urldecode::{
+    urldecode,
+    UrlDecodeError,
+};
 
 
-#[inline]
-fn is_rfc3986(b: u8) -> bool {
-    match b {
-        b'a' ..= b'z' => true,
-        b'A' ..= b'Z' => true,
-        b'0' ..= b'9' => true,
-        b'-' => true,
-        b'_' => true,
-        b'.' => true,
-        b'~' => true,
-        _ => false,
-    }
+#[derive(Debug)]
+pub struct UrlError(String);
+
+
+impl fmt::Display for UrlError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Url: {}", self.0) }
 }
 
 
-#[inline]
-fn hex2nibble(b: u8) -> Option<u8> {
-    match b {
-        b'0' ..= b'9' => Some(b - b'0'),
-        b'A' ..= b'F' => Some(b - b'A' + 10),
-        b'a' ..= b'f' => Some(b - b'a' + 10),
-        _ => None,
-    }
+impl From<&str> for UrlError {
+    fn from(e: &str) -> UrlError { UrlError(e.to_string()) }
 }
 
 
-#[inline]
-fn hex2byte(buf: &[u8]) -> u8 {
-    if buf.len() >= 2 {
-        if let Some(n0) = hex2nibble(buf[0]) {
-            if let Some(n1) = hex2nibble(buf[1]) {
-                return n0 * 16 + n1;
-            }
-        }
-    }
-    b'-'
+impl From<UrlDecodeError> for UrlError {
+    fn from(e: UrlDecodeError) -> UrlError { UrlError(e.to_string()) }
 }
 
 
-#[inline]
-fn byte2hex(b: u8) -> char {
-    if b < 0x0A {
-        char::from(b'0' + b)
-    } else {
-        char::from(b'A' - 0x0A + b)
-    }
-}
-
-
-#[inline]
-pub fn urldecode(buf: &str) -> String {
-    let mut result: Vec<u8> = Vec::new(); 
-    let buf = buf.as_bytes();
-    let mut skip = 0;
-    let len = buf.len();
-    while skip < len {
-        let b = buf[skip];
-        skip += 1;
-        match b {
-            b'%' => {
-                result.push(hex2byte(&buf[skip ..]));
-                skip += 2;
-            },
-            b'+' => result.push(b' '),
-            _ => result.push(b),
-        }
-    }
-    unsafe { 
-        String::from_utf8_unchecked(result)
-    }
-}
-
-
-#[inline]
-pub fn urlencode(buf: &str) -> String {
-    let mut result = String::new();
-    for &b in buf.as_bytes() {
-        if is_rfc3986(b) {
-            result.push(char::from(b));
-        } else {
-            result.push('%');
-            result.push(byte2hex(b >> 4));
-            result.push(byte2hex(b & 0x0F));
-        }
-    }
-    result
-}
-
-
-#[inline]
-pub fn parse_query(query: &str) -> HashMap<String, String> {
-    let mut ret = HashMap::new();
-    for data in query.split('&') {
-        let mut i = data.splitn(2, '=');
-        let key = i.next().unwrap();
-        if key.is_empty() {
-            continue;
-        }
-        let key = urldecode(key);
-        let value = urldecode(i.next().unwrap_or(""));
-        ret.insert(key, value);
-    }
-    ret
-}
-
-
-#[derive(Default, Debug)]
+/// A parsed URL record
+///
+/// URL parts: `scheme://prefix@address/path?query#fragment`
+/// All url parts are optional.
+/// If path, query, and fragment are defined, then value contains their delimiter as well
+#[derive(Default, Debug, PartialEq)]
 pub struct Url {
     scheme: String,
     prefix: String,
-    host: String,
+    address: String,        // host:port
+    host_len: usize,        // self.address[.. self.host_len]
     port: u16,
     path: String,
     query: String,
@@ -123,116 +44,124 @@ pub struct Url {
 
 
 impl Url {
-    pub fn new(u: &str) -> Self {
+    /// Allocate new object and parse url
+    pub fn new(u: &str) -> Result<Self, UrlError> {
         let mut url = Url::default();
-        if ! u.is_empty() {
-            url.set(u);
-        }
-        url
+        url.set(u)?;
+        Ok(url)
     }
-    
-    pub fn set(&mut self, inp: &str) {
+
+    /// Parse and absolute or relative URL from string
+    pub fn set(&mut self, inp: &str) -> Result<(), UrlError> {
         let mut skip = 0;
+        // step values:
+        // 0 - prefix
+        // 1 - addr (host:port)
+        // 2 - /path
+        // 3 - ?query
+        // 4 - #fragment
         let mut step = 0;
         let mut prefix = 0;
         let mut path = 0;
         let mut query = 0;
         let mut fragment = 0;
+
+        if inp.is_empty() { Err("empty url")? }
+        if inp.len() > 2048 { Err("length limit")? }
+
         if let Some(v) = inp.find("://") {
-            self.scheme += &inp[0 .. v];
+            self.scheme.clear();
+            self.prefix.clear();
+            self.address.clear();
+            self.host_len = 0;
+            self.port = 0;
+            self.path.clear();
+            self.query.clear();
+            self.fragment.clear();
+
+            self.scheme.push_str(&inp[0 .. v]);
             skip = v + 3;
+        } else {
+            // TODO: relative url
+            if ! inp.starts_with('/') { Err("unexpected relative path")? }
+
+            self.path.clear();
+            self.query.clear();
+            self.fragment.clear();
+
+            step = 2;
         }
-        for (idx, part) in inp[skip ..].match_indices(|c: char| (c == '/' || c == '?' || c == '#' || c == '@')) {
+
+        for (idx, part) in inp[skip ..].match_indices(|c| {
+            c == '/' || c == '?' || c == '#' || c == '@'
+        }) {
             match part.as_bytes()[0] {
                 b'@' if step < 1 => { prefix = idx + skip; step = 1; },
                 b'/' if step < 2 => { path = idx + skip; step = 2; },
                 b'?' if step < 3 => { query = idx + skip; step = 3; },
                 b'#' if step < 4 => { fragment = idx + skip; break; },
                 _ => {},
-            }; 
+            };
         }
         let mut tail = inp.len();
         if fragment > 0 {
-            self.fragment += &inp[fragment .. tail];
+            self.fragment.push_str(&inp[fragment .. tail]);
             tail = fragment;
         }
         if query > 0 {
-            self.query += &inp[query .. tail];
+            self.query.push_str(&inp[query .. tail]);
             tail = query;
         }
         if path > 0 || skip == 0 {
-            self.path = urldecode(&inp[path .. tail]);
+            self.path = urldecode(&inp[path .. tail])?;
             tail = path;
-        } 
+        }
         if prefix > 0 {
-            self.prefix += &inp[skip .. prefix];
+            self.prefix.push_str(&inp[skip .. prefix]);
             skip = prefix + 1;
         }
         if skip != 0 {
-            let mut addr = inp[skip .. tail].splitn(2, ':');
-            self.host = addr.next().unwrap().to_string();
-            self.port = match addr.next() {
-                Some(v) => match v.parse::<u16>() {
-                    Ok(v) => v,
-                    _ => 0,
-                },
-                None => 0,
-            };
+            self.address.push_str(&inp[skip .. tail]);
+            let address_len = self.address.len();
+            self.host_len = self.address.find(':').unwrap_or(address_len);
+            if address_len > self.host_len {
+                self.port = self.address[self.host_len + 1 ..].parse::<u16>().unwrap_or(0);
+                if self.port == 0 { Err("invalid port")? }
+            }
         }
-    }
 
-    #[inline]
-    pub fn get_scheme(&self) -> &str {
-        self.scheme.as_str()
-    }
-    
-    #[inline]
-    pub fn get_prefix(&self) -> &str {
-        self.prefix.as_str()
-    }
-
-    #[inline]
-    pub fn get_host(&self) -> &str {
-        self.host.as_str()
-    }
-
-    #[inline]
-    pub fn get_port(&self) -> u16 {
-        self.port
-    }
-    
-    #[inline]
-    pub fn get_path(&self) -> &str {
-        self.path.as_str()
-    }
-    
-    #[inline]
-    pub fn get_query(&self) -> &str {
-        self.query.as_str()
-    }
-    
-    #[inline]
-    pub fn get_fragment(&self) -> &str {
-        self.fragment.as_str()
-    }
-    
-    #[inline]
-    pub fn write_request_url<W: Write>(&self, dst: &mut W) -> Result<()> {
-        if self.path.is_empty() {
-            write!(dst, "/{}", self.query)?;
-        } else {
-            write!(dst, "{}{}", self.path, self.query)?;
-        }
         Ok(())
     }
-    
+
+    /// Returns url scheme
     #[inline]
-    pub fn write_header_host<W: Write>(&self, dst: &mut W) -> Result<()> {
-        if self.port == 80 || self.port == 443 || self.port == 0 {
-            write!(dst, "{}", self.host)?;
-        } else {
-            write!(dst, "{}:{}", self.host, self.port)?;
-        }
-        Ok(())
-    }
+    pub fn get_scheme(&self) -> &str { &self.scheme }
+
+    /// Returns url prefix
+    #[inline]
+    pub fn get_prefix(&self) -> &str { &self.prefix }
+
+    /// Returns url address
+    #[inline]
+    pub fn get_address(&self) -> &str { &self.address }
+
+    /// Returns url host
+    #[inline]
+    pub fn get_host(&self) -> &str { &self.address[.. self.host_len] }
+
+    /// Returns url port
+    #[inline]
+    pub fn get_port(&self) -> u16 { self.port }
+
+    /// Returns url path
+    #[inline]
+    pub fn get_path(&self) -> &str { &self.path }
+
+    /// Returns url query
+    #[inline]
+    pub fn get_query(&self) -> &str { &self.query }
+
+    /// Returns url fragment
+    #[inline]
+    pub fn get_fragment(&self) -> &str { &self.fragment }
 }

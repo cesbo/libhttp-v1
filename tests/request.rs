@@ -28,8 +28,8 @@ const TEST_TAB_UNIX: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t       RT
 #[test]
 fn send() {
     let mut request = Request::new();
-    request.init("GET", "http://127.0.0.1:8000/path?query");
-    request.set("User-Agent", "libhttp");
+    request.init("http://127.0.0.1:8000/path?query").unwrap();
+    request.set_header("User-Agent", "libhttp");
     request.set_version("RTSP/1.0");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
@@ -39,8 +39,8 @@ fn send() {
 #[test]
 fn send_version() {
     let mut request = Request::new();
-    request.init("GET", "http://127.0.0.1:8000/path?query");
-    request.set("User-Agent", "libhttp");
+    request.init("http://127.0.0.1:8000/path?query").unwrap();
+    request.set_header("User-Agent", "libhttp");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST1.as_bytes());
@@ -49,8 +49,8 @@ fn send_version() {
 #[test]
 fn send_case() {
     let mut request = Request::new();
-    request.init("GET", "http://127.0.0.1:8000/path?query");
-    request.set("user-agent", "libhttp");
+    request.init("http://127.0.0.1:8000/path?query").unwrap();
+    request.set_header("user-agent", "libhttp");
     request.set_version("RTSP/1.0");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
@@ -69,10 +69,7 @@ fn parseer_parse() {
 #[test]
 fn parseer_broken() {
     let mut request = Request::new();
-    request.parse(&mut BufReader::new(TEST_BROKEN.as_bytes())).unwrap();
-    assert_eq!(request.get_method(), "GET");
-    assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
-    assert_eq!(request.get_header("user-agent").unwrap(), "lib");
+    assert!(request.parse(&mut BufReader::new(TEST_BROKEN.as_bytes())).is_err());
 }
 
 #[test]

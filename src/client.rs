@@ -1,78 +1,165 @@
-use std::net::TcpStream;
-use std::io::Write;
+use std::fmt;
+use std::io::{
+    self,
+    BufRead,
+    Read,
+    Write,
+};
 
-use crate::auth;
-use crate::request::Request;
-use crate::response::Response;
-use crate::stream::HttpStream;
-use crate::error::{
-    Error,
-    Result,
+use crate::auth::auth;
+use crate::request::{
+    Request,
+    RequestError,
+};
+use crate::response::{
+    Response,
+    ResponseError,
+};
+use crate::stream::{
+    HttpStream,
+    HttpStreamError,
 };
 
 
+#[derive(Debug)]
+pub struct HttpClientError(String);
+
+
+impl fmt::Display for HttpClientError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "HttpClient: {}", self.0) }
+}
+
+
+impl From<io::Error> for HttpClientError {
+    fn from(e: io::Error) -> Self { HttpClientError(e.to_string()) }
+}
+
+
+impl From<&str> for HttpClientError {
+    fn from(e: &str) -> Self { HttpClientError(e.to_string()) }
+}
+
+
+impl From<RequestError> for HttpClientError {
+    fn from(e: RequestError) -> Self { HttpClientError(e.to_string()) }
+}
+
+
+impl From<ResponseError> for HttpClientError {
+    fn from(e: ResponseError) -> Self { HttpClientError(e.to_string()) }
+}
+
+
+impl From<HttpStreamError> for HttpClientError {
+    fn from(e: HttpStreamError) -> Self { HttpClientError(e.to_string()) }
+}
+
+
+/// HTTP client
+///
+/// Usage:
+///
+/// ```
+/// use std::io::Read;
+/// use http::HttpClient;
+///
+/// fn main() {
+///     let mut client = HttpClient::new();
+///     client.request.init("https://example.com");
+///     client.request.set_header("user-agent", "libhttp");
+///     client.send().unwrap();
+///     client.receive().unwrap();
+///     let mut body = String::new();
+///     client.read_to_string(&mut body).unwrap();
+/// }
+/// ```
 #[derive(Default)]
 pub struct HttpClient {
-    pub response: Response,
+    /// HTTP request
     pub request: Request,
-    pub stream: HttpStream,
+    /// received HTTP response
+    pub response: Response,
+    /// HTTP stream
+    stream: HttpStream,
 }
 
 
 impl HttpClient {
+    /// Allocates new http client
     #[inline]
     pub fn new() -> Self { HttpClient::default() }
 
-    pub fn send(&mut self) -> Result<()> {
-        if ! self.stream.is_ready() {
-            let host = self.request.url.get_host();
-            let port = match self.request.url.get_port() {
-                0 => {
-                    match self.request.url.get_scheme() {
-                        "http" => 80,
-                        "https" => 443,
-                        _ => return Err(Error::Custom("HttpClient: port not defined for unknown scheme")),
-                    }
+    /// Connects to destination host, sends request line and headers
+    /// Prepares HTTP stream for writing data
+    pub fn send(&mut self) -> Result<(), HttpClientError> {
+        let mut tls = false;
+        let host = self.request.url.get_host();
+        let mut port = self.request.url.get_port();
+
+        match self.request.url.get_scheme() {
+            "http" => {
+                if port == 0 {
+                    port = 80;
                 }
-                v => v,
-            };
+            },
+            "https" => {
+                if port == 0 {
+                    port = 443;
+                }
+                tls = true;
+            }
+            _ => Err("invalid protocol")?,
+        };
 
-            self.stream.set(TcpStream::connect((host, port))?);
-        } else {
-            self.stream.clear();
-        }
-
-        auth::auth_switch(&mut self.response, &mut self.request);     
+        self.stream.connect(tls, host, port)?;
+        auth(&mut self.request, &self.response);
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;
+
         Ok(())
     }
 
-    pub fn receive(&mut self) -> Result<()> {
+    /// Flushes writing buffer, receives response line and headers
+    /// Prepares HTTP stream for reading data
+    pub fn receive(&mut self) -> Result<(), HttpClientError> {
         self.stream.flush()?;
         self.response.parse(&mut self.stream)?;
-
-        loop {
-            match self.response.get_header("content-length") {
-                Some(v) => {
-                    self.stream.set_stream_length(v.parse().unwrap_or(0));
-                    break;
-                },
-                _ => {},
-            };
-
-            match self.response.get_header("transfer-encoding") {
-                Some(v) if v == "chunked" => {
-                    self.stream.set_stream_chunked();
-                    break;
-                },
-                _ => {},
-            };
-
-            self.stream.set_stream_eof();
-            break;
-        }
+        self.stream.configure(&self.response)?;
 
         Ok(())
+    }
+}
+
+
+impl Read for HttpClient {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.stream.read(buf)
+    }
+}
+
+
+impl BufRead for HttpClient {
+    #[inline]
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        self.stream.fill_buf()
+    }
+
+    #[inline]
+    fn consume(&mut self, amt: usize) {
+        self.stream.consume(amt)
+    }
+}
+
+
+impl Write for HttpClient {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.stream.write(buf)
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        self.stream.flush()
     }
 }
