@@ -14,8 +14,8 @@ const HELLO_WORLD: &[u8] = b"Hello, world!";
 #[test]
 fn test_auth_basic() {
     let mut client = HttpClient::new();
-    client.request.init("http://test:testpass@httpbin.org/basic-auth/test/testpass").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("http://test:testpass@httpbin.org/basic-auth/test/testpass").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
     assert_eq!(200, client.response.get_code());
@@ -25,8 +25,8 @@ fn test_auth_basic() {
 #[test]
 fn test_auth_digest_simple() {
     let mut client = HttpClient::new();
-    client.request.init("http://guest:guest@jigsaw.w3.org/HTTP/Digest/").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("http://guest:guest@jigsaw.w3.org/HTTP/Digest/").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
     assert_eq!(401, client.response.get_code());
@@ -41,7 +41,7 @@ fn test_auth_digest_simple() {
 fn test_auth_digest_qop_auth() {
     let mut client = HttpClient::new();
     client.request.url.set("http://guest:test@httpbin.org/digest-auth/auth/guest/test").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
     assert_eq!(401, client.response.get_code());
@@ -55,8 +55,8 @@ fn test_auth_digest_qop_auth() {
 #[test]
 fn test_auth_digest_auth() {
     let mut client = HttpClient::new();
-    client.request.init("http://us:testpass@httpbin.org/digest-auth/auth/us/testpass").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("http://us:testpass@httpbin.org/digest-auth/auth/us/testpass").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
     assert_eq!(401, client.response.get_code());
@@ -69,8 +69,8 @@ fn test_auth_digest_auth() {
 #[test]
 fn test_get_eof() {
     let mut client = HttpClient::new();
-    client.request.init("http://127.0.0.1:9090/get").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("http://127.0.0.1:9090/get").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
 
@@ -83,11 +83,11 @@ fn test_get_eof() {
 #[test]
 fn test_post_length() {
     let mut client = HttpClient::new();
-    client.request.init("http://127.0.0.1:9090/post-length").unwrap();
+    client.request.url.set("http://127.0.0.1:9090/post-length").unwrap();
     client.request.set_method("POST");
-    client.request.set_header("user-agent", "libhttp");
-    client.request.set_header("content-type", "text/plain");
-    client.request.set_header("content-length", HELLO_WORLD.len());
+    client.request.header.set("user-agent", "libhttp");
+    client.request.header.set("content-type", "text/plain");
+    client.request.header.set("content-length", HELLO_WORLD.len());
     client.send().unwrap();
     client.write(HELLO_WORLD).unwrap();
     client.receive().unwrap();
@@ -101,11 +101,11 @@ fn test_post_length() {
 #[test]
 fn test_post_chunked() {
     let mut client = HttpClient::new();
-    client.request.init("http://127.0.0.1:9090/post-chunked").unwrap();
+    client.request.url.set("http://127.0.0.1:9090/post-chunked").unwrap();
     client.request.set_method("POST");
-    client.request.set_header("user-agent", "libhttp");
-    client.request.set_header("content-type", "text/plain");
-    client.request.set_header("content-length", HELLO_WORLD.len());
+    client.request.header.set("user-agent", "libhttp");
+    client.request.header.set("content-type", "text/plain");
+    client.request.header.set("content-length", HELLO_WORLD.len());
     client.send().unwrap();
     client.write(HELLO_WORLD).unwrap();
     client.receive().unwrap();
@@ -127,8 +127,8 @@ fn test_post_chunked() {
 #[test]
 fn test_get_chunked_lf_only() {
     let mut client = HttpClient::new();
-    client.request.init("http://127.0.0.1:9090/get-chunked-lf-only").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("http://127.0.0.1:9090/get-chunked-lf-only").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
 
@@ -149,8 +149,8 @@ fn test_get_chunked_lf_only() {
 #[test]
 fn test_get_chunked_wo_trailer() {
     let mut client = HttpClient::new();
-    client.request.init("http://127.0.0.1:9090/get-chunked-wo-trailer").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("http://127.0.0.1:9090/get-chunked-wo-trailer").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
 
@@ -171,8 +171,8 @@ fn test_get_chunked_wo_trailer() {
 #[test]
 fn test_get_ssl() {
     let mut client = HttpClient::new();
-    client.request.init("https://httpbin.org/base64/SGVsbG8sIHdvcmxkIQ==").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("https://httpbin.org/base64/SGVsbG8sIHdvcmxkIQ==").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     client.receive().unwrap();
 
@@ -185,8 +185,8 @@ fn test_get_ssl() {
 #[test]
 fn test_get_expired_ssl() {
     let mut client = HttpClient::new();
-    client.request.init("https://expired.badssl.com/").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("https://expired.badssl.com/").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     match client.send() {
         Ok(_) => unreachable!(),
         Err(ref e) => println!("test_get_expired_ssl(): {}", e),
@@ -197,8 +197,8 @@ fn test_get_expired_ssl() {
 #[test]
 fn test_get_timeout() {
     let mut client = HttpClient::new();
-    client.request.init("http://httpbin.org/delay/5").unwrap();
-    client.request.set_header("user-agent", "libhttp");
+    client.request.url.set("http://httpbin.org/delay/5").unwrap();
+    client.request.header.set("user-agent", "libhttp");
     client.send().unwrap();
     match client.receive() {
         Ok(_) => unreachable!(),
@@ -210,7 +210,7 @@ fn test_get_timeout() {
 #[test]
 fn test_invalid_url() {
     let mut client = HttpClient::new();
-    match client.request.init("http://127.0.0.1:9090/test%QQ") {
+    match client.request.url.set("http://127.0.0.1:9090/test%QQ") {
         Ok(_) => unreachable!(),
         Err(ref e) => println!("test_invalid_url(): {}", e),
     }

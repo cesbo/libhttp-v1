@@ -34,9 +34,6 @@ fn hex2string<R: AsRef<[u8]>>(bytes: R) -> String {
 }
 
 
-/// This mod implement HTTP authorization
-
-
 /// Switch authentication type by request code
 pub fn auth(request: &mut Request, response: &Response) {
     if request.url.get_prefix().is_empty() {
@@ -45,7 +42,7 @@ pub fn auth(request: &mut Request, response: &Response) {
 
     match response.get_code() {
         401 => {
-            let value = response.get_header("www-authenticate").unwrap_or("");
+            let value = response.header.get("www-authenticate").unwrap_or("");
             if value.is_empty() {
                 return;
             }
@@ -67,7 +64,7 @@ pub fn auth(request: &mut Request, response: &Response) {
 fn basic(request: &mut Request) {
     let value = base64::encode(request.url.get_prefix());
     let value = format!("Basic {}", value);
-    request.set_header("authorization", value);
+    request.header.set("authorization", value);
 }
 
 
@@ -137,7 +134,7 @@ fn digest(request: &mut Request, token: &str) {
             ":",
         ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     } else if qop == "auth" {
-        if request.nonce_count < 99999999 {
+        if request.nonce_count < 99_999_999 {
             request.nonce_count += 1;
         } else {
             request.nonce_count = 0;
@@ -167,5 +164,5 @@ fn digest(request: &mut Request, token: &str) {
     let hresponse = hex2string(&hr);
     write!(result, ", response=\"{}\"", &hresponse).unwrap();
 
-    request.set_header("authorization", result);
+    request.header.set("authorization", result);
 }

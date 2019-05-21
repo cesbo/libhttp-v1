@@ -1,5 +1,7 @@
-mod tools;
 mod auth;
+
+mod header;
+pub use crate::header::Header;
 
 mod request;
 pub use crate::request::Request;

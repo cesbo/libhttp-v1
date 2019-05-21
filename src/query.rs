@@ -53,6 +53,6 @@ impl Query {
 
     #[inline]
     pub fn get<R: AsRef<str>>(&self, key: R) -> Option<&str> {
-        self.0.get(key.as_ref()).map(|v| v.as_str())
+        self.0.get(key.as_ref()).map(std::string::String::as_str)
     }
 }

@@ -50,8 +50,8 @@ fn response_parse() {
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
-    assert_eq!(response.get_header("server").unwrap(), "libhttp");
-    assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
+    assert_eq!(response.header.get("server").unwrap(), "libhttp");
+    assert_eq!(response.header.get("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
 }
 
 
@@ -62,8 +62,8 @@ fn response_parse_spaces() {
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
-    assert_eq!(response.get_header("server").unwrap(), "libhttp");
-    assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
+    assert_eq!(response.header.get("server").unwrap(), "libhttp");
+    assert_eq!(response.header.get("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
 }
 
 
@@ -74,8 +74,8 @@ fn response_parse_tabs() {
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
-    assert_eq!(response.get_header("server").unwrap(), "libhttp");
-    assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
+    assert_eq!(response.header.get("server").unwrap(), "libhttp");
+    assert_eq!(response.header.get("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
 }
 
 
@@ -86,8 +86,8 @@ fn response_parse_tabs_case() {
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
-    assert_eq!(response.get_header("server-name").unwrap(), "libhttp");
-    assert_eq!(response.get_header("date_date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
+    assert_eq!(response.header.get("server-name").unwrap(), "libhttp");
+    assert_eq!(response.header.get("date_date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
 }
 
 
@@ -98,8 +98,8 @@ fn response_parse_unix() {
     assert_eq!(response.get_version(), "HTTP/1.1");
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
-    assert_eq!(response.get_header("server").unwrap(), "libhttp");
-    assert_eq!(response.get_header("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
+    assert_eq!(response.header.get("server").unwrap(), "libhttp");
+    assert_eq!(response.header.get("date").unwrap(), "Mon, 08 Apr 2019 10:42:12 GMT");
 }
 
 
@@ -130,10 +130,10 @@ fn response_parse_wo_status() {
 #[test]
 fn response_send() {
     let mut response = Response::new();
-    response.set_header("date", "Mon, 08 Apr 2019 10:42:12 GMT");
     response.set_version("RTSP/1.0");
     response.set_code(200);
     response.set_reason("Ok");
+    response.header.set("date", "Mon, 08 Apr 2019 10:42:12 GMT");
     let mut dst: Vec<u8> = Vec::new();
     response.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST2.as_bytes());
@@ -143,10 +143,10 @@ fn response_send() {
 #[test]
 fn response_send_case() {
     let mut response = Response::new();
-    response.set_header("date-start", "Mon, 08 Apr 2019 10:42:12 GMT");
     response.set_version("RTSP/1.0");
     response.set_code(200);
     response.set_reason("Ok");
+    response.header.set("date-start", "Mon, 08 Apr 2019 10:42:12 GMT");
     let mut dst: Vec<u8> = Vec::new();
     response.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST_SEND_CASE.as_bytes());

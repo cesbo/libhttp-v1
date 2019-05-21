@@ -28,9 +28,9 @@ const TEST_TAB_UNIX: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t       RT
 #[test]
 fn send() {
     let mut request = Request::new();
-    request.init("http://127.0.0.1:8000/path?query").unwrap();
-    request.set_header("User-Agent", "libhttp");
+    request.url.set("http://127.0.0.1:8000/path?query").unwrap();
     request.set_version("RTSP/1.0");
+    request.header.set("User-Agent", "libhttp");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST2.as_bytes());
@@ -39,8 +39,8 @@ fn send() {
 #[test]
 fn send_version() {
     let mut request = Request::new();
-    request.init("http://127.0.0.1:8000/path?query").unwrap();
-    request.set_header("User-Agent", "libhttp");
+    request.url.set("http://127.0.0.1:8000/path?query").unwrap();
+    request.header.set("User-Agent", "libhttp");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST1.as_bytes());
@@ -49,9 +49,9 @@ fn send_version() {
 #[test]
 fn send_case() {
     let mut request = Request::new();
-    request.init("http://127.0.0.1:8000/path?query").unwrap();
-    request.set_header("user-agent", "libhttp");
+    request.url.set("http://127.0.0.1:8000/path?query").unwrap();
     request.set_version("RTSP/1.0");
+    request.header.set("user-agent", "libhttp");
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST2.as_bytes());
@@ -62,8 +62,8 @@ fn parseer_parse() {
     let mut request = Request::new();
     request.parse(&mut BufReader::new(TEST1.as_bytes())).unwrap();
     assert_eq!(request.get_method(), "GET");
-    assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
-    assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
+    assert_eq!(request.header.get("host").unwrap(), "127.0.0.1:8000");
+    assert_eq!(request.header.get("user-agent").unwrap(), "libhttp");
 }
 
 #[test]
@@ -78,8 +78,8 @@ fn parseer_tab() {
     request.parse(&mut BufReader::new(TEST_TAB.as_bytes())).unwrap();
     assert_eq!(request.get_method(), "POST");
     assert_eq!(request.get_version(), "RTSP/1.3");
-    assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
-    assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
+    assert_eq!(request.header.get("host").unwrap(), "127.0.0.1:8000");
+    assert_eq!(request.header.get("user-agent").unwrap(), "libhttp");
 }
 
 #[test]
@@ -90,6 +90,6 @@ fn parseer_unix() {
     assert_eq!(request.get_version(), "RTSP/1.0");
     assert_eq!(request.url.get_query(), "?query");
     assert_eq!(request.url.get_path(), "/path");
-    assert_eq!(request.get_header("host").unwrap(), "127.0.0.1:8000");
-    assert_eq!(request.get_header("user-agent").unwrap(), "libhttp");
+    assert_eq!(request.header.get("host").unwrap(), "127.0.0.1:8000");
+    assert_eq!(request.header.get("user-agent").unwrap(), "libhttp");
 }

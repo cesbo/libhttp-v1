@@ -50,7 +50,7 @@ impl From<io::Error> for HttpStreamError {
 impl From<openssl::error::ErrorStack> for HttpStreamError {
     fn from(e: openssl::error::ErrorStack) -> Self {
         let s = e.errors().get(0)
-            .and_then(|ee| ee.reason())
+            .and_then(openssl::error::Error::reason)
             .unwrap_or("");
 
         HttpStreamError(format!("SSL: {}", s))
@@ -65,7 +65,7 @@ impl From<openssl::ssl::HandshakeError<TcpStream>> for HttpStreamError {
         match &e {
             openssl::ssl::HandshakeError::SetupFailure(ee) => {
                 let s = ee.errors().get(0)
-                    .and_then(|eee| eee.reason())
+                    .and_then(openssl::error::Error::reason)
                     .unwrap_or("");
                 result.push_str(s);
             }
@@ -75,7 +75,7 @@ impl From<openssl::ssl::HandshakeError<TcpStream>> for HttpStreamError {
                     result.push_str(&io_ee.to_string());
                 } else if let Some(ssl_ee) = inner_error.ssl_error() {
                     let s = ssl_ee.errors().get(0)
-                        .and_then(|eee| eee.reason())
+                        .and_then(openssl::error::Error::reason)
                         .unwrap_or("unknown");
                     result.push_str(s);
                     let v = ee.ssl().verify_result();
@@ -263,13 +263,13 @@ impl HttpStream {
     pub fn configure(&mut self, response: &Response) -> Result<(), HttpStreamError> {
         self.transfer = HttpTransferEncoding::Eof;
 
-        if let Some(len) = response.get_header("content-length") {
+        if let Some(len) = response.header.get("content-length") {
             let len = len.parse().unwrap_or(0);
             self.transfer = HttpTransferEncoding::Length(len);
             return Ok(());
         }
 
-        if let Some(te) = response.get_header("transfer-encoding") {
+        if let Some(te) = response.header.get("transfer-encoding") {
             // TODO: parse te
             if te == "chunked" {
                 self.transfer = HttpTransferEncoding::Chunked(0, true);

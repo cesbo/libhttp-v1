@@ -4,9 +4,8 @@ use std::io::{
     BufRead,
     Write
 };
-use std::collections::HashMap;
 
-use crate::tools;
+use crate::header::Header;
 
 
 #[derive(Debug)]
@@ -34,7 +33,8 @@ pub struct Response {
     version: String,
     code: usize,
     reason: String,
-    headers: HashMap<String, String>,
+    ///
+    pub header: Header,
 }
 
 
@@ -43,8 +43,8 @@ impl Default for Response {
         Response {
             version: "HTTP/1.1".to_string(),
             code: 0,
-            reason: String::new(),
-            headers: HashMap::new(),
+            reason: String::default(),
+            header: Header::default(),
         }
     }
 }
@@ -91,13 +91,7 @@ impl Response {
                     }
                 }
             } else {
-                if let Some(skip) = s.find(':') {
-                    let key = s[.. skip].trim_end();
-                    if ! key.is_empty() {
-                        let value = s[skip + 1 ..].trim_start();
-                        self.headers.insert(key.to_lowercase(), value.to_string());
-                    }
-                }
+                self.header.parse(s);
             }
         }
 
@@ -110,9 +104,7 @@ impl Response {
             self.code,
             self.reason)?;
 
-        for (key, value) in self.headers.iter() {
-            tools::header_write(dst, key, value)?;
-        }
+        self.header.send(dst)?;
 
         writeln!(dst, "\r")
     }
@@ -122,17 +114,6 @@ impl Response {
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), ResponseError> {
         self.io_send(dst)?;
         Ok(())
-    }
-
-    /// Sets response header
-    /// key should be in lowercase
-    #[inline]
-    pub fn set_header<R, S>(&mut self, key: R, value: S)
-    where
-        R: AsRef<str>,
-        S: ToString,
-    {
-        self.headers.insert(key.as_ref().to_lowercase(), value.to_string());
     }
 
     /// Sets protocol version
@@ -162,11 +143,4 @@ impl Response {
     /// Returns response reason
     #[inline]
     pub fn get_reason(&self) -> &str { self.reason.as_str() }
-
-    /// Returns reference to the response header value value corresponding to the key
-    /// key should be in lowercase
-    #[inline]
-    pub fn get_header(&self, key: &str) -> Option<&str> {
-        self.headers.get(key).map(|v| v.as_str())
-    }
 }

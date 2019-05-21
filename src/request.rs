@@ -4,9 +4,8 @@ use std::io::{
     BufRead,
     Write
 };
-use std::collections::HashMap;
 
-use crate::tools;
+use crate::header::Header;
 use crate::url::{
     Url,
     UrlError,
@@ -43,8 +42,8 @@ pub struct Request {
     method: String,
     pub url: Url,
     version: String,
-    headers: HashMap<String, String>,
-    pub nonce_count: usize
+    pub header: Header,
+    pub (crate) nonce_count: usize
 }
 
 
@@ -54,7 +53,7 @@ impl Default for Request {
             method: "GET".to_owned(),
             url: Url::default(),
             version: "HTTP/1.1".to_owned(),
-            headers: HashMap::new(),
+            header: Header::default(),
             nonce_count: 0,
         }
     }
@@ -65,12 +64,6 @@ impl Request {
     /// Allocates new request object
     #[inline]
     pub fn new() -> Self { Request::default() }
-
-    /// Sets request url
-    pub fn init(&mut self, url: &str) -> Result<(), RequestError> {
-        self.url.set(url)?;
-        Ok(())
-    }
 
     /// Reads and parses request line and headers
     /// Reads until empty line found
@@ -106,13 +99,7 @@ impl Request {
                     }
                 }
             } else {
-                if let Some(skip) = s.find(':') {
-                    let key = s[.. skip].trim_end();
-                    if ! key.is_empty() {
-                        let value = s[skip + 1 ..].trim_start();
-                        self.headers.insert(key.to_lowercase(), value.to_string());
-                    }
-                }
+                self.header.parse(s);
             }
         }
 
@@ -130,10 +117,7 @@ impl Request {
             self.version)?;
 
         writeln!(dst, "Host: {}\r", self.url.get_address())?;
-
-        for (key, value) in self.headers.iter() {
-            tools::header_write(dst, key, value)?;
-        }
+        self.header.send(dst)?;
 
         writeln!(dst, "\r")
     }
@@ -143,17 +127,6 @@ impl Request {
     pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), RequestError> {
         self.io_send(dst)?;
         Ok(())
-    }
-
-    /// Sets request header
-    /// key should be in lowercase
-    #[inline]
-    pub fn set_header<R, S>(&mut self, key: R, value: S)
-    where
-        R: AsRef<str>,
-        S: ToString,
-    {
-        self.headers.insert(key.as_ref().to_lowercase(), value.to_string());
     }
 
     /// Sets request method
@@ -180,11 +153,4 @@ impl Request {
     /// Returns request version
     #[inline]
     pub fn get_version(&self) -> &str { self.version.as_str() }
-
-    /// Returns reference to the request header value value corresponding to the key
-    /// key should be in lowercase
-    #[inline]
-    pub fn get_header(&self, key: &str) -> Option<&str> {
-        self.headers.get(key).map(|v| v.as_str())
-    }
 }

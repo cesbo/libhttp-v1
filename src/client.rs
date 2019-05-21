@@ -65,8 +65,8 @@ impl From<HttpStreamError> for HttpClientError {
 ///
 /// fn main() {
 ///     let mut client = HttpClient::new();
-///     client.request.init("https://example.com");
-///     client.request.set_header("user-agent", "libhttp");
+///     client.request.url.set("https://example.com");
+///     client.request.header.set("user-agent", "libhttp");
 ///     client.send().unwrap();
 ///     client.receive().unwrap();
 ///     let mut body = String::new();
