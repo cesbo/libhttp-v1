@@ -1,7 +1,9 @@
-use http::Url;
-use http::urlencode;
-use http::urldecode;
-use http::Query;
+use http::{
+    Url,
+    urlencode,
+    urldecode,
+    Query,
+};
 
 
 #[test]

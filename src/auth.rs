@@ -44,23 +44,27 @@ pub fn auth(request: &mut Request, response: &Response) {
         return
     }
 
-    match response.get_code() {
-        401 => {
-            let value = response.header.get("www-authenticate").unwrap_or("");
-            if value.is_empty() {
-                return;
-            }
-
-            let mut i = value.splitn(2, char::is_whitespace);
-            let mode = i.next().unwrap();
-            if let Some(token) = i.next() {
-                if mode.eq_ignore_ascii_case("digest") {
-                    digest(request, token.trim_start());
-                }
-            }
-        }
-        _ => basic(request),
+    let token = response.header.get("www-authenticate").unwrap_or("").trim();
+    if token.is_empty() {
+        basic(request);
+        return
     }
+
+    let mut i = token.splitn(2, char::is_whitespace);
+    let mode = i.next().unwrap();
+    let token = i.next().unwrap_or("");
+
+    if mode.eq_ignore_ascii_case("digest") {
+        digest(request, token);
+        return
+    }
+
+    if mode.eq_ignore_ascii_case("basic") {
+        basic(request);
+        return
+    }
+
+    // TODO: error. unknown method
 }
 
 
@@ -131,12 +135,13 @@ fn digest(request: &mut Request, token: &str) {
     let ha2 = h.finish().unwrap();
 
     hex2hash(&mut h, &ha1);
+    [
+        ":", nonce,
+        ":",
+    ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
 
     if qop.is_empty() {
-        [
-            ":", nonce,
-            ":",
-        ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
+        //
     } else if qop == "auth" {
         if request.nonce_count < 99_999_999 {
             request.nonce_count += 1;
@@ -155,13 +160,13 @@ fn digest(request: &mut Request, token: &str) {
             &nonce_count, &client_nonce).unwrap();
 
         [
-            ":", nonce,
-            ":", &nonce_count,
+            &nonce_count,
             ":", &client_nonce,
             ":", qop,
             ":",
         ].iter().for_each(|s| h.update(s.as_bytes()).unwrap());
     }
+
     hex2hash(&mut h, &ha2);
 
     let hr = h.finish().unwrap();
