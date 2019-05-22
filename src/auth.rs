@@ -29,8 +29,9 @@ fn hex2hash<R: AsRef<[u8]>>(h: &mut Hasher, bytes: R) {
 
 
 fn hex2string<R: AsRef<[u8]>>(bytes: R) -> String {
-    let mut ret = String::new();
-    for b in bytes.as_ref() {
+    let bytes = bytes.as_ref();
+    let mut ret = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
         ret.push(char::from(HEXMAP[(b >> 4) as usize]));
         ret.push(char::from(HEXMAP[(b & 0x0F) as usize]));
     }
@@ -78,7 +79,7 @@ fn basic(request: &mut Request) {
 
 /// Digest Access Authentication (RFC 2069)
 fn digest(request: &mut Request, token: &str) {
-    let mut result = String::from("Digest ");
+    let mut result = String::with_capacity(1024);
 
     let mut realm = "";
     let mut nonce = "";
@@ -88,7 +89,7 @@ fn digest(request: &mut Request, token: &str) {
     let username = i.next().unwrap_or("");
     let password = i.next().unwrap_or("");
 
-    write!(result, "username=\"{}\", uri=\"{}\"", username, request.url.get_path()).unwrap();
+    write!(result, "Digest username=\"{}\", uri=\"{}\"", username, request.url.get_path()).unwrap();
 
     for data in token.split(',') {
         let data = data.trim();
