@@ -120,7 +120,6 @@ impl Request {
             self.url.get_query(),
             self.version)?;
 
-        writeln!(dst, "Host: {}\r", self.url.get_address())?;
         self.header.send(dst)?;
 
         writeln!(dst, "\r")

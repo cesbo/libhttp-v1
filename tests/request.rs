@@ -3,7 +3,6 @@ use http::Request;
 
 const TEST1: &str = "GET /path?query HTTP/1.1\r\n\
     Host: 127.0.0.1:8000\r\n\
-    User-Agent: libhttp\r\n\
     \r\n";
 
 const TEST_BROKEN: &str = "GET /path?query HTTP/1.1\r\n\
@@ -12,7 +11,6 @@ const TEST_BROKEN: &str = "GET /path?query HTTP/1.1\r\n\
 
 const TEST2: &str = "GET /path?query RTSP/1.0\r\n\
     Host: 127.0.0.1:8000\r\n\
-    User-Agent: libhttp\r\n\
     \r\n";
 
 const TEST_TAB: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t        RTSP/1.3\r\n\
@@ -25,37 +23,29 @@ const TEST_TAB_UNIX: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t       RT
     User-Agent:\t libhttp\n\
     \n";
 
+
 #[test]
 fn send() {
     let mut request = Request::new();
     request.url.set("http://127.0.0.1:8000/path?query").unwrap();
     request.set_version("RTSP/1.0");
-    request.header.set("User-Agent", "libhttp");
+    request.header.set("host", request.url.get_address());
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST2.as_bytes());
 }
+
 
 #[test]
 fn send_version() {
     let mut request = Request::new();
     request.url.set("http://127.0.0.1:8000/path?query").unwrap();
-    request.header.set("User-Agent", "libhttp");
+    request.header.set("host", request.url.get_address());
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST1.as_bytes());
 }
 
-#[test]
-fn send_case() {
-    let mut request = Request::new();
-    request.url.set("http://127.0.0.1:8000/path?query").unwrap();
-    request.set_version("RTSP/1.0");
-    request.header.set("user-agent", "libhttp");
-    let mut dst: Vec<u8> = Vec::new();
-    request.send(&mut dst).unwrap();
-    assert_eq!(dst.as_slice(), TEST2.as_bytes());
-}
 
 #[test]
 fn parseer_parse() {
@@ -63,7 +53,6 @@ fn parseer_parse() {
     request.parse(&mut BufReader::new(TEST1.as_bytes())).unwrap();
     assert_eq!(request.get_method(), "GET");
     assert_eq!(request.header.get("host").unwrap(), "127.0.0.1:8000");
-    assert_eq!(request.header.get("user-agent").unwrap(), "libhttp");
 }
 
 #[test]
