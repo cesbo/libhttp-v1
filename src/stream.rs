@@ -28,7 +28,7 @@ const DEFAULT_TCP_NODELAY: bool = false;
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 
-trait Stream: Read + Write {}
+trait Stream: Read + Write + fmt::Debug {}
 impl Stream for TcpStream {}
 impl Stream for SslStream<TcpStream> {}
 
@@ -94,6 +94,7 @@ impl From<openssl::ssl::HandshakeError<TcpStream>> for HttpStreamError {
 
 
 /// Internal transfer state
+#[derive(Debug)]
 enum HttpTransferEncoding {
     /// Reading until EOF
     Eof,
@@ -110,6 +111,16 @@ struct HttpBuffer {
     buf: Box<[u8]>,
     pos: usize,
     cap: usize,
+}
+
+
+impl fmt::Debug for HttpBuffer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("HttpBuffer")
+            .field("pos", &self.pos)
+            .field("cap", &self.cap)
+            .finish()
+    }
 }
 
 
@@ -157,6 +168,7 @@ impl Default for HttpBuffer {
 ///     stream.read_to_string(&mut body).unwrap();
 /// }
 /// ```
+#[derive(Debug)]
 pub struct HttpStream {
     timeout: Duration,
     ttl: u32,

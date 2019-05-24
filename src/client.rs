@@ -78,7 +78,7 @@ impl From<HttpStreamError> for HttpClientError {
 ///     client.read_to_string(&mut body).unwrap();
 /// }
 /// ```
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct HttpClient {
     /// HTTP request
     pub request: Request,
