@@ -62,6 +62,12 @@ impl Response {
     pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), ResponseError> {
         let mut first_line = true;
         let mut buffer = String::new();
+
+        self.header.clear();
+        self.version.clear();
+        self.code = 0;
+        self.reason.clear();
+
         loop {
             buffer.clear();
             let r = reader.read_line(&mut buffer)?;
@@ -74,10 +80,6 @@ impl Response {
 
             if first_line {
                 first_line = false;
-
-                self.version.clear();
-                self.code = 0;
-                self.reason.clear();
 
                 let skip = s.find(char::is_whitespace).ok_or_else(|| "invalid format")?;
                 self.version.push_str(&s[.. skip]);

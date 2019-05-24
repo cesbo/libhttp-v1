@@ -74,6 +74,11 @@ impl Request {
     pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), RequestError> {
         let mut first_line = true;
         let mut buffer = String::new();
+
+        self.header.clear();
+        self.method.clear();
+        self.version.clear();
+
         loop {
             buffer.clear();
             let r = reader.read_line(&mut buffer)?;
@@ -87,8 +92,6 @@ impl Request {
             if first_line {
                 first_line = false;
 
-                self.method.clear();
-
                 let skip = s.find(char::is_whitespace).ok_or_else(|| "invalid format")?;
                 self.method.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
@@ -98,7 +101,6 @@ impl Request {
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
                     if ! s.is_empty() {
-                        self.version.clear();
                         self.version.push_str(s);
                     }
                 }
