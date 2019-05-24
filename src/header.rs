@@ -46,6 +46,7 @@ impl Header {
             }
             writeln!(dst, ": {}\r", value)?;
         }
+
         Ok(())
     }
 
@@ -69,4 +70,8 @@ impl Header {
     {
         self.0.get(key.as_ref()).map(std::string::String::as_str)
     }
+
+    /// Removes all headers
+    #[inline]
+    pub fn clear(&mut self) { self.0.clear() }
 }
