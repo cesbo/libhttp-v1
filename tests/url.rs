@@ -7,7 +7,7 @@ use http::{
 
 
 #[test]
-fn test_parse_query() {
+fn test_query_parse() {
     let q = Query::new(concat!(
         "data=1&",
         "string=5&",
@@ -18,6 +18,22 @@ fn test_parse_query() {
         "&")).unwrap();
     let link = q.get("link").unwrap();
     assert_eq!(link, "&&&http://foo bar/тест/🍔/?");
+}
+
+
+#[test]
+fn test_query_iter() {
+    let q = Query::new("key1=value1&key2=value2").unwrap();
+    let mut step = 0;
+    for (k, v) in &q {
+        step += 1;
+        match k {
+            "key1" => assert_eq!(v, "value1"),
+            "key2" => assert_eq!(v, "value2"),
+            _ => unreachable!(),
+        }
+    }
+    assert_eq!(step, 2);
 }
 
 
