@@ -10,7 +10,7 @@ use crate::{
 
 
 error_rules! {
-    Error => ("Query: {}", error),
+    Error => ("UrlQuery: {}", error),
     UrlDecodeError,
 }
 
@@ -20,26 +20,26 @@ error_rules! {
 /// Usage:
 ///
 /// ```
-/// use http::Query;
+/// use http::UrlQuery;
 ///
 /// fn main() {
-///     let query = Query::new("key1=value1&key2=value2").unwrap();
+///     let query = UrlQuery::new("key1=value1&key2=value2").unwrap();
 ///     assert_eq!(query.get("key1").unwrap(), "value1");
 ///     assert_eq!(query.get("key2").unwrap(), "value2");
 /// }
 /// ```
-pub struct Query(HashMap<String, String>);
+pub struct UrlQuery(HashMap<String, String>);
 
 
-impl fmt::Debug for Query {
+impl fmt::Debug for UrlQuery {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 
-impl Query {
-    pub fn new(query: &str) -> Result<Query> {
+impl UrlQuery {
+    pub fn new(query: &str) -> Result<UrlQuery> {
         let mut map = HashMap::new();
 
         for data in query.split('&').filter(|s| !s.is_empty()) {
@@ -52,7 +52,7 @@ impl Query {
             map.insert(key, value);
         }
 
-        Ok(Query(map))
+        Ok(UrlQuery(map))
     }
 
     /// Returns string value
@@ -63,30 +63,30 @@ impl Query {
 
     /// Returns pairs iterator
     #[inline]
-    pub fn iter<'a>(&'a self) -> QueryIterator<'a> {
+    pub fn iter<'a>(&'a self) -> UrlQueryIterator<'a> {
         self.into_iter()
     }
 }
 
 
-impl<'a> IntoIterator for &'a Query {
+impl<'a> IntoIterator for &'a UrlQuery {
     type Item = (&'a str, &'a str);
-    type IntoIter = QueryIterator<'a>;
+    type IntoIter = UrlQueryIterator<'a>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        QueryIterator {
+        UrlQueryIterator {
             inner: self.0.iter(),
         }
     }
 }
 
 /// Iterator over query HashMap
-pub struct QueryIterator<'a> {
+pub struct UrlQueryIterator<'a> {
     inner: std::collections::hash_map::Iter<'a, String, String>,
 }
 
-impl<'a> Iterator for QueryIterator<'a> {
+impl<'a> Iterator for UrlQueryIterator<'a> {
     type Item = (&'a str, &'a str);
 
     #[inline]

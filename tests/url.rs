@@ -2,13 +2,13 @@ use http::{
     Url,
     urlencode,
     urldecode,
-    Query,
+    UrlQuery,
 };
 
 
 #[test]
 fn test_query_parse() {
-    let q = Query::new(concat!(
+    let q = UrlQuery::new(concat!(
         "data=1&",
         "string=5&",
         "testing_кирилица=&",
@@ -23,7 +23,7 @@ fn test_query_parse() {
 
 #[test]
 fn test_query_iter() {
-    let q = Query::new("key1=value1&key2=value2").unwrap();
+    let q = UrlQuery::new("key1=value1&key2=value2").unwrap();
     let mut step = 0;
     for (k, v) in &q {
         step += 1;

@@ -45,8 +45,8 @@ pub use crate::url::{
     Error as UrlError,
 };
 
-mod query;
-pub use crate::query::{
-    Query,
-    Error as QueryError,
+mod urlquery;
+pub use crate::urlquery::{
+    UrlQuery,
+    Error as UrlQueryError,
 };

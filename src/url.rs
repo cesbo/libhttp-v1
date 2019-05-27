@@ -30,14 +30,14 @@ pub struct Url {
 
 impl Url {
     /// Allocate new object and parse url
-    pub fn new(u: &str) -> Result<Self> {
+    pub fn new<R: AsRef<str>>(input: R) -> Result<Self> {
         let mut url = Url::default();
-        url.set(u)?;
+        url.set(input)?;
         Ok(url)
     }
 
     /// Parse and absolute or relative URL from string
-    pub fn set(&mut self, inp: &str) -> Result<()> {
+    pub fn set<R: AsRef<str>>(&mut self, input: R) -> Result<()> {
         let mut skip = 0;
         // step values:
         // 0 - prefix
@@ -51,10 +51,11 @@ impl Url {
         let mut query = 0;
         let mut fragment = 0;
 
-        ensure!(!inp.is_empty(), "empty url");
-        ensure!(inp.len() <= 2048, "length limit");
+        let input = input.as_ref();
+        ensure!(!input.is_empty(), "empty url");
+        ensure!(input.len() <= 2048, "length limit");
 
-        if let Some(v) = inp.find("://") {
+        if let Some(v) = input.find("://") {
             self.scheme.clear();
             self.prefix.clear();
             self.address.clear();
@@ -64,11 +65,11 @@ impl Url {
             self.query.clear();
             self.fragment.clear();
 
-            self.scheme.push_str(&inp[0 .. v]);
+            self.scheme.push_str(&input[0 .. v]);
             skip = v + 3;
         } else {
             // TODO: relative url
-            ensure!(inp.starts_with('/'), "unexpected relative path");
+            ensure!(input.starts_with('/'), "unexpected relative path");
 
             self.path.clear();
             self.query.clear();
@@ -77,7 +78,7 @@ impl Url {
             step = 2;
         }
 
-        for (idx, part) in inp[skip ..].match_indices(|c| {
+        for (idx, part) in input[skip ..].match_indices(|c| {
             c == '/' || c == '?' || c == '#' || c == '@'
         }) {
             match part.as_bytes()[0] {
@@ -88,25 +89,25 @@ impl Url {
                 _ => {},
             };
         }
-        let mut tail = inp.len();
+        let mut tail = input.len();
         if fragment > 0 {
-            self.fragment.push_str(&inp[fragment .. tail]);
+            self.fragment.push_str(&input[fragment .. tail]);
             tail = fragment;
         }
         if query > 0 {
-            self.query.push_str(&inp[query .. tail]);
+            self.query.push_str(&input[query .. tail]);
             tail = query;
         }
         if path > 0 || skip == 0 {
-            self.path = urldecode(&inp[path .. tail])?;
+            self.path = urldecode(&input[path .. tail])?;
             tail = path;
         }
         if prefix > 0 {
-            self.prefix.push_str(&inp[skip .. prefix]);
+            self.prefix.push_str(&input[skip .. prefix]);
             skip = prefix + 1;
         }
         if skip != 0 {
-            self.address.push_str(&inp[skip .. tail]);
+            self.address.push_str(&input[skip .. tail]);
             let address_len = self.address.len();
             self.host_len = self.address.find(':').unwrap_or(address_len);
             if address_len > self.host_len {
