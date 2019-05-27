@@ -33,32 +33,24 @@ impl Stream for TcpStream {}
 impl Stream for SslStream<TcpStream> {}
 
 
-#[derive(Debug)]
-pub struct HttpStreamError(String);
-
-
-impl fmt::Display for HttpStreamError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "HttpStream: {}", self.0) }
+error_rules! {
+    self => ("HttpStream: {}", error),
+    io::Error,
 }
 
 
-impl From<io::Error> for HttpStreamError {
-    fn from(e: io::Error) -> Self { HttpStreamError(e.to_string()) }
-}
-
-
-impl From<openssl::error::ErrorStack> for HttpStreamError {
+impl From<openssl::error::ErrorStack> for Error {
     fn from(e: openssl::error::ErrorStack) -> Self {
         let s = e.errors().get(0)
             .and_then(openssl::error::Error::reason)
             .unwrap_or("");
 
-        HttpStreamError(format!("SSL: {}", s))
+        format!("SSL: {}", s).into()
     }
 }
 
 
-impl From<openssl::ssl::HandshakeError<TcpStream>> for HttpStreamError {
+impl From<openssl::ssl::HandshakeError<TcpStream>> for Error {
     fn from(e: openssl::ssl::HandshakeError<TcpStream>) -> Self {
         let mut result = String::from("Handshake: ");
 
@@ -88,7 +80,7 @@ impl From<openssl::ssl::HandshakeError<TcpStream>> for HttpStreamError {
             _ => unimplemented!(),
         };
 
-        HttpStreamError(result)
+        result.into()
     }
 }
 
@@ -244,7 +236,7 @@ impl HttpStream {
 
     /// Opens a TCP connection to a remote host
     /// If connection already opened just clears read/write buffers
-    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<(), HttpStreamError> {
+    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<()> {
         self.rbuf.pos = 0;
         self.rbuf.cap = 0;
         self.wbuf.pos = 0;
@@ -272,7 +264,7 @@ impl HttpStream {
     }
 
     /// Checks response headers and set content parser behavior
-    pub fn configure(&mut self, response: &Response) -> Result<(), HttpStreamError> {
+    pub fn configure(&mut self, response: &Response) -> Result<()> {
         self.transfer = HttpTransferEncoding::Eof;
 
         if let Some(len) = response.header.get("content-length") {

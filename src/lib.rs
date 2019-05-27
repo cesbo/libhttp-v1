@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate error_rules;
+
 mod auth;
 
 mod header;

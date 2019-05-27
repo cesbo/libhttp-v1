@@ -1,27 +1,12 @@
-use std::fmt;
-
 use crate::urldecode::{
     urldecode,
-    UrlDecodeError,
+    Error as UrlDecodeError,
 };
 
 
-#[derive(Debug)]
-pub struct UrlError(String);
-
-
-impl fmt::Display for UrlError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Url: {}", self.0) }
-}
-
-
-impl From<&str> for UrlError {
-    fn from(e: &str) -> UrlError { UrlError(e.to_string()) }
-}
-
-
-impl From<UrlDecodeError> for UrlError {
-    fn from(e: UrlDecodeError) -> UrlError { UrlError(e.to_string()) }
+error_rules! {
+    self => ("Url: {}", error),
+    UrlDecodeError,
 }
 
 
@@ -45,14 +30,14 @@ pub struct Url {
 
 impl Url {
     /// Allocate new object and parse url
-    pub fn new(u: &str) -> Result<Self, UrlError> {
+    pub fn new(u: &str) -> Result<Self> {
         let mut url = Url::default();
         url.set(u)?;
         Ok(url)
     }
 
     /// Parse and absolute or relative URL from string
-    pub fn set(&mut self, inp: &str) -> Result<(), UrlError> {
+    pub fn set(&mut self, inp: &str) -> Result<()> {
         let mut skip = 0;
         // step values:
         // 0 - prefix
@@ -66,8 +51,8 @@ impl Url {
         let mut query = 0;
         let mut fragment = 0;
 
-        if inp.is_empty() { Err("empty url")? }
-        if inp.len() > 2048 { Err("length limit")? }
+        ensure!(!inp.is_empty(), "empty url");
+        ensure!(inp.len() <= 2048, "length limit");
 
         if let Some(v) = inp.find("://") {
             self.scheme.clear();
@@ -83,7 +68,7 @@ impl Url {
             skip = v + 3;
         } else {
             // TODO: relative url
-            if ! inp.starts_with('/') { Err("unexpected relative path")? }
+            ensure!(inp.starts_with('/'), "unexpected relative path");
 
             self.path.clear();
             self.query.clear();
@@ -126,7 +111,7 @@ impl Url {
             self.host_len = self.address.find(':').unwrap_or(address_len);
             if address_len > self.host_len {
                 self.port = self.address[self.host_len + 1 ..].parse::<u16>().unwrap_or(0);
-                if self.port == 0 { Err("invalid port")? }
+                ensure!(self.port > 0, "invalid port");
             }
         }
 

@@ -1,42 +1,22 @@
-use std::{
-    fmt,
-    io::{
-        self,
-        BufRead,
-        Write,
-    },
+use std::io::{
+    self,
+    BufRead,
+    Write,
 };
 
 use crate::{
     header::Header,
     url::{
         Url,
-        UrlError,
+        Error as UrlError,
     },
 };
 
 
-#[derive(Debug)]
-pub struct RequestError(String);
-
-
-impl fmt::Display for RequestError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Request: {}", self.0) }
-}
-
-
-impl From<io::Error> for RequestError {
-    fn from(e: io::Error) -> RequestError { RequestError(e.to_string()) }
-}
-
-
-impl From<&str> for RequestError {
-    fn from(e: &str) -> RequestError { RequestError(e.to_string()) }
-}
-
-
-impl From<UrlError> for RequestError {
-    fn from(e: UrlError) -> RequestError { RequestError(e.to_string()) }
+error_rules! {
+    self => ("Request: {}", error),
+    io::Error,
+    UrlError,
 }
 
 
@@ -71,7 +51,7 @@ impl Request {
 
     /// Reads and parses request line and headers
     /// Reads until empty line found
-    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), RequestError> {
+    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<()> {
         let mut first_line = true;
         let mut buffer = String::new();
 
@@ -85,7 +65,7 @@ impl Request {
 
             let s = buffer.trim();
             if s.is_empty() {
-                if first_line || r == 0 { Err("unexpected eof")? }
+                ensure!(!first_line && r != 0, "unexpected eof");
                 break;
             }
 
@@ -129,7 +109,7 @@ impl Request {
 
     /// Writes request line and headers to dst
     #[inline]
-    pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), RequestError> {
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
         self.io_send(dst)?;
         Ok(())
     }

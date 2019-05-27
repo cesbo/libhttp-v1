@@ -5,21 +5,13 @@ use std::{
 
 use crate::urldecode::{
     urldecode,
-    UrlDecodeError,
+    Error as UrlDecodeError,
 };
 
 
-#[derive(Debug)]
-pub struct ParseQueryError(String);
-
-
-impl fmt::Display for ParseQueryError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "ParseQuery: {}", self.0) }
-}
-
-
-impl From<UrlDecodeError> for ParseQueryError {
-    fn from(e: UrlDecodeError) -> ParseQueryError { ParseQueryError(e.to_string()) }
+error_rules! {
+    self => ("ParseQuery: {}", error),
+    UrlDecodeError,
 }
 
 
@@ -47,7 +39,7 @@ impl fmt::Debug for Query {
 
 
 impl Query {
-    pub fn new(query: &str) -> Result<Query, ParseQueryError> {
+    pub fn new(query: &str) -> Result<Query> {
         let mut map = HashMap::new();
 
         for data in query.split('&').filter(|s| !s.is_empty()) {

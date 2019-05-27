@@ -1,31 +1,15 @@
-use std::{
-    fmt,
-    io::{
-        self,
-        BufRead,
-        Write,
-    },
+use std::io::{
+    self,
+    BufRead,
+    Write,
 };
 
 use crate::header::Header;
 
 
-#[derive(Debug)]
-pub struct ResponseError(String);
-
-
-impl fmt::Display for ResponseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "Response: {}", self.0) }
-}
-
-
-impl From<io::Error> for ResponseError {
-    fn from(e: io::Error) -> ResponseError { ResponseError(e.to_string()) }
-}
-
-
-impl From<&str> for ResponseError {
-    fn from(e: &str) -> ResponseError { ResponseError(e.to_string()) }
+error_rules! {
+    self => ("Response: {}", error),
+    io::Error,
 }
 
 
@@ -59,7 +43,7 @@ impl Response {
 
     /// Reads and parses response line and headers
     /// Reads until empty line found
-    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<(), ResponseError> {
+    pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<()> {
         let mut first_line = true;
         let mut buffer = String::new();
 
@@ -74,7 +58,7 @@ impl Response {
 
             let s = buffer.trim();
             if s.is_empty() {
-                if first_line || r == 0 { Err("unexpected eof")? }
+                ensure!(!first_line && r != 0, "unexpected eof");
                 break;
             }
 
@@ -86,7 +70,7 @@ impl Response {
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.code = s[.. skip].parse().unwrap_or(0);
-                if self.code < 100 || self.code >= 600 { Err("invalid status code")? }
+                ensure!(self.code >= 100 && self.code < 600, "invalid status code");
 
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
@@ -115,7 +99,7 @@ impl Response {
 
     /// Writes response line and headers to dst
     #[inline]
-    pub fn send<W: Write>(&self, dst: &mut W) -> Result<(), ResponseError> {
+    pub fn send<W: Write>(&self, dst: &mut W) -> Result<()> {
         self.io_send(dst)?;
         Ok(())
     }
