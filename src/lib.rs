@@ -37,7 +37,7 @@ pub use crate::urldecode::{
 };
 
 mod urlencode;
-pub use crate::urlencode::urlencode;
+pub use crate::urlencode::UrlEncoder;
 
 mod url;
 pub use crate::url::{

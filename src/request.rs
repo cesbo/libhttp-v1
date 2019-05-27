@@ -91,13 +91,9 @@ impl Request {
     }
 
     fn io_send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
-        let path = self.url.get_path();
-        let path = if path.is_empty() { "/" } else { path };
-
-        writeln!(dst,"{} {}{} {}\r",
+        writeln!(dst,"{} {} {}\r",
             self.method,
-            path,
-            self.url.get_query(),
+            self.url.as_request_uri(),
             self.version)?;
 
         self.header.send(dst)?;

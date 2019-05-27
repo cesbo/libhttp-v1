@@ -1,6 +1,6 @@
 use http::{
     Url,
-    urlencode,
+    UrlEncoder,
     urldecode,
     UrlQuery,
 };
@@ -39,7 +39,14 @@ fn test_query_iter() {
 
 #[test]
 fn test_urlencode() {
-    let s = urlencode("http://foo bar/тест/🍔/");
+    let s = UrlEncoder::new("http://foo bar/тест/🍔/").to_string();
+    assert_eq!(s.as_str(), "http://foo%20bar/%D1%82%D0%B5%D1%81%D1%82/%F0%9F%8D%94/");
+}
+
+
+#[test]
+fn test_urlencode_component() {
+    let s = UrlEncoder::new_component("http://foo bar/тест/🍔/").to_string();
     assert_eq!(s.as_str(), "http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
 }
 
@@ -68,7 +75,7 @@ fn test_10() {
     assert_eq!(url.get_scheme(), "dvb");
     assert_eq!(url.get_path(), "");
     assert_eq!(url.get_query(), "");
-    assert_eq!(url.get_fragment(), "#adapter=1&tp=11044:v:44200&type=s2");
+    assert_eq!(url.get_fragment(), "adapter=1&tp=11044:v:44200&type=s2");
 }
 
 
@@ -89,7 +96,7 @@ fn test_8() {
     assert_eq!(url.get_port(), 1234);
     assert_eq!(url.get_path(), "");
     assert_eq!(url.get_query(), "");
-    assert_eq!(url.get_fragment(), "#pnr=6");
+    assert_eq!(url.get_fragment(), "pnr=6");
 }
 
 
@@ -99,8 +106,9 @@ fn test_7() {
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "");
-    assert_eq!(url.get_query(), "?query");
+    assert_eq!(url.get_query(), "query");
     assert_eq!(url.get_fragment(), "");
+    assert_eq!(url.as_request_uri().to_string().as_str(), "/?query");
 }
 
 
@@ -111,7 +119,7 @@ fn test_6() {
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "");
     assert_eq!(url.get_query(), "");
-    assert_eq!(url.get_fragment(), "#fragment");
+    assert_eq!(url.get_fragment(), "fragment");
 }
 
 
@@ -121,8 +129,8 @@ fn test_5() {
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "");
-    assert_eq!(url.get_query(), "?query");
-    assert_eq!(url.get_fragment(), "#fragment");
+    assert_eq!(url.get_query(), "query");
+    assert_eq!(url.get_fragment(), "fragment");
 }
 
 
@@ -143,8 +151,9 @@ fn test_3() {
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "/path");
-    assert_eq!(url.get_query(), "?query");
+    assert_eq!(url.get_query(), "query");
     assert_eq!(url.get_fragment(), "");
+    assert_eq!(url.as_request_uri().to_string().as_str(), "/path?query");
 }
 
 
@@ -155,7 +164,7 @@ fn test_2() {
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "");
-    assert_eq!(url.get_fragment(), "#fragment");
+    assert_eq!(url.get_fragment(), "fragment");
 }
 
 
@@ -166,8 +175,8 @@ fn test_1() {
     assert_eq!(url.get_address(), "127.0.0.1");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "/path");
-    assert_eq!(url.get_query(), "?query");
-    assert_eq!(url.get_fragment(), "#fragment");
+    assert_eq!(url.get_query(), "query");
+    assert_eq!(url.get_fragment(), "fragment");
 }
 
 
@@ -179,8 +188,8 @@ fn test_url_full() {
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_port(), 8000);
     assert_eq!(url.get_path(), "/path");
-    assert_eq!(url.get_query(), "?query");
-    assert_eq!(url.get_fragment(), "#fragment");
+    assert_eq!(url.get_query(), "query");
+    assert_eq!(url.get_fragment(), "fragment");
 }
 
 
@@ -192,7 +201,7 @@ fn test_url_whithout_query() {
     assert_eq!(url.get_port(), 8000);
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "");
-    assert_eq!(url.get_fragment(), "#fragment");
+    assert_eq!(url.get_fragment(), "fragment");
 }
 
 
@@ -203,7 +212,7 @@ fn test_url_whithout_fragment() {
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_port(), 8000);
     assert_eq!(url.get_path(), "/path");
-    assert_eq!(url.get_query(), "?query");
+    assert_eq!(url.get_query(), "query");
     assert_eq!(url.get_fragment(), "");
 }
 
@@ -236,5 +245,5 @@ fn test_url_whithout_path_query_fragment() {
 fn test_url_without_scheme() {
     let url = Url::new("/path?query").unwrap();
     assert_eq!(url.get_path(), "/path");
-    assert_eq!(url.get_query(), "?query");
+    assert_eq!(url.get_query(), "query");
 }

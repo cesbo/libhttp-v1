@@ -1,6 +1,9 @@
+use std::fmt;
+
 use crate::{
     urldecode,
     UrlDecodeError,
+    UrlEncoder,
 };
 
 
@@ -91,11 +94,11 @@ impl Url {
         }
         let mut tail = input.len();
         if fragment > 0 {
-            self.fragment.push_str(&input[fragment .. tail]);
+            self.fragment.push_str(&input[fragment + 1 .. tail]);
             tail = fragment;
         }
         if query > 0 {
-            self.query.push_str(&input[query .. tail]);
+            self.query.push_str(&input[query + 1 .. tail]);
             tail = query;
         }
         if path > 0 || skip == 0 {
@@ -150,4 +153,33 @@ impl Url {
     /// Returns url fragment
     #[inline]
     pub fn get_fragment(&self) -> &str { &self.fragment }
+
+    /// Returns URL formatter
+    #[inline]
+    pub fn as_request_uri<'a>(&'a self) -> UrlFormatter<'a> {
+        UrlFormatter::RequestUri(self)
+    }
+}
+
+
+pub enum UrlFormatter<'a> {
+    RequestUri(&'a Url),
+}
+
+
+impl<'a> fmt::Display for UrlFormatter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UrlFormatter::RequestUri(url) => {
+                let path = if url.path.is_empty() { "/" } else { url.path.as_str() };
+                let path = UrlEncoder::new(path);
+
+                if url.query.is_empty() {
+                    write!(f, "{}", path)
+                } else {
+                    write!(f, "{}?{}", path, &url.query)
+                }
+            }
+        }
+    }
 }
