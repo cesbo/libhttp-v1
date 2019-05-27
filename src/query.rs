@@ -10,7 +10,7 @@ use crate::urldecode::{
 
 
 error_rules! {
-    self => ("ParseQuery: {}", error),
+    self => ("Query: {}", error),
     UrlDecodeError,
 }
 

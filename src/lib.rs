@@ -7,25 +7,46 @@ mod header;
 pub use crate::header::Header;
 
 mod request;
-pub use crate::request::Request;
+pub use crate::request::{
+    Request,
+    Error as RequestError,
+};
 
 mod response;
-pub use crate::response::Response;
+pub use crate::response::{
+    Response,
+    Error as ResponseError,
+};
 
 mod stream;
-pub use crate::stream::HttpStream;
+pub use crate::stream::{
+    HttpStream,
+    Error as HttpStreamError,
+};
 
 mod client;
-pub use crate::client::HttpClient;
+pub use crate::client::{
+    HttpClient,
+    Error as HttpClientError,
+};
 
 mod urldecode;
-pub use crate::urldecode::urldecode;
+pub use crate::urldecode::{
+    urldecode,
+    Error as UrlDecodeError,
+};
 
 mod urlencode;
 pub use crate::urlencode::urlencode;
 
 mod url;
-pub use crate::url::Url;
+pub use crate::url::{
+    Url,
+    Error as UrlError,
+};
 
 mod query;
-pub use crate::query::Query;
+pub use crate::query::{
+    Query,
+    Error as QueryError,
+};
