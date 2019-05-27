@@ -4,11 +4,11 @@ use std::io::{
     Write,
 };
 
-use crate::header::Header;
+use crate::Header;
 
 
 error_rules! {
-    self => ("Response: {}", error),
+    Error => ("Response: {}", error),
     io::Error,
 }
 

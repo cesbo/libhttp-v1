@@ -5,16 +5,14 @@ use std::io::{
 };
 
 use crate::{
-    header::Header,
-    url::{
-        Url,
-        Error as UrlError,
-    },
+    Header,
+    Url,
+    UrlError,
 };
 
 
 error_rules! {
-    self => ("Request: {}", error),
+    Error => ("Request: {}", error),
     io::Error,
     UrlError,
 }

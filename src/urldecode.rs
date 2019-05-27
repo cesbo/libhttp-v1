@@ -1,5 +1,5 @@
 error_rules! {
-    self => ("{}", error),
+    Error => ("{}", error),
     InvalidHex => ("invalid hexadecimal code"),
 }
 

@@ -7,23 +7,17 @@ use std::io::{
 
 use crate::{
     auth::auth,
-    request::{
-        Request,
-        Error as RequestError,
-    },
-    response::{
-        Response,
-        Error as ResponseError,
-    },
-    stream::{
-        HttpStream,
-        Error as HttpStreamError,
-    },
+    Request,
+    RequestError,
+    Response,
+    ResponseError,
+    HttpStream,
+    HttpStreamError,
 };
 
 
 error_rules! {
-    self => ("HttpClient: {}", error),
+    Error => ("HttpClient: {}", error),
     io::Error,
     RequestError,
     ResponseError,

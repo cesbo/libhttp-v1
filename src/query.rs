@@ -3,14 +3,14 @@ use std::{
     collections::HashMap,
 };
 
-use crate::urldecode::{
+use crate::{
     urldecode,
-    Error as UrlDecodeError,
+    UrlDecodeError,
 };
 
 
 error_rules! {
-    self => ("Query: {}", error),
+    Error => ("Query: {}", error),
     UrlDecodeError,
 }
 

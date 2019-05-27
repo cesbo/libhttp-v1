@@ -1,11 +1,11 @@
-use crate::urldecode::{
+use crate::{
     urldecode,
-    Error as UrlDecodeError,
+    UrlDecodeError,
 };
 
 
 error_rules! {
-    self => ("Url: {}", error),
+    Error => ("Url: {}", error),
     UrlDecodeError,
 }
 

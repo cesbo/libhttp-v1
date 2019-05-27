@@ -95,11 +95,11 @@ fn test_8() {
 
 #[test]
 fn test_7() {
-    let url = Url::new("http://127.0.0.1?qwery").unwrap();
+    let url = Url::new("http://127.0.0.1?query").unwrap();
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "");
-    assert_eq!(url.get_query(), "?qwery");
+    assert_eq!(url.get_query(), "?query");
     assert_eq!(url.get_fragment(), "");
 }
 
@@ -117,11 +117,11 @@ fn test_6() {
 
 #[test]
 fn test_5() {
-    let url = Url::new("http://127.0.0.1?qwery#fragment").unwrap();
+    let url = Url::new("http://127.0.0.1?query#fragment").unwrap();
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "");
-    assert_eq!(url.get_query(), "?qwery");
+    assert_eq!(url.get_query(), "?query");
     assert_eq!(url.get_fragment(), "#fragment");
 }
 
@@ -139,11 +139,11 @@ fn test_4() {
 
 #[test]
 fn test_3() {
-    let url = Url::new("http://127.0.0.1/path?qwery").unwrap();
+    let url = Url::new("http://127.0.0.1/path?query").unwrap();
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "/path");
-    assert_eq!(url.get_query(), "?qwery");
+    assert_eq!(url.get_query(), "?query");
     assert_eq!(url.get_fragment(), "");
 }
 
@@ -161,12 +161,12 @@ fn test_2() {
 
 #[test]
 fn test_1() {
-    let url = Url::new("http://127.0.0.1/path?qwery#fragment").unwrap();
+    let url = Url::new("http://127.0.0.1/path?query#fragment").unwrap();
     assert_eq!(url.get_scheme(), "http");
     assert_eq!(url.get_address(), "127.0.0.1");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "/path");
-    assert_eq!(url.get_query(), "?qwery");
+    assert_eq!(url.get_query(), "?query");
     assert_eq!(url.get_fragment(), "#fragment");
 }
 

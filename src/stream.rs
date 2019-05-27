@@ -20,7 +20,7 @@ use openssl::ssl::{
     SslStream,
 };
 
-use crate::response::Response;
+use crate::Response;
 
 
 const DEFAULT_IP_TTL: u32 = 64;
@@ -34,7 +34,7 @@ impl Stream for SslStream<TcpStream> {}
 
 
 error_rules! {
-    self => ("HttpStream: {}", error),
+    Error => ("HttpStream: {}", error),
     io::Error,
 }
 
