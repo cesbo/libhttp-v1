@@ -1,9 +1,16 @@
+use std::convert::TryInto;
+
 use http::{
     Url,
     UrlEncoder,
-    urldecode,
+    UrlDecoder,
     UrlQuery,
 };
+
+
+static ENCODED_URI: &str = "http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F";
+static ENCODED_PATH: &str = "http://foo%20bar/%D1%82%D0%B5%D1%81%D1%82/%F0%9F%8D%94/";
+static DECODED_URI: &str = "http://foo bar/тест/🍔/";
 
 
 #[test]
@@ -39,22 +46,22 @@ fn test_query_iter() {
 
 #[test]
 fn test_urlencode() {
-    let s = UrlEncoder::new("http://foo bar/тест/🍔/").to_string();
-    assert_eq!(s.as_str(), "http://foo%20bar/%D1%82%D0%B5%D1%81%D1%82/%F0%9F%8D%94/");
+    let s = UrlEncoder::new(DECODED_URI).to_string();
+    assert_eq!(s.as_str(), ENCODED_URI);
 }
 
 
 #[test]
-fn test_urlencode_component() {
-    let s = UrlEncoder::new_component("http://foo bar/тест/🍔/").to_string();
-    assert_eq!(s.as_str(), "http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F");
+fn test_urlencode_path() {
+    let s = UrlEncoder::new_path(DECODED_URI).to_string();
+    assert_eq!(s.as_str(), ENCODED_PATH);
 }
 
 
 #[test]
 fn test_urldecode() {
-    let s = urldecode("http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F").unwrap();
-    assert_eq!(s.as_str(), "http://foo bar/тест/🍔/");
+    let s: String = UrlDecoder::new(ENCODED_URI).try_into().unwrap();
+    assert_eq!(s.as_str(), DECODED_URI);
 }
 
 

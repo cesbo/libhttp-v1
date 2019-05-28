@@ -31,10 +31,7 @@ pub use crate::client::{
 };
 
 mod urldecode;
-pub use crate::urldecode::{
-    urldecode,
-    Error as UrlDecodeError,
-};
+pub use crate::urldecode::UrlDecoder;
 
 mod urlencode;
 pub use crate::urlencode::UrlEncoder;

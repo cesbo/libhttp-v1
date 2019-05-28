@@ -1,17 +1,15 @@
 use std::{
     fmt,
     collections::HashMap,
+    convert::TryInto,
 };
 
-use crate::{
-    urldecode,
-    UrlDecodeError,
-};
+use crate::UrlDecoder;
 
 
 error_rules! {
     Error => ("UrlQuery: {}", error),
-    UrlDecodeError,
+    fmt::Error,
 }
 
 
@@ -46,9 +44,9 @@ impl UrlQuery {
             let mut i = data.splitn(2, '=');
             let key = i.next().unwrap().trim();
             if key.is_empty() { continue }
-            let key = urldecode(key)?;
+            let key: String = UrlDecoder::new(key).try_into()?;
             let value = i.next().unwrap_or("").trim();
-            let value = urldecode(value)?;
+            let value: String = UrlDecoder::new(value).try_into()?;
             map.insert(key, value);
         }
 

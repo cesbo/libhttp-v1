@@ -1,15 +1,17 @@
-use std::fmt;
+use std::{
+    fmt,
+    convert::TryInto,
+};
 
 use crate::{
-    urldecode,
-    UrlDecodeError,
+    UrlDecoder,
     UrlEncoder,
 };
 
 
 error_rules! {
     Error => ("Url: {}", error),
-    UrlDecodeError,
+    fmt::Error,
 }
 
 
@@ -102,7 +104,7 @@ impl Url {
             tail = query;
         }
         if path > 0 || skip == 0 {
-            self.path = urldecode(&input[path .. tail])?;
+            self.path = UrlDecoder::new(&input[path .. tail]).try_into()?;
             tail = path;
         }
         if prefix > 0 {

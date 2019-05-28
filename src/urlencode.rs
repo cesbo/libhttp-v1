@@ -53,7 +53,7 @@ impl<'a> UrlEncoder<'a> {
 impl<'a> fmt::Display for UrlEncoder<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         static HEXMAP: &[u8] = b"0123456789ABCDEF";
-        let is_special = if self.is_path { is_rfc3986 } else { is_rfc3986_path };
+        let is_special = if self.is_path { is_rfc3986_path } else { is_rfc3986 };
 
         for &b in self.inner.as_bytes() {
             if is_special(b) {
