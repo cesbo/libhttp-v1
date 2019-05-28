@@ -29,7 +29,7 @@ fn request_send() {
     let mut request = Request::new();
     request.url.set("http://127.0.0.1:8000/path?query").unwrap();
     request.set_version("RTSP/1.0");
-    request.header.set("host", request.url.get_address());
+    request.header.set("host", request.url.as_address());
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST2.as_bytes());
@@ -40,7 +40,7 @@ fn request_send() {
 fn request_send_version() {
     let mut request = Request::new();
     request.url.set("http://127.0.0.1:8000/path?query").unwrap();
-    request.header.set("host", request.url.get_address());
+    request.header.set("host", request.url.as_address());
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST1.as_bytes());

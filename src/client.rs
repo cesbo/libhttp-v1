@@ -36,7 +36,7 @@ error_rules! {
 /// fn main() {
 ///     let mut client = HttpClient::new();
 ///     client.request.url.set("https://example.com");
-///     client.request.header.set("host", client.request.url.get_address());
+///     client.request.header.set("host", client.request.url.as_address());
 ///     client.request.header.set("user-agent", "libhttp");
 ///     client.send().unwrap();
 ///     client.receive().unwrap();

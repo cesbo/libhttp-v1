@@ -39,6 +39,7 @@ pub use crate::urlencode::UrlEncoder;
 mod url;
 pub use crate::url::{
     Url,
+    UrlFormatter,
     Error as UrlError,
 };
 

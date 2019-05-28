@@ -24,8 +24,7 @@ error_rules! {
 pub struct Url {
     scheme: String,
     prefix: String,
-    address: String,        // host:port
-    host_len: usize,        // self.address[.. self.host_len]
+    host: String,
     port: u16,
     path: String,
     query: String,
@@ -63,8 +62,7 @@ impl Url {
         if let Some(v) = input.find("://") {
             self.scheme.clear();
             self.prefix.clear();
-            self.address.clear();
-            self.host_len = 0;
+            self.host.clear();
             self.port = 0;
             self.path.clear();
             self.query.clear();
@@ -94,29 +92,34 @@ impl Url {
                 _ => {},
             };
         }
+
         let mut tail = input.len();
+
         if fragment > 0 {
             self.fragment.push_str(&input[fragment + 1 .. tail]);
             tail = fragment;
         }
+
         if query > 0 {
             self.query.push_str(&input[query + 1 .. tail]);
             tail = query;
         }
+
         if path > 0 || skip == 0 {
             self.path = UrlDecoder::new(&input[path .. tail]).try_into()?;
             tail = path;
         }
+
         if prefix > 0 {
             self.prefix.push_str(&input[skip .. prefix]);
             skip = prefix + 1;
         }
+
         if skip != 0 {
-            self.address.push_str(&input[skip .. tail]);
-            let address_len = self.address.len();
-            self.host_len = self.address.find(':').unwrap_or(address_len);
-            if address_len > self.host_len {
-                self.port = self.address[self.host_len + 1 ..].parse::<u16>().unwrap_or(0);
+            let mut addr = input[skip .. tail].splitn(2, ':');
+            self.host = addr.next().unwrap().to_string();
+            if let Some(port) = addr.next() {
+                self.port = port.parse::<u16>().unwrap_or(0);
                 ensure!(self.port > 0, "invalid port");
             }
         }
@@ -132,13 +135,9 @@ impl Url {
     #[inline]
     pub fn get_prefix(&self) -> &str { &self.prefix }
 
-    /// Returns url address
-    #[inline]
-    pub fn get_address(&self) -> &str { &self.address }
-
     /// Returns url host
     #[inline]
-    pub fn get_host(&self) -> &str { &self.address[.. self.host_len] }
+    pub fn get_host(&self) -> &str { &self.host }
 
     /// Returns url port
     #[inline]
@@ -156,15 +155,22 @@ impl Url {
     #[inline]
     pub fn get_fragment(&self) -> &str { &self.fragment }
 
-    /// Returns URL formatter
+    /// Returns URL formatter for request_uri - encoded path with query string
     #[inline]
     pub fn as_request_uri<'a>(&'a self) -> UrlFormatter<'a> {
         UrlFormatter::RequestUri(self)
+    }
+
+    /// Returns URL formatter for address - host with port if defined
+    #[inline]
+    pub fn as_address<'a>(&'a self) -> UrlFormatter<'a> {
+        UrlFormatter::Address(self)
     }
 }
 
 
 pub enum UrlFormatter<'a> {
+    Address(&'a Url),
     RequestUri(&'a Url),
 }
 
@@ -172,6 +178,14 @@ pub enum UrlFormatter<'a> {
 impl<'a> fmt::Display for UrlFormatter<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            UrlFormatter::Address(url) => {
+                if url.port == 0 {
+                    write!(f, "{}", &url.host)
+                } else {
+                    write!(f, "{}:{}", &url.host, url.port)
+                }
+            }
+
             UrlFormatter::RequestUri(url) => {
                 let path = if url.path.is_empty() { "/" } else { url.path.as_str() };
                 let path = UrlEncoder::new_path(path);

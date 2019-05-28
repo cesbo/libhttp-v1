@@ -90,7 +90,7 @@ fn test_10() {
 fn test_prefix() {
     let url = Url::new("http://test:test@example.com").unwrap();
     assert_eq!(url.get_scheme(), "http");
-    assert_eq!(url.get_address(), "example.com");
+    assert_eq!(url.as_address().to_string().as_str(), "example.com");
     assert_eq!(url.get_prefix(), "test:test");
 }
 
@@ -179,7 +179,7 @@ fn test_2() {
 fn test_1() {
     let url = Url::new("http://127.0.0.1/path?query#fragment").unwrap();
     assert_eq!(url.get_scheme(), "http");
-    assert_eq!(url.get_address(), "127.0.0.1");
+    assert_eq!(url.as_address().to_string().as_str(), "127.0.0.1");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "query");
@@ -191,7 +191,7 @@ fn test_1() {
 fn test_url_full() {
     let url = Url::new("http://127.0.0.1:8000/path?query#fragment").unwrap();
     assert_eq!(url.get_scheme(), "http");
-    assert_eq!(url.get_address(), "127.0.0.1:8000");
+    assert_eq!(url.as_address().to_string().as_str(), "127.0.0.1:8000");
     assert_eq!(url.get_host(), "127.0.0.1");
     assert_eq!(url.get_port(), 8000);
     assert_eq!(url.get_path(), "/path");
