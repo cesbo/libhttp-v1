@@ -1,4 +1,7 @@
-use std::fmt;
+use std::fmt::{
+    self,
+    Write,
+};
 
 
 #[inline]
@@ -25,6 +28,23 @@ fn is_rfc3986_path(b: u8) -> bool {
 }
 
 
+/// Encodes string into URL format
+/// Supports RFC 3985. For better compatibility encodes space as `%20`
+///
+/// ## Usage
+///
+/// ```
+/// use http::UrlEncoder;
+///
+/// static PATH: &str = "/path/🍔/";
+///
+/// assert_eq!(
+///     UrlEncoder::new_path(PATH).to_string().as_str(),
+///     "/path/%F0%9F%8D%94/");
+/// assert_eq!(
+///     UrlEncoder::new(PATH).to_string().as_str(),
+///     "%2Fpath%2F%F0%9F%8D%94%2F");
+/// ```
 pub struct UrlEncoder<'a> {
     inner: &'a str,
     is_path: bool,
@@ -32,6 +52,7 @@ pub struct UrlEncoder<'a> {
 
 
 impl<'a> UrlEncoder<'a> {
+    /// Allocate UrlEncoder for encoding all special characters according to RFC 3985
     #[inline]
     pub fn new(s: &'a str) -> UrlEncoder<'a> {
         UrlEncoder {
@@ -40,6 +61,7 @@ impl<'a> UrlEncoder<'a> {
         }
     }
 
+    /// Allocate UrlEncoder for encoding all special characters, except: `/`, `:`, `,`, `=`
     #[inline]
     pub fn new_path(s: &'a str) -> UrlEncoder<'a> {
         UrlEncoder {
@@ -57,11 +79,11 @@ impl<'a> fmt::Display for UrlEncoder<'a> {
 
         for &b in self.inner.as_bytes() {
             if is_special(b) {
-                fmt::Write::write_char(f, char::from(b))?;
+                f.write_char(char::from(b))?;
             } else {
-                fmt::Write::write_char(f, '%')?;
-                fmt::Write::write_char(f, char::from(HEXMAP[(b >> 4) as usize]))?;
-                fmt::Write::write_char(f, char::from(HEXMAP[(b & 0x0F) as usize]))?;
+                f.write_char('%')?;
+                f.write_char(char::from(HEXMAP[(b >> 4) as usize]))?;
+                f.write_char(char::from(HEXMAP[(b & 0x0F) as usize]))?;
             }
         }
         Ok(())

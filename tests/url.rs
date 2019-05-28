@@ -1,5 +1,4 @@
-use std::convert::TryInto;
-
+use std::convert::TryFrom;
 use http::{
     Url,
     UrlEncoder,
@@ -60,7 +59,7 @@ fn test_urlencode_path() {
 
 #[test]
 fn test_urldecode() {
-    let s: String = UrlDecoder::new(ENCODED_URI).try_into().unwrap();
+    let s: String = String::try_from(UrlDecoder::new(ENCODED_URI)).unwrap();
     assert_eq!(s.as_str(), DECODED_URI);
 }
 

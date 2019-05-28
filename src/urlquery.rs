@@ -1,16 +1,10 @@
 use std::{
     fmt,
+    convert::TryFrom,
     collections::HashMap,
-    convert::TryInto,
 };
 
 use crate::UrlDecoder;
-
-
-error_rules! {
-    Error => ("UrlQuery: {}", error),
-    fmt::Error,
-}
 
 
 /// Strings in query format - key-value tuples separated by '&'
@@ -37,16 +31,16 @@ impl fmt::Debug for UrlQuery {
 
 
 impl UrlQuery {
-    pub fn new(query: &str) -> Result<UrlQuery> {
+    pub fn new(query: &str) -> Result<UrlQuery, fmt::Error> {
         let mut map = HashMap::new();
 
         for data in query.split('&').filter(|s| !s.is_empty()) {
             let mut i = data.splitn(2, '=');
             let key = i.next().unwrap().trim();
             if key.is_empty() { continue }
-            let key: String = UrlDecoder::new(key).try_into()?;
+            let key = String::try_from(UrlDecoder::new(key))?;
             let value = i.next().unwrap_or("").trim();
-            let value: String = UrlDecoder::new(value).try_into()?;
+            let value = String::try_from(UrlDecoder::new(value))?;
             map.insert(key, value);
         }
 

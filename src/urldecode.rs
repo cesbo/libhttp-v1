@@ -1,18 +1,43 @@
 use std::{
     char,
-    fmt,
     convert::TryFrom,
+    fmt,
 };
+
+
+#[inline]
+fn hex2byte(b: &[u8]) -> Option<u8> {
+    if b.len() < 2 { return None }
+
+    let n0 = char::from(b[0]).to_digit(16)?;
+    let n1 = char::from(b[1]).to_digit(16)?;
+    Some(((n0 << 4) + n1) as u8)
+}
+
 
 
 /// Decodes URL-encoded string
 /// Supports RFC 3985 and HTML5 `+` symbol
+///
+/// ## Usage
+///
+/// ```
+/// use std::convert::TryFrom;
+/// use http::UrlDecoder;
+///
+/// static PATH: &str = "%2Fpath%2F%F0%9F%8D%94%2F";
+///
+/// assert_eq!(
+///     String::try_from(UrlDecoder::new(PATH)).unwrap().as_str(),
+///     "/path/🍔/");
+/// ```
 pub struct UrlDecoder<'a> {
     inner: &'a str,
 }
 
 
 impl<'a> UrlDecoder<'a> {
+    /// Allocate UrlDecoder
     #[inline]
     pub fn new(s: &'a str) -> UrlDecoder<'a> {
         UrlDecoder {
@@ -22,11 +47,15 @@ impl<'a> UrlDecoder<'a> {
 }
 
 
-impl<'a> fmt::Display for UrlDecoder<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let buf = self.inner.as_bytes();
+impl<'a> TryFrom<UrlDecoder<'a>> for String {
+    type Error = fmt::Error;
+
+    fn try_from(u: UrlDecoder<'a>) -> Result<String, fmt::Error> {
+        let buf = u.inner.as_bytes();
         let len = buf.len();
         let mut skip = 0;
+
+        let mut result = String::with_capacity(len);
 
         let mut bytes = 0;
         let mut utf8: u32 = 0;
@@ -36,17 +65,12 @@ impl<'a> fmt::Display for UrlDecoder<'a> {
             skip += 1;
 
             if b == b'%' {
-                if skip + 2 > len { return Err(fmt::Error) }
-
-                let n0 = char::from(buf[skip]).to_digit(16).ok_or(fmt::Error)?;
-                skip += 1;
-                let n1 = char::from(buf[skip]).to_digit(16).ok_or(fmt::Error)?;
-                skip += 1;
-                let b = ((n0 << 4) + n1) as u8;
+                let b = hex2byte(&buf[skip ..]).ok_or(fmt::Error)?;
+                skip += 2;
 
                 if b & 0x80 == 0 {
                     // ASCII
-                    fmt::Write::write_char(f, char::from(b))?;
+                    result.push(char::from(b));
                 } else if bytes > 0 {
                     // UTF8 trailing bytes
                     if b & 0xC0 != 0x80 { return Err(fmt::Error) }
@@ -54,8 +78,8 @@ impl<'a> fmt::Display for UrlDecoder<'a> {
                     utf8 = (utf8 << 6) | u32::from(b & 0x3F);
                     bytes = bytes - 1;
                     if bytes == 0 {
-                        let b = char::from_u32(utf8).ok_or(fmt::Error)?;
-                        fmt::Write::write_char(f, b)?;
+                        let b = unsafe { char::from_u32_unchecked(utf8) };
+                        result.push(b);
                     }
                 } else if b & 0xE0 == 0xC0 {
                     // UTF8 first byte for 2 byte code
@@ -70,27 +94,15 @@ impl<'a> fmt::Display for UrlDecoder<'a> {
                     utf8 = u32::from(b & 0x07);
                     bytes = 3;
                 } else {
-                    return Err(fmt::Error)
+                    return Err(fmt::Error);
                 }
             } else if b == b'+' {
-                fmt::Write::write_char(f, ' ')?;
+                result.push(' ');
             } else {
-                fmt::Write::write_char(f, char::from(b))?;
+                result.push(char::from(b));
             }
         }
 
-        Ok(())
-    }
-}
-
-
-impl<'a> TryFrom<UrlDecoder<'a>> for String {
-    type Error = fmt::Error;
-
-    #[inline]
-    fn try_from(u: UrlDecoder<'a>) -> Result<String, fmt::Error> {
-        let mut result = String::default();
-        fmt::Write::write_fmt(&mut result, format_args!("{}", &u))?;
         Ok(result)
     }
 }

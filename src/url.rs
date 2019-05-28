@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    convert::TryInto,
+    convert::TryFrom,
 };
 
 use crate::{
@@ -106,7 +106,7 @@ impl Url {
         }
 
         if path > 0 || skip == 0 {
-            self.path = UrlDecoder::new(&input[path .. tail]).try_into()?;
+            self.path = String::try_from(UrlDecoder::new(&input[path .. tail]))?;
             tail = path;
         }
 
