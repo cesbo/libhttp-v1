@@ -14,13 +14,12 @@ fn is_rfc3986(b: u8) -> bool {
 
 
 #[inline]
-fn is_rfc3986_uri(b: u8) -> bool {
+fn is_rfc3986_path(b: u8) -> bool {
     match b {
         b'a' ..= b'z' => true,
         b'A' ..= b'Z' => true,
         b'0' ..= b'9' => true,
-        b'-' | b'_' | b'.' | b'~' => true,
-        b',' | b'/' | b'?' | b':' | b'@' | b'&' | b'=' | b'+' | b'$' | b'#' => true,
+        b'-' | b'_' | b'.' | b'~' | b'/' | b':' | b',' | b'=' => true,
         _ => false,
     }
 }
@@ -28,7 +27,7 @@ fn is_rfc3986_uri(b: u8) -> bool {
 
 pub struct UrlEncoder<'a> {
     inner: &'a str,
-    is_component: bool,
+    is_path: bool,
 }
 
 
@@ -37,15 +36,15 @@ impl<'a> UrlEncoder<'a> {
     pub fn new(s: &'a str) -> UrlEncoder<'a> {
         UrlEncoder {
             inner: s,
-            is_component: false,
+            is_path: false,
         }
     }
 
     #[inline]
-    pub fn new_component(s: &'a str) -> UrlEncoder<'a> {
+    pub fn new_path(s: &'a str) -> UrlEncoder<'a> {
         UrlEncoder {
             inner: s,
-            is_component: true,
+            is_path: true,
         }
     }
 }
@@ -54,7 +53,7 @@ impl<'a> UrlEncoder<'a> {
 impl<'a> fmt::Display for UrlEncoder<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         static HEXMAP: &[u8] = b"0123456789ABCDEF";
-        let is_special = if self.is_component { is_rfc3986 } else { is_rfc3986_uri };
+        let is_special = if self.is_path { is_rfc3986 } else { is_rfc3986_path };
 
         for &b in self.inner.as_bytes() {
             if is_special(b) {

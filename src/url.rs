@@ -172,7 +172,7 @@ impl<'a> fmt::Display for UrlFormatter<'a> {
         match self {
             UrlFormatter::RequestUri(url) => {
                 let path = if url.path.is_empty() { "/" } else { url.path.as_str() };
-                let path = UrlEncoder::new(path);
+                let path = UrlEncoder::new_path(path);
 
                 if url.query.is_empty() {
                     write!(f, "{}", path)
