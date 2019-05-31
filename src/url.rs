@@ -127,31 +127,31 @@ impl Url {
         Ok(())
     }
 
-    /// Returns url scheme
+    /// Returns URL scheme
     #[inline]
     pub fn get_scheme(&self) -> &str { &self.scheme }
 
-    /// Returns url prefix
+    /// Returns URL prefix
     #[inline]
     pub fn get_prefix(&self) -> &str { &self.prefix }
 
-    /// Returns url host
+    /// Returns URL host
     #[inline]
     pub fn get_host(&self) -> &str { &self.host }
 
-    /// Returns url port
+    /// Returns URL port
     #[inline]
     pub fn get_port(&self) -> u16 { self.port }
 
-    /// Returns url path
+    /// Returns URL path
     #[inline]
     pub fn get_path(&self) -> &str { &self.path }
 
-    /// Returns url query
+    /// Returns URL query
     #[inline]
     pub fn get_query(&self) -> &str { &self.query }
 
-    /// Returns url fragment
+    /// Returns URL fragment
     #[inline]
     pub fn get_fragment(&self) -> &str { &self.fragment }
 
