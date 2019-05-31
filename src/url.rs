@@ -9,10 +9,20 @@ use crate::{
 };
 
 
-error_rules! {
-    Error => ("Url: {}", error),
-    fmt::Error,
+#[derive(Debug, Error)]
+pub enum UrlError {
+    #[error_from("Url: {}", 0)]
+    Fmt(fmt::Error),
+    #[error_kind("Url: length limit")]
+    LengthLimit,
+    #[error_kind("Url: unexpected relative path")]
+    RelativePath,
+    #[error_kind("Url: invalid port")]
+    InvalidPort,
 }
+
+
+type Result<T> = std::result::Result<T, UrlError>;
 
 
 /// A parsed URL record
@@ -56,8 +66,8 @@ impl Url {
         let mut fragment = 0;
 
         let input = input.as_ref();
-        ensure!(!input.is_empty(), "empty url");
-        ensure!(input.len() <= 2048, "length limit");
+        if input.is_empty() { return Ok(()) }
+        if input.len() > 2048 { return Err(UrlError::LengthLimit) }
 
         if let Some(v) = input.find("://") {
             self.scheme.clear();
@@ -72,7 +82,7 @@ impl Url {
             skip = v + 3;
         } else {
             // TODO: relative url
-            ensure!(input.starts_with('/'), "unexpected relative path");
+            if ! input.starts_with('/') { return Err(UrlError::RelativePath) }
 
             self.path.clear();
             self.query.clear();
@@ -120,7 +130,7 @@ impl Url {
             self.host = addr.next().unwrap().to_string();
             if let Some(port) = addr.next() {
                 self.port = port.parse::<u16>().unwrap_or(0);
-                ensure!(self.port > 0, "invalid port");
+                if self.port == 0 { return Err(UrlError::InvalidPort) }
             }
         }
 

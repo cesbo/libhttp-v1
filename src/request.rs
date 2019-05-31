@@ -11,11 +11,20 @@ use crate::{
 };
 
 
-error_rules! {
-    Error => ("Request: {}", error),
-    io::Error,
-    UrlError,
+#[derive(Debug, Error)]
+pub enum RequestError {
+    #[error_from("Request IO: {}", 0)]
+    Io(io::Error),
+    #[error_from("Request: {}", 0)]
+    Url(UrlError),
+    #[error_kind("Request: unexpected eof")]
+    UnexpectedEof,
+    #[error_kind("Request: invalid format")]
+    InvalidFormat,
 }
+
+
+pub type Result<T> = std::result::Result<T, RequestError>;
 
 
 /// Parser and formatter for HTTP request line and headers
@@ -63,14 +72,14 @@ impl Request {
 
             let s = buffer.trim();
             if s.is_empty() {
-                ensure!(!first_line && r != 0, "unexpected eof");
+                if first_line || r == 0 { return Err(RequestError::UnexpectedEof) }
                 break;
             }
 
             if first_line {
                 first_line = false;
 
-                let skip = s.find(char::is_whitespace).ok_or_else(|| "invalid format")?;
+                let skip = s.find(char::is_whitespace).ok_or_else(|| RequestError::InvalidFormat)?;
                 self.method.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());

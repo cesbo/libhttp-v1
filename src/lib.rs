@@ -9,25 +9,25 @@ pub use crate::header::Header;
 mod request;
 pub use crate::request::{
     Request,
-    Error as RequestError,
+    RequestError,
 };
 
 mod response;
 pub use crate::response::{
     Response,
-    Error as ResponseError,
+    ResponseError,
 };
 
 mod stream;
 pub use crate::stream::{
     HttpStream,
-    Error as HttpStreamError,
+    HttpStreamError,
 };
 
 mod client;
 pub use crate::client::{
     HttpClient,
-    Error as HttpClientError,
+    HttpClientError,
 };
 
 mod urldecode;
@@ -40,8 +40,10 @@ mod url;
 pub use crate::url::{
     Url,
     UrlFormatter,
-    Error as UrlError,
+    UrlError,
 };
 
 mod urlquery;
 pub use crate::urlquery::UrlQuery;
+
+mod ssl_error;

@@ -16,13 +16,22 @@ use crate::{
 };
 
 
-error_rules! {
-    Error => ("HttpClient: {}", error),
-    io::Error,
-    RequestError,
-    ResponseError,
-    HttpStreamError,
+#[derive(Debug, Error)]
+pub enum HttpClientError {
+    #[error_from("HttpClient IO: {}", 0)]
+    Io(io::Error),
+    #[error_from("HttpClient: {}", 0)]
+    Request(RequestError),
+    #[error_from("HttpClient: {}", 0)]
+    Response(ResponseError),
+    #[error_from("HttpClient: {}", 0)]
+    HttpStream(HttpStreamError),
+    #[error_kind("HttpClient: invalid protocol")]
+    InvalidProtocol,
 }
+
+
+pub type Result<T> = std::result::Result<T, HttpClientError>;
 
 
 /// HTTP client
@@ -79,7 +88,7 @@ impl HttpClient {
                 }
                 tls = true;
             }
-            _ => bail!("invalid protocol"),
+            _ => return Err(HttpClientError::InvalidProtocol)
         };
 
         self.stream.connect(tls, host, port)?;

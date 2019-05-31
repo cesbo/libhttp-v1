@@ -3,8 +3,9 @@ name = "http"
 version = "0.1.0"
 authors = ["Cesbo Developers Team"]
 edition = "2018"
+publish = false
 
 [dependencies]
 base64 = "0.10"
 openssl = "0.10"
-error-rules = "0.1"
+error-rules = "0.2"

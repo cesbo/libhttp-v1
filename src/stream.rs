@@ -21,6 +21,10 @@ use openssl::ssl::{
 };
 
 use crate::Response;
+use crate::ssl_error::{
+    SslError,
+    HandshakeError,
+};
 
 
 const DEFAULT_IP_TTL: u32 = 64;
@@ -33,56 +37,18 @@ impl Stream for TcpStream {}
 impl Stream for SslStream<TcpStream> {}
 
 
-error_rules! {
-    Error => ("HttpStream: {}", error),
-    io::Error,
+#[derive(Debug, Error)]
+pub enum HttpStreamError {
+    #[error_from("HttpStream IO: {}", 0)]
+    Io(io::Error),
+    #[error_from("SSL: {}", 0)]
+    Ssl(SslError),
+    #[error_from("Handshake: {}", 0)]
+    Handshake(HandshakeError),
 }
 
 
-impl From<openssl::error::ErrorStack> for Error {
-    fn from(e: openssl::error::ErrorStack) -> Self {
-        let s = e.errors().get(0)
-            .and_then(openssl::error::Error::reason)
-            .unwrap_or("");
-
-        format!("SSL: {}", s).into()
-    }
-}
-
-
-impl From<openssl::ssl::HandshakeError<TcpStream>> for Error {
-    fn from(e: openssl::ssl::HandshakeError<TcpStream>) -> Self {
-        let mut result = String::from("Handshake: ");
-
-        match &e {
-            openssl::ssl::HandshakeError::SetupFailure(ee) => {
-                let s = ee.errors().get(0)
-                    .and_then(openssl::error::Error::reason)
-                    .unwrap_or("");
-                result.push_str(s);
-            }
-            openssl::ssl::HandshakeError::Failure(ee) => {
-                let inner_error = ee.error();
-                if let Some(io_ee) = inner_error.io_error() {
-                    result.push_str(&io_ee.to_string());
-                } else if let Some(ssl_ee) = inner_error.ssl_error() {
-                    let s = ssl_ee.errors().get(0)
-                        .and_then(openssl::error::Error::reason)
-                        .unwrap_or("unknown");
-                    result.push_str(s);
-                    let v = ee.ssl().verify_result();
-                    if v.as_raw() != 0 {
-                        result.push_str(": ");
-                        result.push_str(v.error_string());
-                    }
-                }
-            }
-            _ => unimplemented!(),
-        };
-
-        result.into()
-    }
-}
+type Result<T> = std::result::Result<T, HttpStreamError>;
 
 
 /// Internal transfer state
@@ -249,11 +215,11 @@ impl HttpStream {
             let stream = self.io_connect(host, port)?;
 
             if tls {
-                let connector = SslConnector::builder(SslMethod::tls())?;
-                let mut ssl = connector.build().configure()?;
+                let connector = SslConnector::builder(SslMethod::tls()).map_err(SslError::from)?;
+                let mut ssl = connector.build().configure().map_err(SslError::from)?;
                 ssl.set_use_server_name_indication(true);
                 ssl.set_verify_hostname(true);
-                let stream = ssl.connect(host, stream)?;
+                let stream = ssl.connect(host, stream).map_err(HandshakeError::from)?;
                 self.inner = Some(Box::new(stream));
             } else {
                 self.inner = Some(Box::new(stream));

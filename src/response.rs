@@ -7,10 +7,20 @@ use std::io::{
 use crate::Header;
 
 
-error_rules! {
-    Error => ("Response: {}", error),
-    io::Error,
+#[derive(Debug, Error)]
+pub enum ResponseError {
+    #[error_from("Response IO: {}", 0)]
+    Io(io::Error),
+    #[error_kind("Response: unexpected eof")]
+    UnexpectedEof,
+    #[error_kind("Response: invalid format")]
+    InvalidFormat,
+    #[error_kind("Response: invalid status code")]
+    InvalidStatus,
 }
+
+
+pub type Result<T> = std::result::Result<T, ResponseError>;
 
 
 /// Parser and formatter for HTTP response line and headers
@@ -58,19 +68,19 @@ impl Response {
 
             let s = buffer.trim();
             if s.is_empty() {
-                ensure!(!first_line && r != 0, "unexpected eof");
+                if first_line || r == 0 { return Err(ResponseError::UnexpectedEof) }
                 break;
             }
 
             if first_line {
                 first_line = false;
 
-                let skip = s.find(char::is_whitespace).ok_or_else(|| "invalid format")?;
+                let skip = s.find(char::is_whitespace).ok_or_else(|| ResponseError::InvalidFormat)?;
                 self.version.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.code = s[.. skip].parse().unwrap_or(0);
-                ensure!(self.code >= 100 && self.code < 600, "invalid status code");
+                if self.code < 100 || self.code >= 600 { return Err(ResponseError::InvalidStatus) }
 
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
