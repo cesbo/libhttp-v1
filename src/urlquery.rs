@@ -55,7 +55,7 @@ impl UrlQuery {
 
     /// Returns pairs iterator
     #[inline]
-    pub fn iter<'a>(&'a self) -> UrlQueryIterator<'a> {
+    pub fn iter(&'_ self) -> UrlQueryIterator<'_> {
         self.into_iter()
     }
 }

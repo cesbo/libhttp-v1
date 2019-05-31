@@ -76,7 +76,7 @@ impl<'a> TryFrom<UrlDecoder<'a>> for String {
                     if b & 0xC0 != 0x80 { return Err(fmt::Error) }
 
                     utf8 = (utf8 << 6) | u32::from(b & 0x3F);
-                    bytes = bytes - 1;
+                    bytes -= 1;
                     if bytes == 0 {
                         let b = unsafe { char::from_u32_unchecked(utf8) };
                         result.push(b);

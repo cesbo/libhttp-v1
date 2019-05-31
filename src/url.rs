@@ -167,13 +167,13 @@ impl Url {
 
     /// Returns URL formatter for request_uri - encoded path with query string
     #[inline]
-    pub fn as_request_uri<'a>(&'a self) -> UrlFormatter<'a> {
+    pub fn as_request_uri(&'_ self) -> UrlFormatter<'_> {
         UrlFormatter::RequestUri(self)
     }
 
     /// Returns URL formatter for address - host with port if defined
     #[inline]
-    pub fn as_address<'a>(&'a self) -> UrlFormatter<'a> {
+    pub fn as_address(&'_ self) -> UrlFormatter<'_> {
         UrlFormatter::Address(self)
     }
 }
