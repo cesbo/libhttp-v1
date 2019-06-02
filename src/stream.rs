@@ -64,6 +64,16 @@ enum HttpTransferEncoding {
 }
 
 
+/// HTTP Connection type
+#[derive(Debug, PartialEq)]
+enum HttpConnection {
+    /// close connection
+    Close,
+    /// keep connection alive
+    KeepAlive,
+}
+
+
 /// Read/Write buffer
 struct HttpBuffer {
     buf: Box<[u8]>,
@@ -136,7 +146,10 @@ pub struct HttpStream {
     rbuf: HttpBuffer,
     wbuf: HttpBuffer,
 
+    // Content-Length or Transfer-Encoding
     transfer: HttpTransferEncoding,
+    // Connection
+    connection: HttpConnection,
 }
 
 
@@ -152,6 +165,7 @@ impl Default for HttpStream {
             wbuf: HttpBuffer::default(),
 
             transfer: HttpTransferEncoding::Eof,
+            connection: HttpConnection::KeepAlive,
         }
     }
 }
@@ -233,17 +247,29 @@ impl HttpStream {
     pub fn configure(&mut self, response: &Response) -> Result<()> {
         self.transfer = HttpTransferEncoding::Eof;
 
+        if response.get_version() == "HTTP/1.0" {
+            self.connection = HttpConnection::Close;
+        } else {
+            self.connection = HttpConnection::KeepAlive;
+        }
+
         if let Some(len) = response.header.get("content-length") {
             let len = len.parse().unwrap_or(0);
             self.transfer = HttpTransferEncoding::Length(len);
-            return Ok(());
         }
 
-        if let Some(te) = response.header.get("transfer-encoding") {
-            // TODO: parse te
-            if te == "chunked" {
+        if let Some(encoding) = response.header.get("transfer-encoding") {
+            // TODO: parse encoding
+            if encoding == "chunked" {
                 self.transfer = HttpTransferEncoding::Chunked(0, true);
-                return Ok(())
+            }
+        }
+
+        if let Some(connection) = response.header.get("connection") {
+            if connection.eq_ignore_ascii_case("close") {
+                self.connection = HttpConnection::Close
+            } else if connection.eq_ignore_ascii_case("keep-alive") {
+                self.connection = HttpConnection::KeepAlive
             }
         }
 
@@ -380,6 +406,9 @@ impl Read for HttpStream {
             self.consume(nread);
             Ok(nread)
         } else {
+            if self.connection == HttpConnection::Close {
+                self.inner = None;
+            }
             Ok(0)
         }
     }
