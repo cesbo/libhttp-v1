@@ -69,6 +69,10 @@ impl HttpClient {
     #[inline]
     pub fn new() -> Self { HttpClient::default() }
 
+    /// Close connection
+    #[inline]
+    pub fn close(&mut self) { self.stream.close() }
+
     /// Connects to destination host, sends request line and headers
     /// Prepares HTTP stream for writing data
     pub fn send(&mut self) -> Result<()> {

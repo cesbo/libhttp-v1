@@ -1,5 +1,4 @@
 use std::io;
-
 use http::HttpClient;
 
 
@@ -18,27 +17,41 @@ fn test_auth_basic() {
 #[test]
 fn test_auth_digest_simple() {
     let mut client = HttpClient::new();
-    client.request.url.set("http://guest:guest@jigsaw.w3.org/HTTP/Digest").unwrap();
+    client.request.url.set("http://guest:guest@jigsaw.w3.org/HTTP/Digest/").unwrap();
     client.request.header.set("host", client.request.url.as_address());
     client.request.header.set("user-agent", "libhttp");
 
-    client.send().unwrap();
-    client.receive().unwrap();
-    assert_eq!(401, client.response.get_code());
-    io::copy(&mut client, &mut io::sink()).unwrap();
+    let mut attempt_auth = 0;
+    let mut attempt_redirect = 0;
 
-    client.send().unwrap();
-    client.receive().unwrap();
-    assert_eq!(302, client.response.get_code());
-    io::copy(&mut client, &mut io::sink()).unwrap();
-
-    client.request.url.set("/HTTP/Digest/").unwrap();
-    for _ in 0 .. 2 {
+    loop {
         client.send().unwrap();
         client.receive().unwrap();
-        io::copy(&mut client, &mut io::sink()).unwrap();
-        if client.response.get_code() == 200 { break }
+
+        match client.response.get_code() {
+            200 => break,
+            401 if attempt_auth < 2 => {
+                io::copy(&mut client, &mut io::sink()).unwrap();
+                // TODO: check url prefix
+                attempt_auth += 1;
+            }
+            301 | 302 if attempt_redirect < 5 => {
+                io::copy(&mut client, &mut io::sink()).unwrap();
+                // TODO: check url location
+                let location = client.response.header.get("location").unwrap_or("");
+                client.request.url.set(location).unwrap();
+                attempt_redirect += 1;
+                attempt_auth = 0;
+            }
+            _ => {
+                io::copy(&mut client, &mut io::sink()).unwrap();
+                panic!("failed to complete request: {} {}",
+                    client.response.get_code(),
+                    client.response.get_reason())
+            }
+        }
     }
+
     assert_eq!(200, client.response.get_code());
 }
 
