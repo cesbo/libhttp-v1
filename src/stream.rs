@@ -172,26 +172,24 @@ impl Default for HttpStream {
 
 
 impl HttpStream {
+    /// Close connection
+    #[inline]
+    pub fn close(&mut self) { self.inner = None }
+
     /// Sets specified timeout for connect, read, write
     /// Default: 3sec
-    pub fn set_timeout(&mut self, timeout: Duration) {
-        self.timeout = timeout
-    }
+    pub fn set_timeout(&mut self, timeout: Duration) { self.timeout = timeout }
 
     /// Sets IP_TTL. Max value 255
     /// Default: 64
-    pub fn set_ttl(&mut self, ttl: u32) {
-        self.ttl = ttl
-    }
+    pub fn set_ttl(&mut self, ttl: u32) { self.ttl = ttl }
 
     /// Sets TCP_NODELAY. If sets, segments are always sent as soon as possible,
     /// even if there is only a small amount of data. When not set, data is
     /// buffered until there is a sufficient amount to send out,
     /// thereby avoiding the frequent sending of small packets.
     /// Default: false
-    pub fn set_nodelay(&mut self, nodelay: bool) {
-        self.nodelay = nodelay
-    }
+    pub fn set_nodelay(&mut self, nodelay: bool) { self.nodelay = nodelay }
 
     fn io_connect(&self, host: &str, port: u16) -> io::Result<TcpStream> {
         let mut last_err = None;
@@ -407,7 +405,7 @@ impl Read for HttpStream {
             Ok(nread)
         } else {
             if self.connection == HttpConnection::Close {
-                self.inner = None;
+                self.close();
             }
             Ok(0)
         }
@@ -429,7 +427,6 @@ impl BufRead for HttpStream {
     fn consume(&mut self, amt: usize) {
         match &mut self.transfer {
             HttpTransferEncoding::Eof => {},
-            // TODO: chunk_size >= amt
             HttpTransferEncoding::Length(len) => *len -= amt,
             HttpTransferEncoding::Chunked(len, _) => *len -= amt,
         }
