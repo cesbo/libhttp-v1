@@ -70,14 +70,20 @@ pub struct HttpClient {
 
 
 impl HttpClient {
-    /// Allocates new http client and prepare HTTP request
-    #[inline]
+    /// Allocates new http client and prepares HTTP request
     pub fn new<R: AsRef<str>>(url: R) -> Result<Self> {
         let mut client = HttpClient::default();
-        client.request.url.set(url)?;
-        client.request.header.set("host", client.request.url.as_address());
-        client.request.header.set("user-agent", USER_AGENT);
+        client.init(url)?;
         Ok(client)
+    }
+
+    /// Prepares HTTP request
+    pub fn init<R: AsRef<str>>(&mut self, url: R) -> Result<()> {
+        self.request.url.set(url)?;
+        self.request.header.clear();
+        self.request.header.set("host", self.request.url.as_address());
+        self.request.header.set("user-agent", USER_AGENT);
+        Ok(())
     }
 
     /// Close connection
