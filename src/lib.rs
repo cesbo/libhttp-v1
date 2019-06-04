@@ -26,6 +26,7 @@ pub use crate::stream::{
 
 mod client;
 pub use crate::client::{
+    USER_AGENT,
     HttpClient,
     HttpClientError,
 };

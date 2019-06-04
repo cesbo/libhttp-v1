@@ -13,6 +13,7 @@ use crate::{
     ResponseError,
     HttpStream,
     HttpStreamError,
+    UrlError,
 };
 
 
@@ -26,12 +27,19 @@ pub enum HttpClientError {
     Response(ResponseError),
     #[error_from("HttpClient: {}", 0)]
     HttpStream(HttpStreamError),
+    #[error_from("HttpClient: {}", 0)]
+    Url(UrlError),
     #[error_kind("HttpClient: invalid protocol")]
     InvalidProtocol,
+    #[error_kind("HttpClient: redirect location not defined")]
+    InvalidRedirectLocation,
 }
 
 
 pub type Result<T> = std::result::Result<T, HttpClientError>;
+
+
+pub const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
 
 
 /// HTTP client
@@ -43,10 +51,7 @@ pub type Result<T> = std::result::Result<T, HttpClientError>;
 /// use http::HttpClient;
 ///
 /// fn main() {
-///     let mut client = HttpClient::new();
-///     client.request.url.set("https://example.com");
-///     client.request.header.set("host", client.request.url.as_address());
-///     client.request.header.set("user-agent", "libhttp");
+///     let mut client = HttpClient::new("https://example.com").unwrap();
 ///     client.send().unwrap();
 ///     client.receive().unwrap();
 ///     let mut body = String::new();
@@ -65,9 +70,15 @@ pub struct HttpClient {
 
 
 impl HttpClient {
-    /// Allocates new http client
+    /// Allocates new http client and prepare HTTP request
     #[inline]
-    pub fn new() -> Self { HttpClient::default() }
+    pub fn new<R: AsRef<str>>(url: R) -> Result<Self> {
+        let mut client = HttpClient::default();
+        client.request.url.set(url)?;
+        client.request.header.set("host", client.request.url.as_address());
+        client.request.header.set("user-agent", USER_AGENT);
+        Ok(client)
+    }
 
     /// Close connection
     #[inline]
@@ -109,6 +120,29 @@ impl HttpClient {
         self.stream.flush()?;
         self.response.parse(&mut self.stream)?;
         self.stream.configure(&self.response)?;
+
+        Ok(())
+    }
+
+    /// Reads response body into sink
+    #[inline]
+    pub fn flush(&mut self) -> Result<()> {
+        io::copy(&mut self.stream, &mut io::sink())?;
+        Ok(())
+    }
+
+    /// Prepares for HTTP redirect to given location
+    pub fn redirect(&mut self) -> Result<()> {
+        self.flush()?;
+
+        let location = self.response.header.get("location").unwrap_or("");
+        if location.is_empty() {
+            return Err(HttpClientError::InvalidRedirectLocation)
+        }
+
+        // TODO: keep-alive
+        self.stream.close();
+        self.request.url.set(location)?;
 
         Ok(())
     }
