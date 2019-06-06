@@ -9,3 +9,6 @@ publish = false
 base64 = "0.10"
 openssl = "0.10"
 error-rules = "0.2"
+
+[features]
+static = ["openssl/vendored"]
