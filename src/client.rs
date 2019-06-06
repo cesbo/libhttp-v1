@@ -33,6 +33,8 @@ pub enum HttpClientError {
     InvalidProtocol,
     #[error_kind("HttpClient: redirect location not defined")]
     InvalidRedirectLocation,
+    #[error_kind("HttpClient: request failed: {} {}", 0, 1)]
+    RequestFailed(usize, String),
 }
 
 
@@ -50,13 +52,11 @@ pub const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
 /// use std::io::Read;
 /// use http::HttpClient;
 ///
-/// fn main() {
-///     let mut client = HttpClient::new("https://example.com").unwrap();
-///     client.send().unwrap();
-///     client.receive().unwrap();
-///     let mut body = String::new();
-///     client.read_to_string(&mut body).unwrap();
-/// }
+/// let mut client = HttpClient::new("https://example.com").unwrap();
+/// client.send().unwrap();
+/// client.receive().unwrap();
+/// let mut body = String::new();
+/// client.read_to_string(&mut body).unwrap();
 /// ```
 #[derive(Default, Debug)]
 pub struct HttpClient {
@@ -149,6 +149,50 @@ impl HttpClient {
         // TODO: keep-alive
         self.stream.close();
         self.request.url.set(location)?;
+
+        Ok(())
+    }
+
+    /// Simple GET request with authentication and location forwarding
+    ///
+    /// Usage:
+    ///
+    /// ```
+    /// use std::io::Read;
+    /// use http::HttpClient;
+    ///
+    /// let mut client = HttpClient::new("https://example.com").unwrap();
+    /// client.get().unwrap();
+    /// let mut body = String::new();
+    /// client.read_to_string(&mut body).unwrap();
+    /// ```
+    pub fn get(&mut self) -> Result<()> {
+        let mut attempt_auth = 0;
+        let mut attempt_redirect = 0;
+
+        loop {
+            self.send()?;
+            self.receive()?;
+
+            match self.response.get_code() {
+                200 | 204 => break,
+                401 if attempt_auth < 2 => {
+                    self.flush()?;
+                    // TODO: check url prefix
+                    attempt_auth += 1;
+                }
+                301 | 302 if attempt_redirect < 3 => {
+                    self.redirect()?;
+                    attempt_redirect += 1;
+                    attempt_auth = 0;
+                }
+                code => {
+                    self.flush()?;
+                    return Err(HttpClientError::RequestFailed(
+                        code, self.response.get_reason().to_owned()));
+                }
+            }
+        }
 
         Ok(())
     }
