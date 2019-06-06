@@ -39,36 +39,6 @@ fn hex2string<R: AsRef<[u8]>>(bytes: R) -> String {
 }
 
 
-/// Switch authentication type by request code
-pub fn auth(request: &mut Request, response: &Response) {
-    if request.url.get_prefix().is_empty() {
-        return
-    }
-
-    let token = response.header.get("www-authenticate").unwrap_or("").trim();
-    if token.is_empty() {
-        basic(request);
-        return
-    }
-
-    let mut i = token.splitn(2, char::is_whitespace);
-    let mode = i.next().unwrap();
-    let token = i.next().unwrap_or("");
-
-    if mode.eq_ignore_ascii_case("digest") {
-        digest(request, token);
-        return
-    }
-
-    if mode.eq_ignore_ascii_case("basic") {
-        basic(request);
-        return
-    }
-
-    // TODO: error. unknown method
-}
-
-
 /// Basic access authentication (RFC 2617)
 fn basic(request: &mut Request) {
     let value = base64::encode(request.url.get_prefix());
@@ -175,4 +145,34 @@ fn digest(request: &mut Request, token: &str) {
     write!(result, ", response=\"{}\"", &hresponse).unwrap();
 
     request.header.set("authorization", result);
+}
+
+
+/// Switch authentication type by request code
+pub fn http_auth(request: &mut Request, response: &Response) {
+    if request.url.get_prefix().is_empty() {
+        return
+    }
+
+    let token = response.header.get("www-authenticate").unwrap_or("").trim();
+    if token.is_empty() {
+        basic(request);
+        return
+    }
+
+    let mut i = token.splitn(2, char::is_whitespace);
+    let mode = i.next().unwrap();
+    let token = i.next().unwrap_or("");
+
+    if mode.eq_ignore_ascii_case("digest") {
+        digest(request, token);
+        return
+    }
+
+    if mode.eq_ignore_ascii_case("basic") {
+        basic(request);
+        return
+    }
+
+    // TODO: error. unknown method
 }

@@ -6,7 +6,7 @@ use std::io::{
 };
 
 use crate::{
-    auth::auth,
+    auth::http_auth,
     Request,
     RequestError,
     Response,
@@ -113,7 +113,6 @@ impl HttpClient {
         };
 
         self.stream.connect(tls, host, port)?;
-        auth(&mut self.request, &self.response);
         self.request.send(&mut self.stream)?;
         self.stream.flush()?;
 
@@ -153,6 +152,13 @@ impl HttpClient {
         Ok(())
     }
 
+    /// Set Authorization header if needed
+    pub fn auth(&mut self) -> Result<()> {
+        // TODO: check
+        http_auth(&mut self.request, &self.response);
+        Ok(())
+    }
+
     /// Simple GET request with authentication and location forwarding
     ///
     /// Usage:
@@ -171,6 +177,7 @@ impl HttpClient {
         let mut attempt_redirect = 0;
 
         loop {
+            self.auth()?;
             self.send()?;
             self.receive()?;
 

@@ -4,8 +4,7 @@ use http::HttpClient;
 #[test]
 fn test_auth_basic() {
     let mut client = HttpClient::new("http://test:testpass@httpbin.org/basic-auth/test/testpass").unwrap();
-    client.send().unwrap();
-    client.receive().unwrap();
+    client.get().unwrap();
     assert_eq!(200, client.response.get_code());
 }
 
@@ -21,12 +20,7 @@ fn test_auth_digest_simple() {
 #[test]
 fn test_auth_digest_qop_auth() {
     let mut client = HttpClient::new("http://guest:test@httpbin.org/digest-auth/auth/guest/test").unwrap();
-    client.send().unwrap();
-    client.receive().unwrap();
-    assert_eq!(401, client.response.get_code());
-    client.flush().unwrap();
-    client.send().unwrap();
-    client.receive().unwrap();
+    client.get().unwrap();
     assert_eq!(200, client.response.get_code());
 }
 
@@ -34,10 +28,6 @@ fn test_auth_digest_qop_auth() {
 #[test]
 fn test_auth_digest_auth() {
     let mut client = HttpClient::new("http://us:testpass@httpbin.org/digest-auth/auth/us/testpass").unwrap();
-    client.send().unwrap();
-    client.receive().unwrap();
-    assert_eq!(401, client.response.get_code());
-    client.send().unwrap();
-    client.receive().unwrap();
+    client.get().unwrap();
     assert_eq!(200, client.response.get_code());
 }
