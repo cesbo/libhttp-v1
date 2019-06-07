@@ -1,7 +1,4 @@
-use std::{
-    fmt,
-    convert::TryFrom,
-};
+use std::fmt;
 
 use crate::{
     UrlDecoder,
@@ -15,8 +12,6 @@ pub enum UrlError {
     Fmt(fmt::Error),
     #[error_kind("Url: length limit")]
     LengthLimit,
-    #[error_kind("Url: unexpected relative path")]
-    RelativePath,
     #[error_kind("Url: invalid port")]
     InvalidPort,
 }
@@ -60,10 +55,10 @@ impl Url {
         // 3 - ?query
         // 4 - #fragment
         let mut step = 0;
-        let mut prefix = 0;
-        let mut path = 0;
-        let mut query = 0;
-        let mut fragment = 0;
+        let mut prefix = None;
+        let mut path = None;
+        let mut query = None;
+        let mut fragment = None;
 
         let input = input.as_ref();
         if input.is_empty() { return Ok(()) }
@@ -80,47 +75,63 @@ impl Url {
 
             self.scheme.push_str(&input[0 .. v]);
             skip = v + 3;
-        } else {
-            // TODO: relative url
-            if ! input.starts_with('/') { return Err(UrlError::RelativePath) }
+        } else if input.starts_with('/') {
+            path = Some(0);
 
             self.path.clear();
             self.query.clear();
             self.fragment.clear();
 
             step = 2;
+        } else if input.starts_with('?') {
+            query = Some(0);
+
+            self.query.clear();
+            self.fragment.clear();
+
+            step = 3;
+        } else {
+            path = Some(0);
+
+            match self.path.rfind('/') {
+                Some(v) => self.path.truncate(v),
+                None => self.path.clear(),
+            };
+            self.path.push('/');
+
+            step = 3;
         }
 
         for (idx, part) in input[skip ..].match_indices(|c| {
             c == '/' || c == '?' || c == '#' || c == '@'
         }) {
             match part.as_bytes()[0] {
-                b'@' if step < 1 => { prefix = idx + skip; step = 1; },
-                b'/' if step < 2 => { path = idx + skip; step = 2; },
-                b'?' if step < 3 => { query = idx + skip; step = 3; },
-                b'#' if step < 4 => { fragment = idx + skip; break; },
+                b'@' if step < 1 => { prefix = Some(idx + skip); step = 1; },
+                b'/' if step < 2 => { path = Some(idx + skip); step = 2; },
+                b'?' if step < 3 => { query = Some(idx + skip); step = 3; },
+                b'#' if step < 4 => { fragment = Some(idx + skip); break; },
                 _ => {},
             };
         }
 
         let mut tail = input.len();
 
-        if fragment > 0 {
+        if let Some(fragment) = fragment {
             self.fragment.push_str(&input[fragment + 1 .. tail]);
             tail = fragment;
         }
 
-        if query > 0 {
+        if let Some(query) = query {
             self.query.push_str(&input[query + 1 .. tail]);
             tail = query;
         }
 
-        if path > 0 || skip == 0 {
-            self.path = String::try_from(UrlDecoder::new(&input[path .. tail]))?;
+        if let Some(path) = path {
+            UrlDecoder::new(&input[path .. tail]).decode(&mut self.path)?;
             tail = path;
         }
 
-        if prefix > 0 {
+        if let Some(prefix) = prefix {
             self.prefix.push_str(&input[skip .. prefix]);
             skip = prefix + 1;
         }

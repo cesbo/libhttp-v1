@@ -59,7 +59,7 @@ fn test_urlencode_path() {
 
 #[test]
 fn test_urldecode() {
-    let s: String = String::try_from(UrlDecoder::new(ENCODED_URI)).unwrap();
+    let s = String::try_from(UrlDecoder::new(ENCODED_URI)).unwrap();
     assert_eq!(s.as_str(), DECODED_URI);
 }
 
@@ -252,4 +252,64 @@ fn test_url_without_scheme() {
     let url = Url::new("/path?query").unwrap();
     assert_eq!(url.get_path(), "/path");
     assert_eq!(url.get_query(), "query");
+}
+
+
+#[test]
+fn test_url_full_path() {
+    let mut url = Url::new("https://example.com/test/").unwrap();
+    url.set("/full/path/").unwrap();
+    assert_eq!(url.get_path(), "/full/path/");
+}
+
+
+#[test]
+fn test_url_relative_1() {
+    let mut url = Url::new("https://example.com/test").unwrap();
+    url.set("relative/path/").unwrap();
+    assert_eq!(url.get_path(), "/relative/path/");
+}
+
+
+#[test]
+fn test_url_relative_2() {
+    let mut url = Url::new("https://example.com/test/").unwrap();
+    url.set("relative/path/").unwrap();
+    assert_eq!(url.get_path(), "/test/relative/path/");
+}
+
+
+#[test]
+fn test_url_relative_3() {
+    let mut url = Url::new("https://example.com/").unwrap();
+    url.set("relative/path/").unwrap();
+    assert_eq!(url.get_path(), "/relative/path/");
+}
+
+
+#[test]
+fn test_url_relative_4() {
+    let mut url = Url::new("https://example.com").unwrap();
+    url.set("relative/path/").unwrap();
+    assert_eq!(url.get_path(), "/relative/path/");
+}
+
+
+#[test]
+fn test_url_relative_query() {
+    let mut url = Url::new("https://example.com/test").unwrap();
+    url.set("?query=123").unwrap();
+    assert_eq!(url.get_path(), "/test");
+    assert_eq!(url.get_query(), "query=123");
+}
+
+
+#[test]
+fn test_url_clone() {
+    let main = Url::new("https://example.com/play/a001/index.m3u8").unwrap();
+    let mut segment = Url::default();
+    segment.clone_from(&main);
+    segment.set("000000.ts").unwrap();
+    assert_eq!(segment.get_host(), "example.com");
+    assert_eq!(segment.get_path(), "/play/a001/000000.ts");
 }

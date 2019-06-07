@@ -44,18 +44,13 @@ impl<'a> UrlDecoder<'a> {
             inner: s,
         }
     }
-}
 
-
-impl<'a> TryFrom<UrlDecoder<'a>> for String {
-    type Error = fmt::Error;
-
-    fn try_from(u: UrlDecoder<'a>) -> Result<String, fmt::Error> {
-        let buf = u.inner.as_bytes();
+    pub fn decode(&self, out: &mut String) -> Result<(), fmt::Error> {
+        let buf = self.inner.as_bytes();
         let len = buf.len();
         let mut skip = 0;
 
-        let mut result = String::with_capacity(len);
+        out.reserve(len);
 
         let mut bytes = 0;
         let mut utf8: u32 = 0;
@@ -70,7 +65,7 @@ impl<'a> TryFrom<UrlDecoder<'a>> for String {
 
                 if b & 0x80 == 0 {
                     // ASCII
-                    result.push(char::from(b));
+                    out.push(char::from(b));
                 } else if bytes > 0 {
                     // UTF8 trailing bytes
                     if b & 0xC0 != 0x80 { return Err(fmt::Error) }
@@ -79,7 +74,7 @@ impl<'a> TryFrom<UrlDecoder<'a>> for String {
                     bytes -= 1;
                     if bytes == 0 {
                         let b = unsafe { char::from_u32_unchecked(utf8) };
-                        result.push(b);
+                        out.push(b);
                     }
                 } else if b & 0xE0 == 0xC0 {
                     // UTF8 first byte for 2 byte code
@@ -97,12 +92,23 @@ impl<'a> TryFrom<UrlDecoder<'a>> for String {
                     return Err(fmt::Error);
                 }
             } else if b == b'+' {
-                result.push(' ');
+                out.push(' ');
             } else {
-                result.push(char::from(b));
+                out.push(char::from(b));
             }
         }
 
+        Ok(())
+    }
+}
+
+
+impl<'a> TryFrom<UrlDecoder<'a>> for String {
+    type Error = fmt::Error;
+
+    fn try_from(u: UrlDecoder<'a>) -> Result<String, fmt::Error> {
+        let mut result = String::new();
+        u.decode(&mut result)?;
         Ok(result)
     }
 }
