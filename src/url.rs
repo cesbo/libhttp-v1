@@ -30,7 +30,7 @@ type Result<T> = std::result::Result<T, UrlError>;
 /// URL parts: `scheme://prefix@address/path?query#fragment`
 /// All url parts are optional.
 /// If path, query, and fragment are defined, then value contains their delimiter as well
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct Url {
     scheme: String,
     prefix: String,
@@ -50,7 +50,7 @@ impl Url {
         Ok(url)
     }
 
-    /// Parse and absolute or relative URL from string
+    /// Set URL
     pub fn set<R: AsRef<str>>(&mut self, input: R) -> Result<()> {
         let mut skip = 0;
         // step values:
@@ -179,8 +179,53 @@ impl Url {
 }
 
 
+/// Convert Url into required format
 pub enum UrlFormatter<'a> {
+    /// Host with Port separated by colon. Or only Host if Port not defined
+    ///
+    /// Host only:
+    ///
+    /// ```
+    /// # use http::Url;
+    /// let url = Url::new("https://example.com").unwrap();
+    /// assert_eq!(url.as_address().to_string().as_str(), "example.com");
+    /// ```
+    ///
+    /// Host with Port:
+    ///
+    /// ```
+    /// # use http::Url;
+    /// let url = Url::new("https://example.com:8000").unwrap();
+    /// assert_eq!(url.as_address().to_string().as_str(), "example.com:8000");
+    /// ```
     Address(&'a Url),
+
+    /// Path with Query seprated by `?`
+    /// Only Path if Query not defined
+    ///
+    /// Only Path defined:
+    ///
+    /// ```
+    /// # use http::Url;
+    /// let url = Url::new("https://example.com/test").unwrap();
+    /// assert_eq!(url.as_request_uri().to_string().as_str(), "/test");
+    /// ```
+    ///
+    /// Path with Query:
+    ///
+    /// ```
+    /// # use http::Url;
+    /// let url = Url::new("https://example.com/test?query").unwrap();
+    /// assert_eq!(url.as_request_uri().to_string().as_str(), "/test?query");
+    /// ```
+    ///
+    /// Only Query defined:
+    ///
+    /// ```
+    /// # use http::Url;
+    /// let url = Url::new("https://example.com?query").unwrap();
+    /// assert_eq!(url.as_request_uri().to_string().as_str(), "/?query");
+    /// ```
     RequestUri(&'a Url),
 }
 
