@@ -38,14 +38,23 @@ pub struct Url {
 
 
 impl Url {
-    /// Allocate new object and parse url
+    /// Allocates new object and parse url
     pub fn new<R: AsRef<str>>(input: R) -> Result<Self> {
         let mut url = Url::default();
         url.set(input)?;
         Ok(url)
     }
 
-    /// Set URL
+    /// Sets URL or change URL parts
+    ///
+    /// Supports:
+    ///
+    /// - complete address - starts with `scheme://`
+    /// - full path - starts with `/`. Keeps scheme, prefix, host, and port unchanged
+    /// - query - starts with `?`. Keeps all unchanged except query and fragment
+    /// - relative path - starts with any other symbol.
+    ///   Keeps scheme, prefix, host, and port unchanged.
+    ///   Into base path appends relative path. Uses standard rules
     pub fn set<R: AsRef<str>>(&mut self, input: R) -> Result<()> {
         let mut skip = 0;
         // step values:

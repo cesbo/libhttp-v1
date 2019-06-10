@@ -87,6 +87,7 @@ impl HttpClient {
     }
 
     /// Close connection
+    /// Method should not used manually
     #[inline]
     pub fn close(&mut self) { self.stream.close() }
 
@@ -129,7 +130,7 @@ impl HttpClient {
         Ok(())
     }
 
-    /// Reads response body into sink
+    /// Reads response body from receiving buffer and stream
     #[inline]
     pub fn skip_body(&mut self) -> Result<()> {
         io::copy(&mut self.stream, &mut io::sink())?;

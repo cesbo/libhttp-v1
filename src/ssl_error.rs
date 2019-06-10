@@ -5,6 +5,7 @@ use std::{
 };
 
 
+/// Wrapper for OpenSSL errors
 #[derive(Debug)]
 pub struct SslError(openssl::error::ErrorStack);
 
@@ -31,6 +32,7 @@ impl From<openssl::error::ErrorStack> for SslError {
 }
 
 
+/// Wrapper for OpenSSL TLS handshake error
 #[derive(Debug)]
 pub struct HandshakeError(openssl::ssl::HandshakeError<TcpStream>);
 

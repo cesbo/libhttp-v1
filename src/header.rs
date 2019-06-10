@@ -19,7 +19,7 @@ impl fmt::Debug for Header {
 
 
 impl Header {
-    /// Parses header line
+    /// Parses header line. Header key converts into lowercase
     pub fn parse(&mut self, line: &str) {
         if let Some(skip) = line.find(':') {
             let key = line[.. skip].trim_end();
