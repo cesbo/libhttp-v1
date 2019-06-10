@@ -296,6 +296,38 @@ fn test_url_relative_4() {
 
 
 #[test]
+fn test_url_relative_5() {
+    let mut url = Url::new("https://example.com/test/xxxx/").unwrap();
+    url.set("./relative/path/").unwrap();
+    assert_eq!(url.get_path(), "/test/xxxx/relative/path/");
+}
+
+
+#[test]
+fn test_url_relative_6() {
+    let mut url = Url::new("https://example.com/test/xxxx").unwrap();
+    url.set("./relative/path/").unwrap();
+    assert_eq!(url.get_path(), "/test/relative/path/");
+}
+
+
+#[test]
+fn test_url_relative_7() {
+    let mut url = Url::new("https://example.com/test/xxxx/").unwrap();
+    url.set("../relative/path/").unwrap();
+    assert_eq!(url.get_path(), "/test/relative/path/");
+}
+
+
+#[test]
+fn test_url_relative_8() {
+    let mut url = Url::new("https://example.com/test/xxxx").unwrap();
+    url.set("../relative/path/").unwrap();
+    assert_eq!(url.get_path(), "/relative/path/");
+}
+
+
+#[test]
 fn test_url_relative_query() {
     let mut url = Url::new("https://example.com/test").unwrap();
     url.set("?query=123").unwrap();

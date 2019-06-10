@@ -142,3 +142,11 @@ fn test_invalid_url() {
         Err(ref e) => println!("test_invalid_url(): {}", e),
     }
 }
+
+
+#[test]
+fn test_404_without_body() {
+    let mut client = HttpClient::new("http://127.0.0.1:9090/404").unwrap();
+    assert!(client.get().is_err());
+    assert_eq!(404, client.response.get_code());
+}

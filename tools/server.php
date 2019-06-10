@@ -6,6 +6,12 @@ define('METHOD', $_SERVER['REQUEST_METHOD']);
 define('TEST_DATA', 'Hello, world!');
 
 
+if (URL_PATH == '/404' && METHOD == 'GET') {
+    http_response_code(404);
+    exit;
+}
+
+
 if (URL_PATH == '/get' && METHOD == 'GET') {
     header('Content-Type: text/plain');
     echo TEST_DATA;

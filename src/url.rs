@@ -128,6 +128,7 @@ impl Url {
 
         if let Some(path) = path {
             UrlDecoder::new(&input[path .. tail]).decode(&mut self.path)?;
+            self.sanitize_path();
             tail = path;
         }
 
@@ -146,6 +147,39 @@ impl Url {
         }
 
         Ok(())
+    }
+
+    fn sanitize_path(&mut self) {
+        let mut skip = 0;
+        let filter_path = |v: &&str| -> bool {
+            match *v {
+                "" | "." => false,
+                ".." => { skip += 1; false }
+                _ if skip == 0 => true,
+                _ => { skip -= 1; false }
+            }
+        };
+
+        let mut result = String::with_capacity(self.path.len());
+        let concat_path = |v: &&str| {
+            result.push('/');
+            result.push_str(v);
+        };
+
+        // TODO: without Vec
+        self.path
+            .rsplit('/')
+            .filter(filter_path)
+            .collect::<Vec<&str>>()
+            .iter()
+            .rev()
+            .for_each(concat_path);
+
+        if self.path.ends_with('/') {
+            result.push('/')
+        }
+
+        self.path = result;
     }
 
     /// Returns URL scheme
