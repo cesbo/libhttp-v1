@@ -2,6 +2,7 @@
 extern crate error_rules;
 
 mod auth;
+pub use crate::auth::http_auth;
 
 mod header;
 pub use crate::header::Header;

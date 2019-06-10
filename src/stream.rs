@@ -20,10 +20,12 @@ use openssl::ssl::{
     SslStream,
 };
 
-use crate::Response;
-use crate::ssl_error::{
-    SslError,
-    HandshakeError,
+use crate::{
+    Response,
+    ssl_error::{
+        SslError,
+        HandshakeError,
+    },
 };
 
 
@@ -242,13 +244,27 @@ impl HttpStream {
     }
 
     /// Checks response headers and set content parser behavior
-    pub fn configure(&mut self, response: &Response) -> Result<()> {
+    /// no_content - protocol specified response without content
+    pub fn configure(&mut self, no_content: bool, response: &Response) -> Result<()> {
         self.transfer = HttpTransferEncoding::Eof;
 
         if response.get_version() == "HTTP/1.0" {
             self.connection = HttpConnection::Close;
         } else {
             self.connection = HttpConnection::KeepAlive;
+        }
+
+        if let Some(connection) = response.header.get("connection") {
+            if connection.eq_ignore_ascii_case("close") {
+                self.connection = HttpConnection::Close
+            } else if connection.eq_ignore_ascii_case("keep-alive") {
+                self.connection = HttpConnection::KeepAlive
+            }
+        }
+
+        if no_content {
+            self.transfer = HttpTransferEncoding::Length(0);
+            return Ok(());
         }
 
         if let Some(len) = response.header.get("content-length") {
@@ -263,14 +279,13 @@ impl HttpStream {
             }
         }
 
-        if let Some(connection) = response.header.get("connection") {
-            if connection.eq_ignore_ascii_case("close") {
-                self.connection = HttpConnection::Close
-            } else if connection.eq_ignore_ascii_case("keep-alive") {
-                self.connection = HttpConnection::KeepAlive
-            }
-        }
+        Ok(())
+    }
 
+    /// Reads response body from receiving buffer and stream
+    #[inline]
+    pub fn skip_body(&mut self) -> Result<()> {
+        io::copy(self, &mut io::sink())?;
         Ok(())
     }
 

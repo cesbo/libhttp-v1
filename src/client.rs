@@ -6,7 +6,7 @@ use std::io::{
 };
 
 use crate::{
-    auth::http_auth,
+    http_auth,
     Request,
     RequestError,
     Response,
@@ -125,21 +125,23 @@ impl HttpClient {
     pub fn receive(&mut self) -> Result<()> {
         self.stream.flush()?;
         self.response.parse(&mut self.stream)?;
-        self.stream.configure(&self.response)?;
 
-        Ok(())
-    }
+        let no_content = {
+            let code = self.response.get_code();
+            code < 200 ||
+            code == 204 ||
+            code == 304 ||
+            self.request.get_method() == "HEAD"
+        };
 
-    /// Reads response body from receiving buffer and stream
-    #[inline]
-    pub fn skip_body(&mut self) -> Result<()> {
-        io::copy(&mut self.stream, &mut io::sink())?;
+        self.stream.configure(no_content, &self.response)?;
+
         Ok(())
     }
 
     /// Prepares for HTTP redirect to given location
     pub fn redirect(&mut self) -> Result<()> {
-        self.skip_body()?;
+        self.stream.skip_body()?;
 
         let location = self.response.header.get("location").unwrap_or("");
         if location.is_empty() {
@@ -150,13 +152,6 @@ impl HttpClient {
         self.stream.close();
         self.request.url.set(location)?;
 
-        Ok(())
-    }
-
-    /// Set Authorization header if needed
-    pub fn auth(&mut self) -> Result<()> {
-        // TODO: check
-        http_auth(&mut self.request, &self.response);
         Ok(())
     }
 
@@ -178,14 +173,14 @@ impl HttpClient {
         let mut attempt_redirect = 0;
 
         loop {
-            self.auth()?;
+            http_auth(&mut self.request, &self.response);
             self.send()?;
             self.receive()?;
 
             match self.response.get_code() {
                 200 | 204 => break,
                 401 if attempt_auth < 2 => {
-                    self.skip_body()?;
+                    self.stream.skip_body()?;
                     // TODO: check url prefix
                     attempt_auth += 1;
                 }
@@ -195,7 +190,7 @@ impl HttpClient {
                     attempt_auth = 0;
                 }
                 code => {
-                    self.skip_body()?;
+                    self.stream.skip_body()?;
                     return Err(HttpClientError::RequestFailed(
                         code, self.response.get_reason().to_owned()));
                 }
