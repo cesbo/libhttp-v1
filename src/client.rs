@@ -131,14 +131,14 @@ impl HttpClient {
 
     /// Reads response body into sink
     #[inline]
-    pub fn flush(&mut self) -> Result<()> {
+    pub fn skip_body(&mut self) -> Result<()> {
         io::copy(&mut self.stream, &mut io::sink())?;
         Ok(())
     }
 
     /// Prepares for HTTP redirect to given location
     pub fn redirect(&mut self) -> Result<()> {
-        self.flush()?;
+        self.skip_body()?;
 
         let location = self.response.header.get("location").unwrap_or("");
         if location.is_empty() {
@@ -184,7 +184,7 @@ impl HttpClient {
             match self.response.get_code() {
                 200 | 204 => break,
                 401 if attempt_auth < 2 => {
-                    self.flush()?;
+                    self.skip_body()?;
                     // TODO: check url prefix
                     attempt_auth += 1;
                 }
@@ -194,7 +194,7 @@ impl HttpClient {
                     attempt_auth = 0;
                 }
                 code => {
-                    self.flush()?;
+                    self.skip_body()?;
                     return Err(HttpClientError::RequestFailed(
                         code, self.response.get_reason().to_owned()));
                 }
