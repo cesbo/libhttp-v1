@@ -150,3 +150,16 @@ fn test_404_without_body() {
     assert!(client.get().is_err());
     assert_eq!(404, client.response.get_code());
 }
+
+
+#[test]
+fn test_fill_buf() {
+    let mut client = HttpClient::new("http://127.0.0.1:9090/get").unwrap();
+    client.get().unwrap();
+
+    let buf = client.fill_buf().unwrap();
+    assert_eq!(buf, HELLO_WORLD);
+
+    let buf = client.fill_buf().unwrap();
+    assert_eq!(buf, HELLO_WORLD);
+}
