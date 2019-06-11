@@ -20,6 +20,7 @@ use crate::UrlDecoder;
 ///     assert_eq!(query.get("key2").unwrap(), "value2");
 /// }
 /// ```
+#[derive(Default)]
 pub struct UrlQuery(HashMap<String, String>);
 
 
@@ -45,6 +46,16 @@ impl UrlQuery {
         }
 
         Ok(UrlQuery(map))
+    }
+
+    /// Sets key-value
+    #[inline]
+    pub fn set<K, V>(&mut self, key: K, value: V)
+    where
+        K: Into<String>,
+        V: ToString,
+    {
+        self.0.insert(key.into(), value.to_string());
     }
 
     /// Returns string value
