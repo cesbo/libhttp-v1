@@ -199,6 +199,10 @@ impl HttpClient {
 
         Ok(())
     }
+
+    /// Checks is connection ready for the request
+    #[inline]
+    pub fn is_ready(&self) -> bool { self.stream.is_ready() }
 }
 
 

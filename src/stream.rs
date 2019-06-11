@@ -69,9 +69,13 @@ enum HttpTransferEncoding {
 /// HTTP Connection type
 #[derive(Debug, PartialEq)]
 enum HttpConnection {
-    /// close connection
+    /// Connection ready for new request
+    None,
+    /// Connection started but not configured
+    Init,
+    /// Close connection
     Close,
-    /// keep connection alive
+    /// Keep connection alive
     KeepAlive,
 }
 
@@ -167,7 +171,7 @@ impl Default for HttpStream {
             wbuf: HttpBuffer::default(),
 
             transfer: HttpTransferEncoding::Eof,
-            connection: HttpConnection::KeepAlive,
+            connection: HttpConnection::None,
         }
     }
 }
@@ -176,7 +180,10 @@ impl Default for HttpStream {
 impl HttpStream {
     /// Close connection
     #[inline]
-    pub fn close(&mut self) { self.inner = None }
+    pub fn close(&mut self) {
+        self.connection = HttpConnection::None;
+        self.inner = None;
+    }
 
     /// Sets specified timeout for connect, read, write
     /// Default: 3sec
@@ -240,6 +247,8 @@ impl HttpStream {
             }
         }
 
+        self.connection = HttpConnection::Init;
+
         Ok(())
     }
 
@@ -280,6 +289,15 @@ impl HttpStream {
         }
 
         Ok(())
+    }
+
+    /// Checks is connection ready for the request
+    #[inline]
+    pub fn is_ready(&self) -> bool {
+        match self.connection {
+            HttpConnection::None => true,
+            _ => false,
+        }
     }
 
     /// Reads response body from receiving buffer and stream
@@ -422,6 +440,7 @@ impl Read for HttpStream {
             if self.connection == HttpConnection::Close {
                 self.close();
             }
+            self.connection = HttpConnection::None;
             Ok(0)
         }
     }
