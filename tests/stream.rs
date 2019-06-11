@@ -28,18 +28,3 @@ fn test_write_simulate() {
     assert_eq!(pos, 0);
     assert_eq!(cap, 10);
 }
-
-
-#[test]
-fn test_is_ready() {
-    let mut stream = HttpStream::default();
-    assert!(stream.is_ready());
-    stream.connect(true, "example.com", 443).unwrap();
-    stream.write_all(concat!("GET / HTTP/1.0\r\n",
-        "Host: example.com\r\n",
-        "User-Agent: libhttp\r\n",
-        "\r\n").as_bytes()).unwrap();
-    stream.flush().unwrap();
-    assert!(!stream.is_ready());
-    stream.close();
-}

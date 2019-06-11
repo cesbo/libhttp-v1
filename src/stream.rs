@@ -291,15 +291,6 @@ impl HttpStream {
         Ok(())
     }
 
-    /// Checks is connection ready for the request
-    #[inline]
-    pub fn is_ready(&self) -> bool {
-        match self.connection {
-            HttpConnection::None => true,
-            _ => false,
-        }
-    }
-
     /// Reads response body from receiving buffer and stream
     #[inline]
     pub fn skip_body(&mut self) -> Result<()> {
