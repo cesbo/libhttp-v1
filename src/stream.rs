@@ -145,7 +145,6 @@ impl Default for HttpBuffer {
 #[derive(Debug)]
 pub struct HttpStream {
     timeout: Duration,
-    ttl: u32,
     nodelay: bool,
 
     inner: Option<Box<dyn Stream>>,
@@ -163,7 +162,6 @@ impl Default for HttpStream {
     fn default() -> HttpStream {
         HttpStream {
             timeout: Duration::from_secs(3),
-            ttl: DEFAULT_IP_TTL,
             nodelay: DEFAULT_TCP_NODELAY,
 
             inner: None,
@@ -187,17 +185,15 @@ impl HttpStream {
 
     /// Sets specified timeout for connect, read, write
     /// Default: 3sec
+    #[inline]
     pub fn set_timeout(&mut self, timeout: Duration) { self.timeout = timeout }
-
-    /// Sets IP_TTL. Max value 255
-    /// Default: 64
-    pub fn set_ttl(&mut self, ttl: u32) { self.ttl = ttl }
 
     /// Sets TCP_NODELAY. If sets, segments are always sent as soon as possible,
     /// even if there is only a small amount of data. When not set, data is
     /// buffered until there is a sufficient amount to send out,
     /// thereby avoiding the frequent sending of small packets.
     /// Default: false
+    #[inline]
     pub fn set_nodelay(&mut self, nodelay: bool) { self.nodelay = nodelay }
 
     fn io_connect(&self, host: &str, port: u16) -> io::Result<TcpStream> {
@@ -206,7 +202,6 @@ impl HttpStream {
         for addr in addrs {
             match TcpStream::connect_timeout(&addr, self.timeout) {
                 Ok(v) => {
-                    if self.ttl != DEFAULT_IP_TTL { v.set_ttl(self.ttl)? }
                     if self.nodelay != DEFAULT_TCP_NODELAY { v.set_nodelay(self.nodelay)? }
                     v.set_read_timeout(Some(self.timeout))?;
                     v.set_write_timeout(Some(self.timeout))?;
