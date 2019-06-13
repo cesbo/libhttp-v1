@@ -43,6 +43,7 @@ pub use crate::url::{
     Url,
     UrlFormatter,
     UrlError,
+    UrlSetter,
 };
 
 mod urlquery;

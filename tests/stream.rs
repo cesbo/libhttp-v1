@@ -1,6 +1,3 @@
-use std::io::Write;
-use http::HttpStream;
-
 
 #[test]
 fn test_write_simulate() {

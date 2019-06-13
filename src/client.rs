@@ -14,6 +14,7 @@ use crate::{
     HttpStream,
     HttpStreamError,
     UrlError,
+    UrlSetter,
 };
 
 
@@ -71,14 +72,14 @@ pub struct HttpClient {
 
 impl HttpClient {
     /// Allocates new http client and prepares HTTP request
-    pub fn new<R: AsRef<str>>(url: R) -> Result<Self> {
+    pub fn new<R: UrlSetter>(url: R) -> Result<Self> {
         let mut client = HttpClient::default();
         client.init(url)?;
         Ok(client)
     }
 
     /// Prepares HTTP request
-    pub fn init<R: AsRef<str>>(&mut self, url: R) -> Result<()> {
+    pub fn init<R: UrlSetter>(&mut self, url: R) -> Result<()> {
         self.request.url.set(url)?;
         self.request.header.clear();
         self.request.header.set("host", self.request.url.as_address());

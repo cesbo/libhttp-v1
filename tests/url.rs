@@ -345,3 +345,14 @@ fn test_url_clone() {
     assert_eq!(segment.get_host(), "example.com");
     assert_eq!(segment.get_path(), "/play/a001/000000.ts");
 }
+
+
+#[test]
+fn test_url_set() {
+    let main = Url::new("https://example.com/play/a001/index.m3u8").unwrap();
+    let mut segment = Url::default();
+    segment.set(&main).unwrap();
+    segment.set("000000.ts").unwrap();
+    assert_eq!(segment.get_host(), "example.com");
+    assert_eq!(segment.get_path(), "/play/a001/000000.ts");
+}
