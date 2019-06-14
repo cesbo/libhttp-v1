@@ -55,7 +55,7 @@ impl Response {
     /// Reads until empty line found
     pub fn parse<R: BufRead>(&mut self, reader: &mut R) -> Result<()> {
         let mut first_line = true;
-        let mut buffer = String::new();
+        let mut buffer = String::with_capacity(256);
 
         self.header.clear();
         self.version.clear();
