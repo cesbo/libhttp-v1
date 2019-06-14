@@ -355,6 +355,7 @@ impl HttpStream {
     }
 
     /// HttpTransferEncoding::Eof
+    #[inline]
     fn fill_stream(&mut self) -> io::Result<&[u8]> {
         self.rbuf.try_ready(&mut self.inner)?;
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
@@ -469,7 +470,6 @@ impl Read for HttpStream {
 
 
 impl BufRead for HttpStream {
-    #[inline]
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         match self.transfer {
             HttpTransferEncoding::Eof => self.fill_stream(),
@@ -484,7 +484,6 @@ impl BufRead for HttpStream {
         }
     }
 
-    #[inline]
     fn consume(&mut self, amt: usize) {
         match &mut self.transfer {
             HttpTransferEncoding::Eof => {},
