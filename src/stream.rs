@@ -29,14 +29,63 @@ use crate::{
 };
 
 
-const DEFAULT_IP_TTL: u32 = 64;
 const DEFAULT_TCP_NODELAY: bool = false;
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 
-trait Stream: Read + Write + fmt::Debug {}
-impl Stream for TcpStream {}
-impl Stream for SslStream<TcpStream> {}
+#[derive(Debug)]
+struct NullStream {
+    i: io::Empty,
+    o: io::Sink,
+}
+
+
+impl Default for NullStream {
+    fn default() -> Self {
+        NullStream {
+            i: io::empty(),
+            o: io::sink(),
+        }
+    }
+}
+
+
+impl Read for NullStream {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.i.read(buf) }
+}
+
+
+
+impl Write for NullStream {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.o.write(buf) }
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> { self.o.flush() }
+}
+
+
+trait Stream: Read + Write + fmt::Debug {
+    fn is_null(&self) -> bool;
+}
+
+
+impl Stream for NullStream {
+    #[inline]
+    fn is_null(&self) -> bool { true }
+}
+
+
+impl Stream for TcpStream {
+    #[inline]
+    fn is_null(&self) -> bool { false }
+}
+
+
+impl Stream for SslStream<TcpStream> {
+    #[inline]
+    fn is_null(&self) -> bool { false }
+}
 
 
 #[derive(Debug, Error)]
@@ -147,7 +196,7 @@ pub struct HttpStream {
     timeout: Duration,
     nodelay: bool,
 
-    inner: Option<Box<dyn Stream>>,
+    inner: Box<dyn Stream>,
     rbuf: HttpBuffer,
     wbuf: HttpBuffer,
 
@@ -164,7 +213,7 @@ impl Default for HttpStream {
             timeout: Duration::from_secs(3),
             nodelay: DEFAULT_TCP_NODELAY,
 
-            inner: None,
+            inner: Box::new(NullStream::default()),
             rbuf: HttpBuffer::default(),
             wbuf: HttpBuffer::default(),
 
@@ -180,7 +229,7 @@ impl HttpStream {
     #[inline]
     pub fn close(&mut self) {
         self.connection = HttpConnection::None;
-        self.inner = None;
+        self.inner = Box::new(NullStream::default());
     }
 
     /// Sets specified timeout for connect, read, write
@@ -225,7 +274,7 @@ impl HttpStream {
         self.wbuf.cap = 0;
         self.transfer = HttpTransferEncoding::Eof;
 
-        if self.inner.is_some() {
+        if ! self.inner.is_null() {
             // keep-alive
         } else {
             let stream = self.io_connect(host, port)?;
@@ -236,9 +285,9 @@ impl HttpStream {
                 ssl.set_use_server_name_indication(true);
                 ssl.set_verify_hostname(true);
                 let stream = ssl.connect(host, stream).map_err(HandshakeError::from)?;
-                self.inner = Some(Box::new(stream));
+                self.inner = Box::new(stream);
             } else {
-                self.inner = Some(Box::new(stream));
+                self.inner = Box::new(stream);
             }
         }
 
@@ -296,8 +345,7 @@ impl HttpStream {
     /// HttpTransferEncoding::Eof
     fn fill_stream(&mut self) -> io::Result<&[u8]> {
         if self.rbuf.pos >= self.rbuf.cap {
-            let inner = self.inner.as_mut().unwrap(); // TODO: fix
-            self.rbuf.cap = inner.read(&mut self.rbuf.buf)?;
+            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
             self.rbuf.pos = 0;
         }
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
@@ -307,8 +355,7 @@ impl HttpStream {
     fn fill_length(&mut self, len: usize) -> io::Result<&[u8]> {
         if self.rbuf.pos >= self.rbuf.cap {
             let remain = cmp::min(len, self.rbuf.buf.len());
-            let inner = self.inner.as_mut().unwrap(); // TODO: fix
-            self.rbuf.cap = inner.read(&mut self.rbuf.buf[0 .. remain])?;
+            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf[0 .. remain])?;
             self.rbuf.pos = 0;
         }
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
@@ -383,8 +430,7 @@ impl HttpStream {
                     }
                 }
 
-                let inner = self.inner.as_mut().unwrap(); // TODO: fix
-                self.rbuf.cap = inner.read(&mut self.rbuf.buf)?;
+                self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
                 self.rbuf.pos = 0;
             }
 
@@ -401,8 +447,7 @@ impl HttpStream {
         }
 
         if self.rbuf.pos >= self.rbuf.cap {
-            let inner = self.inner.as_mut().unwrap(); // TODO: fix
-            self.rbuf.cap = inner.read(&mut self.rbuf.buf)?;
+            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
             self.rbuf.pos = 0;
         }
 
@@ -462,8 +507,7 @@ impl Write for HttpStream {
         }
 
         if buf.len() >= self.wbuf.buf.len() {
-            let inner = self.inner.as_mut().unwrap(); // TODO: fix
-            inner.write(buf)
+            self.inner.write(buf)
         } else {
             let r = (&mut self.wbuf.buf[self.wbuf.cap ..]).write(buf)?;
             self.wbuf.cap += r;
@@ -472,9 +516,8 @@ impl Write for HttpStream {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        let inner = self.inner.as_mut().unwrap(); // TODO: fix
         while self.wbuf.pos < self.wbuf.cap {
-            match inner.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
+            match self.inner.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
                 Ok(0) => {
                     return Err(io::Error::new(io::ErrorKind::WriteZero,
                         "failed to write the buffered data"));
@@ -488,6 +531,6 @@ impl Write for HttpStream {
         }
         self.wbuf.pos = 0;
         self.wbuf.cap = 0;
-        inner.flush()
+        self.inner.flush()
     }
 }
