@@ -1,4 +1,5 @@
 use std::io::{
+    self,
     Write,
     Read,
     BufRead,
@@ -8,6 +9,14 @@ use http::HttpClient;
 
 
 const HELLO_WORLD: &[u8] = b"Hello, world!";
+
+
+#[test]
+fn test_get_content_length() {
+    let mut client = HttpClient::new("https://cesbo.com").unwrap();
+    client.get().unwrap();
+    io::copy(&mut client, &mut io::sink()).unwrap();
+}
 
 
 #[test]

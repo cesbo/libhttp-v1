@@ -162,6 +162,18 @@ impl Default for HttpBuffer {
 }
 
 
+impl HttpBuffer {
+    #[inline]
+    fn try_ready<R: Read>(&mut self, src: &mut R) -> io::Result<()> {
+        if self.pos >= self.cap {
+            self.cap = src.read(&mut self.buf)?;
+            self.pos = 0;
+        }
+        Ok(())
+    }
+}
+
+
 /// HTTP transport stream
 ///
 /// Supports next features:
@@ -344,20 +356,7 @@ impl HttpStream {
 
     /// HttpTransferEncoding::Eof
     fn fill_stream(&mut self) -> io::Result<&[u8]> {
-        if self.rbuf.pos >= self.rbuf.cap {
-            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
-            self.rbuf.pos = 0;
-        }
-        Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
-    }
-
-    /// HttpTransferEncoding::Length
-    fn fill_length(&mut self, len: usize) -> io::Result<&[u8]> {
-        if self.rbuf.pos >= self.rbuf.cap {
-            let remain = cmp::min(len, self.rbuf.buf.len());
-            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf[0 .. remain])?;
-            self.rbuf.pos = 0;
-        }
+        self.rbuf.try_ready(&mut self.inner)?;
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
     }
 
@@ -374,88 +373,79 @@ impl HttpStream {
             // 100 - ok
             let mut step = if first { 1 } else { 0 };
 
-            'M: loop {
-                while self.rbuf.pos < self.rbuf.cap {
-                    let b = self.rbuf.buf[self.rbuf.pos];
-                    self.rbuf.pos += 1;
+            loop {
+                self.rbuf.try_ready(&mut self.inner)?;
 
-                    if step == 1 {
-                        // chunk-size
-                        let d = match b {
-                            b'0' ..= b'9' => b - b'0',
-                            b'a' ..= b'f' => b - b'a' + 10,
-                            b'A' ..= b'F' => b - b'A' + 10,
-                            b'\n' if len == 0 => { step = 3; continue }
-                            b'\n' => { step = 100; break 'M }
-                            b'\r' => { step = 4; continue }
-                            b';' | b' ' | b'\t' => { step = 2; continue }
-                            _ => break 'M,
-                        };
+                let b = self.rbuf.buf[self.rbuf.pos];
+                self.rbuf.pos += 1;
 
-                        len = len * 16 + usize::from(d);
-                    }
+                if step == 1 {
+                    // chunk-size
+                    let d = match b {
+                        b'0' ..= b'9' => b - b'0',
+                        b'a' ..= b'f' => b - b'a' + 10,
+                        b'A' ..= b'F' => b - b'A' + 10,
+                        b'\n' if len == 0 => { step = 3; continue }
+                        b'\n' => { step = 100; break }
+                        b'\r' => { step = 4; continue }
+                        b';' | b' ' | b'\t' => { step = 2; continue }
+                        _ => break,
+                    };
 
-                    else if step == 0 {
-                        // skip CRLF after chunk
-                        match b {
-                            b'\r' => continue,
-                            b'\n' => { step = 1; continue }
-                            _ => break 'M,
-                        }
-                    }
+                    len = len * 16 + usize::from(d);
+                }
 
-                    else if step == 2 {
-                        // skip chunk-ext
-                        match b {
-                            b'\r' => { step = 4; continue }
-                            b'\n' if len == 0 => { step = 3; continue }
-                            b'\n' => { step = 100; break 'M }
-                            _ => continue,
-                        }
-                    }
-
-                    else if step == 3 {
-                        // skip trailer
-                        match b {
-                            b'\r' => { step = 4; continue }
-                            b'\n' => { step = 100; break 'M }
-                            _ => continue,
-                        }
-                    }
-
-                    else if step == 4 {
-                        // almost done
-                        if b == b'\n' { step = 100 }
-                        break 'M
+                else if step == 0 {
+                    // skip CRLF after chunk
+                    match b {
+                        b'\r' => continue,
+                        b'\n' => { step = 1; continue }
+                        _ => break,
                     }
                 }
 
-                self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
-                self.rbuf.pos = 0;
+                else if step == 2 {
+                    // skip chunk-ext
+                    match b {
+                        b'\r' => { step = 4; continue }
+                        b'\n' if len == 0 => { step = 3; continue }
+                        b'\n' => { step = 100; break }
+                        _ => continue,
+                    }
+                }
+
+                else if step == 3 {
+                    // skip trailer
+                    match b {
+                        b'\r' => { step = 4; continue }
+                        b'\n' => { step = 100; break }
+                        _ => continue,
+                    }
+                }
+
+                else if step == 4 {
+                    // almost done
+                    if b == b'\n' { step = 100 }
+                    break
+                }
             }
 
-            if step != 100 && self.rbuf.cap > self.rbuf.pos {
+            if step != 100 {
                 return Err(io::Error::new(io::ErrorKind::InvalidData,
                     "invalid chunk-size format"));
             }
 
             if len == 0 {
-                return Ok(&self.rbuf.buf[0 .. 0]);
+                return Ok(&[]);
             }
 
             self.transfer = HttpTransferEncoding::Chunked(len, false);
         }
 
-        if self.rbuf.pos >= self.rbuf.cap {
-            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
-            self.rbuf.pos = 0;
-        }
+        self.rbuf.try_ready(&mut self.inner)?;
 
-        if len >= self.rbuf.cap - self.rbuf.pos {
-            Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
-        } else {
-            Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.pos + len])
-        }
+        let remain = cmp::min(self.rbuf.cap, self.rbuf.pos + len);
+        Ok(&self.rbuf.buf[self.rbuf.pos .. remain])
     }
 }
 
@@ -483,7 +473,13 @@ impl BufRead for HttpStream {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         match self.transfer {
             HttpTransferEncoding::Eof => self.fill_stream(),
-            HttpTransferEncoding::Length(len) => self.fill_length(len),
+            HttpTransferEncoding::Length(len) => {
+                if len > 0 {
+                    self.fill_stream()
+                } else {
+                    Ok(&[])
+                }
+            }
             HttpTransferEncoding::Chunked(len, first) => self.fill_chunked(len, first),
         }
     }
