@@ -3,6 +3,7 @@ use std::fmt;
 use crate::{
     UrlDecoder,
     UrlEncoder,
+    UrlQuery,
 };
 
 
@@ -267,6 +268,18 @@ impl UrlSetter for &String {
     #[inline]
     fn set_url(&self, url: &mut Url) -> Result<()> {
         self.as_str().set_url(url)
+    }
+}
+
+
+impl UrlSetter for &UrlQuery {
+    fn set_url(&self, url: &mut Url) -> Result<()> {
+        url.query.clear();
+        url.fragment.clear();
+
+        fmt::write(&mut url.query, format_args!("{}", self))?;
+
+        Ok(())
     }
 }
 

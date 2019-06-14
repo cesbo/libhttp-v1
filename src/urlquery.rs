@@ -4,7 +4,10 @@ use std::{
     collections::HashMap,
 };
 
-use crate::UrlDecoder;
+use crate::{
+    UrlDecoder,
+    UrlEncoder,
+};
 
 
 /// Strings in query format - key-value tuples separated by '&'
@@ -68,6 +71,21 @@ impl UrlQuery {
     #[inline]
     pub fn iter(&'_ self) -> UrlQueryIterator<'_> {
         self.into_iter()
+    }
+}
+
+
+impl fmt::Display for UrlQuery {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, (key, val)) in self.0.iter().enumerate() {
+            if i > 0 {
+                fmt::Write::write_char(f, '&')?;
+            }
+            UrlEncoder::new(key).fmt(f)?;
+            fmt::Write::write_char(f, '=')?;
+            UrlEncoder::new(val).fmt(f)?;
+        }
+        Ok(())
     }
 }
 

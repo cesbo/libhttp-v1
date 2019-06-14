@@ -28,6 +28,29 @@ fn test_query_parse() {
 
 
 #[test]
+fn test_query_fmt() {
+    let v1 = "test-🍔";
+    let v2 = "Test & Value";
+
+    let mut q = UrlQuery::default();
+    q.set("data", v1);
+    q.set("zzzz", v2);
+    let r = q.to_string();
+    let q = UrlQuery::new(&r).unwrap();
+    let mut step = 0;
+    for (k, v) in &q {
+        step += 1;
+        match k {
+            "data" => assert_eq!(v, v1),
+            "zzzz" => assert_eq!(v, v2),
+            _ => unreachable!(),
+        }
+    }
+    assert_eq!(step, 2);
+}
+
+
+#[test]
 fn test_query_iter() {
     let q = UrlQuery::new("key1=value1&key2=value2").unwrap();
     let mut step = 0;
