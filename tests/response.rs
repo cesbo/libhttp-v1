@@ -1,5 +1,8 @@
 use std::io::BufReader;
-use http::Response;
+use http::{
+    HttpVersion,
+    Response,
+};
 
 const TEST1: &str = "HTTP/1.1 200 Ok\r\n\
     Server: libhttp\r\n\
@@ -47,7 +50,7 @@ const TEST_TABS_CASE: &str = "HTTP/1.1  \t\t\t    200 Ok\r\n\
 fn response_parse() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST1.as_bytes())).unwrap();
-    assert_eq!(response.get_version(), "HTTP/1.1");
+    assert_eq!(response.get_version(), HttpVersion::HTTP11);
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.header.get("server").unwrap(), "libhttp");
@@ -59,7 +62,7 @@ fn response_parse() {
 fn response_parse_spaces() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_SPACES.as_bytes())).unwrap();
-    assert_eq!(response.get_version(), "HTTP/1.1");
+    assert_eq!(response.get_version(), HttpVersion::HTTP11);
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.header.get("server").unwrap(), "libhttp");
@@ -71,7 +74,7 @@ fn response_parse_spaces() {
 fn response_parse_tabs() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_TABS.as_bytes())).unwrap();
-    assert_eq!(response.get_version(), "HTTP/1.1");
+    assert_eq!(response.get_version(), HttpVersion::HTTP11);
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.header.get("server").unwrap(), "libhttp");
@@ -83,7 +86,7 @@ fn response_parse_tabs() {
 fn response_parse_tabs_case() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_TABS_CASE.as_bytes())).unwrap();
-    assert_eq!(response.get_version(), "HTTP/1.1");
+    assert_eq!(response.get_version(), HttpVersion::HTTP11);
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.header.get("server-name").unwrap(), "libhttp");
@@ -95,7 +98,7 @@ fn response_parse_tabs_case() {
 fn response_parse_unix() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_UNIX.as_bytes())).unwrap();
-    assert_eq!(response.get_version(), "HTTP/1.1");
+    assert_eq!(response.get_version(), HttpVersion::HTTP11);
     assert_eq!(response.get_code(), 200);
     assert_eq!(response.get_reason(), "Ok");
     assert_eq!(response.header.get("server").unwrap(), "libhttp");
@@ -121,7 +124,7 @@ fn response_parse_unexpected_eof() {
 fn response_parse_wo_status() {
     let mut response = Response::new();
     response.parse(&mut BufReader::new(TEST_WO_STATUS.as_bytes())).unwrap();
-    assert_eq!(response.get_version(), "HTTP/1.1");
+    assert_eq!(response.get_version(), HttpVersion::HTTP11);
     assert_eq!(response.get_code(), 200);
     assert!(response.get_reason().is_empty());
 }
@@ -130,7 +133,7 @@ fn response_parse_wo_status() {
 #[test]
 fn response_send() {
     let mut response = Response::new();
-    response.set_version("RTSP/1.0");
+    response.set_version(HttpVersion::RTSP10);
     response.set_code(200);
     response.set_reason("Ok");
     response.header.set("date", "Mon, 08 Apr 2019 10:42:12 GMT");
@@ -143,7 +146,7 @@ fn response_send() {
 #[test]
 fn response_send_case() {
     let mut response = Response::new();
-    response.set_version("RTSP/1.0");
+    response.set_version(HttpVersion::RTSP10);
     response.set_code(200);
     response.set_reason("Ok");
     response.header.set("date-start", "Mon, 08 Apr 2019 10:42:12 GMT");

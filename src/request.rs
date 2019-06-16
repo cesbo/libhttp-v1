@@ -8,6 +8,8 @@ use crate::{
     Header,
     Url,
     UrlError,
+    UrlFormatter,
+    HttpVersion,
 };
 
 
@@ -32,7 +34,7 @@ pub type Result<T> = std::result::Result<T, RequestError>;
 pub struct Request {
     method: String,
     pub url: Url,
-    version: String,
+    version: HttpVersion,
     pub header: Header,
     pub (crate) nonce_count: usize
 }
@@ -43,7 +45,7 @@ impl Default for Request {
         Request {
             method: "GET".to_owned(),
             url: Url::default(),
-            version: "HTTP/1.1".to_owned(),
+            version: HttpVersion::default(),
             header: Header::default(),
             nonce_count: 0,
         }
@@ -64,7 +66,6 @@ impl Request {
 
         self.header.clear();
         self.method.clear();
-        self.version.clear();
 
         loop {
             buffer.clear();
@@ -88,7 +89,7 @@ impl Request {
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
                     if ! s.is_empty() {
-                        self.version.push_str(s);
+                        self.version = s.into();
                     }
                 }
             } else {
@@ -100,9 +101,15 @@ impl Request {
     }
 
     fn io_send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
+        let path_fmt = match self.version {
+            HttpVersion::HTTP11 => UrlFormatter::RequestUri(&self.url),
+            HttpVersion::RTSP10 => UrlFormatter::Url(&self.url),
+            HttpVersion::HTTP10 => UrlFormatter::RequestUri(&self.url),
+        };
+
         writeln!(dst,"{} {} {}\r",
             self.method,
-            self.url.as_request_uri(),
+            path_fmt,
             self.version)?;
 
         self.header.send(dst)?;
@@ -129,10 +136,7 @@ impl Request {
     /// Sets protocol version
     /// Default: `HTTP/1.1`
     #[inline]
-    pub fn set_version(&mut self, version: &str) {
-        self.version.clear();
-        self.version.push_str(version);
-    }
+    pub fn set_version(&mut self, version: HttpVersion) { self.version = version }
 
     /// Returns request method
     #[inline]
@@ -140,5 +144,5 @@ impl Request {
 
     /// Returns request version
     #[inline]
-    pub fn get_version(&self) -> &str { self.version.as_str() }
+    pub fn get_version(&self) -> HttpVersion { self.version }
 }

@@ -9,6 +9,7 @@ use std::{
 };
 
 use crate::{
+    HttpVersion,
     http_auth,
     Request,
     RequestError,
@@ -99,7 +100,6 @@ impl HttpClient {
     /// Prepares HTTP stream for writing data
     pub fn send(&mut self) -> Result<()> {
         let mut tls = false;
-        let host = self.request.url.get_host();
         let mut port = self.request.url.get_port();
 
         match self.request.url.get_scheme() {
@@ -114,8 +114,16 @@ impl HttpClient {
                 }
                 tls = true;
             }
+            "rtsp" => {
+                if port == 0 {
+                    port = 554;
+                }
+                self.request.set_version(HttpVersion::RTSP10);
+            }
             _ => return Err(HttpClientError::InvalidProtocol)
         };
+
+        let host = self.request.url.get_host();
 
         self.stream.connect(tls, host, port)?;
         self.request.send(&mut self.stream)?;

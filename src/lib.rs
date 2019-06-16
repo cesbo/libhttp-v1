@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate error_rules;
 
+mod version;
+pub use crate::version::HttpVersion;
+
 mod auth;
 pub use crate::auth::http_auth;
 

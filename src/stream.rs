@@ -21,6 +21,7 @@ use openssl::ssl::{
 };
 
 use crate::{
+    HttpVersion,
     Response,
     ssl_error::{
         SslError,
@@ -313,10 +314,9 @@ impl HttpStream {
     pub fn configure(&mut self, no_content: bool, response: &Response) -> Result<()> {
         self.transfer = HttpTransferEncoding::Eof;
 
-        if response.get_version() == "HTTP/1.0" {
-            self.connection = HttpConnection::Close;
-        } else {
-            self.connection = HttpConnection::KeepAlive;
+        match response.get_version() {
+            HttpVersion::HTTP10 => self.connection = HttpConnection::Close,
+            _ => self.connection = HttpConnection::KeepAlive,
         }
 
         if let Some(connection) = response.header.get("connection") {

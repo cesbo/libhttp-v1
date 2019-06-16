@@ -4,7 +4,10 @@ use std::io::{
     Write,
 };
 
-use crate::Header;
+use crate::{
+    Header,
+    HttpVersion,
+};
 
 
 #[derive(Debug, Error)]
@@ -26,7 +29,7 @@ pub type Result<T> = std::result::Result<T, ResponseError>;
 /// Parser and formatter for HTTP response line and headers
 #[derive(Debug)]
 pub struct Response {
-    version: String,
+    version: HttpVersion,
     code: usize,
     reason: String,
     ///
@@ -37,7 +40,7 @@ pub struct Response {
 impl Default for Response {
     fn default() -> Response {
         Response {
-            version: "HTTP/1.1".to_string(),
+            version: HttpVersion::default(),
             code: 0,
             reason: String::default(),
             header: Header::default(),
@@ -58,7 +61,6 @@ impl Response {
         let mut buffer = String::with_capacity(256);
 
         self.header.clear();
-        self.version.clear();
         self.code = 0;
         self.reason.clear();
 
@@ -76,7 +78,7 @@ impl Response {
                 first_line = false;
 
                 let skip = s.find(char::is_whitespace).ok_or_else(|| ResponseError::InvalidFormat)?;
-                self.version.push_str(&s[.. skip]);
+                self.version = s[.. skip].into();
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.code = s[.. skip].parse().unwrap_or(0);
@@ -117,10 +119,7 @@ impl Response {
     /// Sets protocol version
     /// Default: `HTTP/1.1`
     #[inline]
-    pub fn set_version(&mut self, version: &str) {
-        self.version.clear();
-        self.version.push_str(version);
-    }
+    pub fn set_version(&mut self, version: HttpVersion) { self.version = version }
 
     /// Sets response status code
     #[inline]
@@ -132,7 +131,7 @@ impl Response {
 
     /// Returns response version
     #[inline]
-    pub fn get_version(&self) -> &str { self.version.as_str() }
+    pub fn get_version(&self) -> HttpVersion { self.version }
 
     /// Returns response status code
     #[inline]

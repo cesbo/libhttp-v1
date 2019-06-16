@@ -124,15 +124,15 @@ impl Url {
 
     /// Returns URL formatter for request_uri - encoded path with query string
     #[inline]
-    pub fn as_request_uri(&'_ self) -> UrlFormatter<'_> {
-        UrlFormatter::RequestUri(self)
-    }
+    pub fn as_request_uri(&'_ self) -> UrlFormatter<'_> { UrlFormatter::RequestUri(self) }
 
     /// Returns URL formatter for address - host with port if defined
     #[inline]
-    pub fn as_address(&'_ self) -> UrlFormatter<'_> {
-        UrlFormatter::Address(self)
-    }
+    pub fn as_address(&'_ self) -> UrlFormatter<'_> { UrlFormatter::Address(self) }
+
+    /// Returns URL formatter for complete URL
+    #[inline]
+    pub fn as_url(&'_ self) -> UrlFormatter<'_> { UrlFormatter::Url(self) }
 }
 
 
@@ -332,6 +332,9 @@ pub enum UrlFormatter<'a> {
     /// assert_eq!(url.as_request_uri().to_string().as_str(), "/?query");
     /// ```
     RequestUri(&'a Url),
+
+    /// Complete URL with scheme, host, port, path, and query
+    Url(&'a Url),
 }
 
 
@@ -339,10 +342,9 @@ impl<'a> fmt::Display for UrlFormatter<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             UrlFormatter::Address(url) => {
-                if url.port == 0 {
-                    write!(f, "{}", &url.host)
-                } else {
-                    write!(f, "{}:{}", &url.host, url.port)
+                write!(f, "{}", &url.host)?;
+                if url.port != 0 {
+                    write!(f, ":{}", url.port)?;
                 }
             }
 
@@ -350,12 +352,29 @@ impl<'a> fmt::Display for UrlFormatter<'a> {
                 let path = if url.path.is_empty() { "/" } else { url.path.as_str() };
                 let path = UrlEncoder::new_path(path);
 
-                if url.query.is_empty() {
-                    write!(f, "{}", path)
-                } else {
-                    write!(f, "{}?{}", path, &url.query)
+                write!(f, "{}", path)?;
+                if ! url.query.is_empty() {
+                    write!(f, "?{}", &url.query)?;
+                }
+            }
+
+            UrlFormatter::Url(url) => {
+                write!(f, "{}://{}", &url.scheme, &url.host)?;
+                if url.port != 0 {
+                    write!(f, ":{}", url.port)?;
+                }
+
+                if ! url.path.is_empty() {
+                    let path = UrlEncoder::new_path(url.path.as_str());
+                    write!(f, "{}", path)?;
+                }
+
+                if ! url.query.is_empty() {
+                    write!(f, "?{}", &url.query)?;
                 }
             }
         }
+
+        Ok(())
     }
 }
