@@ -136,7 +136,7 @@ fn response_send() {
     response.set_version(HttpVersion::RTSP10);
     response.set_code(200);
     response.set_reason("Ok");
-    response.header.set("date", "Mon, 08 Apr 2019 10:42:12 GMT");
+    response.header.set("Date", "Mon, 08 Apr 2019 10:42:12 GMT");
     let mut dst: Vec<u8> = Vec::new();
     response.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST2.as_bytes());
@@ -149,7 +149,7 @@ fn response_send_case() {
     response.set_version(HttpVersion::RTSP10);
     response.set_code(200);
     response.set_reason("Ok");
-    response.header.set("date-start", "Mon, 08 Apr 2019 10:42:12 GMT");
+    response.header.set("Date-Start", "Mon, 08 Apr 2019 10:42:12 GMT");
     let mut dst: Vec<u8> = Vec::new();
     response.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST_SEND_CASE.as_bytes());

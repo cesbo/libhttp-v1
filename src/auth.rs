@@ -43,7 +43,7 @@ fn hex2string<R: AsRef<[u8]>>(bytes: R) -> String {
 fn basic(request: &mut Request) {
     let value = base64::encode(request.url.get_prefix());
     let value = format!("Basic {}", value);
-    request.header.set("authorization", value);
+    request.header.set("Authorization", value);
 }
 
 
@@ -144,7 +144,7 @@ fn digest(request: &mut Request, token: &str) {
     let hresponse = hex2string(&hr);
     write!(result, ", response=\"{}\"", &hresponse).unwrap();
 
-    request.header.set("authorization", result);
+    request.header.set("Authorization", result);
 }
 
 

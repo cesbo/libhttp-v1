@@ -12,7 +12,7 @@ const TEST_BROKEN: &str = "GET /path?query HTTP/1.1\r\n\
     Host: 127.0.0.1:8000\r\n\
     User-Agent: lib";
 
-const TEST2: &str = "GET /path?query RTSP/1.0\r\n\
+const TEST2: &str = "GET rtsp://127.0.0.1:8000/path?query RTSP/1.0\r\n\
     Host: 127.0.0.1:8000\r\n\
     \r\n";
 
@@ -30,11 +30,12 @@ const TEST_TAB_UNIX: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t       RT
 #[test]
 fn request_send() {
     let mut request = Request::new();
-    request.url.set("http://127.0.0.1:8000/path?query").unwrap();
+    request.url.set("rtsp://127.0.0.1:8000/path?query").unwrap();
     request.set_version(HttpVersion::RTSP10);
-    request.header.set("host", request.url.as_address());
+    request.header.set("Host", request.url.as_address());
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
+    dbg!(unsafe { std::str::from_utf8_unchecked(&dst) });
     assert_eq!(dst.as_slice(), TEST2.as_bytes());
 }
 
@@ -43,7 +44,7 @@ fn request_send() {
 fn request_send_version() {
     let mut request = Request::new();
     request.url.set("http://127.0.0.1:8000/path?query").unwrap();
-    request.header.set("host", request.url.as_address());
+    request.header.set("Host", request.url.as_address());
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
     assert_eq!(dst.as_slice(), TEST1.as_bytes());

@@ -51,14 +51,34 @@ pub const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
 
 /// HTTP client
 ///
-/// Usage:
+/// Basic Usage:
 ///
 /// ```
 /// use std::io::Read;
 /// use http::HttpClient;
 ///
 /// let mut client = HttpClient::new("https://example.com").unwrap();
+/// client.get().unwrap();
+/// let mut body = String::new();
+/// client.read_to_string(&mut body).unwrap();
+/// ```
+///
+/// Usage with request body:
+///
+/// ```
+/// use std::io::{
+///     Read,
+///     Write,
+/// };
+/// use http::HttpClient;
+///
+/// let mut client = HttpClient::new("http://httpbin.org/post").unwrap();
+/// client.request.set_method("POST");
+/// client.request.header.set("Accept", "application/json");
+/// // Send request
 /// client.send().unwrap();
+/// client.write_all(b"{\"data\": \"Hello, world!\"}").unwrap();
+/// // Get response
 /// client.receive().unwrap();
 /// let mut body = String::new();
 /// client.read_to_string(&mut body).unwrap();
@@ -86,8 +106,8 @@ impl HttpClient {
     pub fn init<R: UrlSetter>(&mut self, url: R) -> Result<()> {
         self.request.url.set(url)?;
         self.request.header.clear();
-        self.request.header.set("host", self.request.url.as_address());
-        self.request.header.set("user-agent", USER_AGENT);
+        self.request.header.set("Host", self.request.url.as_address());
+        self.request.header.set("User-Agent", USER_AGENT);
         Ok(())
     }
 
