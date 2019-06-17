@@ -35,21 +35,15 @@ pub use crate::client::{
     HttpClientError,
 };
 
-mod urldecode;
-pub use crate::urldecode::UrlDecoder;
-
-mod urlencode;
-pub use crate::urlencode::UrlEncoder;
-
 mod url;
 pub use crate::url::{
     Url,
     UrlFormatter,
     UrlError,
     UrlSetter,
+    UrlDecoder,
+    UrlEncoder,
+    UrlQuery,
 };
-
-mod urlquery;
-pub use crate::urlquery::UrlQuery;
 
 mod ssl_error;

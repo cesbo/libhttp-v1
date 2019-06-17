@@ -4,7 +4,7 @@ use std::{
     collections::HashMap,
 };
 
-use crate::{
+use super::{
     UrlDecoder,
     UrlEncoder,
 };

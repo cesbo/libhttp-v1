@@ -35,7 +35,6 @@ fn request_send() {
     request.header.set("Host", request.url.as_address());
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();
-    dbg!(unsafe { std::str::from_utf8_unchecked(&dst) });
     assert_eq!(dst.as_slice(), TEST2.as_bytes());
 }
 
