@@ -52,27 +52,12 @@ impl Write for NullStream {
 }
 
 
-trait Stream: Read + Write + fmt::Debug {
-    fn is_null(&self) -> bool;
-}
+trait Stream: Read + Write + fmt::Debug {}
 
 
-impl Stream for NullStream {
-    #[inline]
-    fn is_null(&self) -> bool { true }
-}
-
-
-impl Stream for TcpStream {
-    #[inline]
-    fn is_null(&self) -> bool { false }
-}
-
-
-impl Stream for SslStream<TcpStream> {
-    #[inline]
-    fn is_null(&self) -> bool { false }
-}
+impl Stream for NullStream {}
+impl Stream for TcpStream {}
+impl Stream for SslStream<TcpStream> {}
 
 
 #[derive(Debug, Error)]
@@ -105,10 +90,10 @@ enum HttpTransferEncoding {
 /// HTTP Connection type
 #[derive(Debug, PartialEq)]
 enum HttpConnection {
-    /// Connection ready for new request
+    /// Not connected. NullStream
     None,
-    /// Connection started but not configured
-    Init,
+    /// Connected and ready for request
+    Ready,
     /// Close connection
     Close,
     /// Keep connection alive
@@ -145,18 +130,6 @@ impl Default for HttpBuffer {
             pos: 0,
             cap: 0,
         }
-    }
-}
-
-
-impl HttpBuffer {
-    #[inline]
-    fn try_ready<R: Read>(&mut self, src: &mut R) -> io::Result<()> {
-        if self.pos >= self.cap {
-            self.cap = src.read(&mut self.buf)?;
-            self.pos = 0;
-        }
-        Ok(())
     }
 }
 
@@ -273,9 +246,7 @@ impl HttpStream {
         self.wbuf.cap = 0;
         self.transfer = HttpTransferEncoding::Eof;
 
-        if ! self.inner.is_null() {
-            // keep-alive
-        } else {
+        if self.connection == HttpConnection::None {
             let stream = self.io_connect(host, port)?;
 
             if tls {
@@ -288,9 +259,9 @@ impl HttpStream {
             } else {
                 self.inner = Box::new(stream);
             }
-        }
 
-        self.connection = HttpConnection::Init;
+            self.connection = HttpConnection::Ready;
+        }
 
         Ok(())
     }
@@ -343,13 +314,17 @@ impl HttpStream {
     /// HttpTransferEncoding::Eof
     #[inline]
     fn fill_stream(&mut self) -> io::Result<&[u8]> {
-        self.rbuf.try_ready(&mut self.inner)?;
+        if self.rbuf.pos >= self.rbuf.cap {
+            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
+            self.rbuf.pos = 0;
+        }
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
     }
 
     /// HttpTransferEncoding::Chunked
     fn fill_chunked(&mut self, len: usize, first: bool) -> io::Result<&[u8]> {
         let mut len = len;
+
         if len == 0 {
             // step:
             // 0 - check CRLF before chunk-size
@@ -361,7 +336,10 @@ impl HttpStream {
             let mut step = if first { 1 } else { 0 };
 
             loop {
-                self.rbuf.try_ready(&mut self.inner)?;
+                if self.rbuf.pos >= self.rbuf.cap {
+                    self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
+                    self.rbuf.pos = 0;
+                }
 
                 let b = self.rbuf.buf[self.rbuf.pos];
                 self.rbuf.pos += 1;
@@ -429,7 +407,10 @@ impl HttpStream {
             self.transfer = HttpTransferEncoding::Chunked(len, false);
         }
 
-        self.rbuf.try_ready(&mut self.inner)?;
+        if self.rbuf.pos >= self.rbuf.cap {
+            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
+            self.rbuf.pos = 0;
+        }
 
         let remain = cmp::min(self.rbuf.cap, self.rbuf.pos + len);
         Ok(&self.rbuf.buf[self.rbuf.pos .. remain])
@@ -447,8 +428,9 @@ impl Read for HttpStream {
         } else {
             if self.connection == HttpConnection::Close {
                 self.close();
+            } else {
+                self.connection = HttpConnection::Ready;
             }
-            self.connection = HttpConnection::None;
             Ok(0)
         }
     }
@@ -476,7 +458,7 @@ impl BufRead for HttpStream {
             HttpTransferEncoding::Length(len) => *len -= amt,
             HttpTransferEncoding::Chunked(len, _) => *len -= amt,
         }
-        self.rbuf.pos = cmp::min(self.rbuf.pos + amt, self.rbuf.cap);
+        self.rbuf.pos = cmp::min(self.rbuf.cap, self.rbuf.pos + amt);
     }
 }
 
