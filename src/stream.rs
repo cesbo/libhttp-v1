@@ -35,34 +35,20 @@ const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 
 #[derive(Debug)]
-struct NullStream {
-    i: io::Empty,
-    o: io::Sink,
-}
-
-
-impl Default for NullStream {
-    fn default() -> Self {
-        NullStream {
-            i: io::empty(),
-            o: io::sink(),
-        }
-    }
-}
+struct NullStream;
 
 
 impl Read for NullStream {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.i.read(buf) }
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> { Ok(0) }
 }
-
 
 
 impl Write for NullStream {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.o.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { Ok(buf.len()) }
     #[inline]
-    fn flush(&mut self) -> io::Result<()> { self.o.flush() }
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
 
@@ -226,7 +212,7 @@ impl Default for HttpStream {
             timeout: Duration::from_secs(3),
             nodelay: DEFAULT_TCP_NODELAY,
 
-            inner: Box::new(NullStream::default()),
+            inner: Box::new(NullStream),
             rbuf: HttpBuffer::default(),
             wbuf: HttpBuffer::default(),
 
@@ -242,7 +228,7 @@ impl HttpStream {
     #[inline]
     pub fn close(&mut self) {
         self.connection = HttpConnection::None;
-        self.inner = Box::new(NullStream::default());
+        self.inner = Box::new(NullStream);
     }
 
     /// Sets specified timeout for connect, read, write
