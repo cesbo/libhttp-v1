@@ -23,22 +23,23 @@ use crate::{
 
 
 #[derive(Debug, Error)]
+#[error_prefix = "HttpClient"]
 pub enum HttpClientError {
-    #[error_from("HttpClient IO: {}", 0)]
+    #[error_from]
     Io(io::Error),
-    #[error_from("HttpClient: {}", 0)]
+    #[error_from]
     Request(RequestError),
-    #[error_from("HttpClient: {}", 0)]
+    #[error_from]
     Response(ResponseError),
-    #[error_from("HttpClient: {}", 0)]
+    #[error_from]
     HttpStream(HttpStreamError),
-    #[error_from("HttpClient: {}", 0)]
+    #[error_from]
     Url(UrlError),
-    #[error_kind("HttpClient: invalid protocol")]
+    #[error_kind("invalid protocol")]
     InvalidProtocol,
-    #[error_kind("HttpClient: redirect location not defined")]
+    #[error_kind("redirect location not defined")]
     InvalidRedirectLocation,
-    #[error_kind("HttpClient: request failed: {} {}", 0, 1)]
+    #[error_kind("request failed: {} {}", 0, 1)]
     RequestFailed(usize, String),
 }
 

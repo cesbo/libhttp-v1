@@ -14,12 +14,13 @@ pub use self::{
 
 
 #[derive(Debug, Error)]
+#[error_prefix = "Url"]
 pub enum UrlError {
-    #[error_from("Url: {}", 0)]
+    #[error_from]
     Fmt(fmt::Error),
-    #[error_kind("Url: length limit")]
+    #[error_kind("length limit")]
     LengthLimit,
-    #[error_kind("Url: invalid port")]
+    #[error_kind("invalid port")]
     InvalidPort,
 }
 

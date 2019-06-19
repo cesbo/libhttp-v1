@@ -11,14 +11,15 @@ use crate::{
 
 
 #[derive(Debug, Error)]
+#[error_prefix = "Response"]
 pub enum ResponseError {
-    #[error_from("Response IO: {}", 0)]
+    #[error_from]
     Io(io::Error),
-    #[error_kind("Response: unexpected eof")]
+    #[error_kind("unexpected eof")]
     UnexpectedEof,
-    #[error_kind("Response: invalid format")]
+    #[error_kind("invalid format")]
     InvalidFormat,
-    #[error_kind("Response: invalid status code")]
+    #[error_kind("invalid status code")]
     InvalidStatus,
 }
 

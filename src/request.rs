@@ -14,14 +14,15 @@ use crate::{
 
 
 #[derive(Debug, Error)]
+#[error_prefix = "Request"]
 pub enum RequestError {
-    #[error_from("Request IO: {}", 0)]
+    #[error_from]
     Io(io::Error),
-    #[error_from("Request: {}", 0)]
+    #[error_from]
     Url(UrlError),
-    #[error_kind("Request: unexpected eof")]
+    #[error_kind("unexpected eof")]
     UnexpectedEof,
-    #[error_kind("Request: invalid format")]
+    #[error_kind("invalid format")]
     InvalidFormat,
 }
 
