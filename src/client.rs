@@ -5,7 +5,6 @@ use std::{
         Read,
         Write,
     },
-    time::Duration,
 };
 
 use crate::{
@@ -232,11 +231,6 @@ impl HttpClient {
 
         Ok(())
     }
-
-    /// Sets specified timeout for connect, read, write
-    /// Default: 3sec
-    #[inline]
-    pub fn set_timeout(&mut self, timeout: Duration) { self.stream.set_timeout(timeout) }
 }
 
 

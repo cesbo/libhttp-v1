@@ -7,67 +7,27 @@ use std::{
         BufRead,
         Write,
     },
-    net::{
-        ToSocketAddrs,
-        TcpStream,
-    },
-    time::Duration,
-};
-
-use openssl::ssl::{
-    SslMethod,
-    SslConnector,
-    SslStream,
 };
 
 use crate::{
     HttpVersion,
     Response,
-    ssl_error::{
-        SslError,
-        HandshakeError,
+    socket::{
+        HttpSocket,
+        HttpSocketError,
     },
 };
 
 
-const DEFAULT_TCP_NODELAY: bool = false;
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
-
-
-#[derive(Debug)]
-struct NullStream;
-
-
-impl Read for NullStream {
-    #[inline]
-    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> { Ok(0) }
-}
-
-
-impl Write for NullStream {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { Ok(buf.len()) }
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
-}
-
-
-trait Stream: Read + Write + fmt::Debug {}
-
-
-impl Stream for NullStream {}
-impl Stream for TcpStream {}
-impl Stream for SslStream<TcpStream> {}
 
 
 #[derive(Debug, Error)]
 pub enum HttpStreamError {
-    #[error_from("HttpStream IO: {}", 0)]
+    #[error_from]
     Io(io::Error),
-    #[error_from("SSL: {}", 0)]
-    Ssl(SslError),
-    #[error_from("Handshake: {}", 0)]
-    Handshake(HandshakeError),
+    #[error_from]
+    Socket(HttpSocketError),
 }
 
 
@@ -165,10 +125,7 @@ impl Default for HttpBuffer {
 /// ```
 #[derive(Debug)]
 pub struct HttpStream {
-    timeout: Duration,
-    nodelay: bool,
-
-    inner: Box<dyn Stream>,
+    socket: HttpSocket,
     rbuf: HttpBuffer,
     wbuf: HttpBuffer,
 
@@ -182,10 +139,7 @@ pub struct HttpStream {
 impl Default for HttpStream {
     fn default() -> HttpStream {
         HttpStream {
-            timeout: Duration::from_secs(3),
-            nodelay: DEFAULT_TCP_NODELAY,
-
-            inner: Box::new(NullStream),
+            socket: HttpSocket::default(),
             rbuf: HttpBuffer::default(),
             wbuf: HttpBuffer::default(),
 
@@ -201,40 +155,7 @@ impl HttpStream {
     #[inline]
     pub fn close(&mut self) {
         self.connection = HttpConnection::None;
-        self.inner = Box::new(NullStream);
-    }
-
-    /// Sets specified timeout for connect, read, write
-    /// Default: 3sec
-    #[inline]
-    pub fn set_timeout(&mut self, timeout: Duration) { self.timeout = timeout }
-
-    /// Sets TCP_NODELAY. If sets, segments are always sent as soon as possible,
-    /// even if there is only a small amount of data. When not set, data is
-    /// buffered until there is a sufficient amount to send out,
-    /// thereby avoiding the frequent sending of small packets.
-    /// Default: false
-    #[inline]
-    pub fn set_nodelay(&mut self, nodelay: bool) { self.nodelay = nodelay }
-
-    fn io_connect(&self, host: &str, port: u16) -> io::Result<TcpStream> {
-        let mut last_err = None;
-        let addrs = (host, port).to_socket_addrs()?;
-        for addr in addrs {
-            match TcpStream::connect_timeout(&addr, self.timeout) {
-                Ok(v) => {
-                    if self.nodelay != DEFAULT_TCP_NODELAY { v.set_nodelay(self.nodelay)? }
-                    v.set_read_timeout(Some(self.timeout))?;
-                    v.set_write_timeout(Some(self.timeout))?;
-
-                    return Ok(v)
-                },
-                Err(e) => last_err = Some(e),
-            }
-        }
-
-        Err(last_err.unwrap_or_else(||
-            io::Error::new(io::ErrorKind::InvalidInput, "address resolve failed")))
+        self.socket.close();
     }
 
     /// Opens a TCP connection to a remote host
@@ -247,19 +168,7 @@ impl HttpStream {
         self.transfer = HttpTransferEncoding::Eof;
 
         if self.connection == HttpConnection::None {
-            let stream = self.io_connect(host, port)?;
-
-            if tls {
-                let connector = SslConnector::builder(SslMethod::tls()).map_err(SslError::from)?;
-                let mut ssl = connector.build().configure().map_err(SslError::from)?;
-                ssl.set_use_server_name_indication(true);
-                ssl.set_verify_hostname(true);
-                let stream = ssl.connect(host, stream).map_err(HandshakeError::from)?;
-                self.inner = Box::new(stream);
-            } else {
-                self.inner = Box::new(stream);
-            }
-
+            self.socket.connect(tls, host, port)?;
             self.connection = HttpConnection::Ready;
         }
 
@@ -315,7 +224,7 @@ impl HttpStream {
     #[inline]
     fn fill_stream(&mut self) -> io::Result<&[u8]> {
         if self.rbuf.pos >= self.rbuf.cap {
-            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
+            self.rbuf.cap = self.socket.read(&mut self.rbuf.buf)?;
             self.rbuf.pos = 0;
         }
         Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
@@ -337,7 +246,7 @@ impl HttpStream {
 
             loop {
                 if self.rbuf.pos >= self.rbuf.cap {
-                    self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
+                    self.rbuf.cap = self.socket.read(&mut self.rbuf.buf)?;
                     self.rbuf.pos = 0;
                 }
 
@@ -408,7 +317,7 @@ impl HttpStream {
         }
 
         if self.rbuf.pos >= self.rbuf.cap {
-            self.rbuf.cap = self.inner.read(&mut self.rbuf.buf)?;
+            self.rbuf.cap = self.socket.read(&mut self.rbuf.buf)?;
             self.rbuf.pos = 0;
         }
 
@@ -470,7 +379,7 @@ impl Write for HttpStream {
         }
 
         if buf.len() >= self.wbuf.buf.len() {
-            self.inner.write(buf)
+            self.socket.write(buf)
         } else {
             let r = (&mut self.wbuf.buf[self.wbuf.cap ..]).write(buf)?;
             self.wbuf.cap += r;
@@ -480,7 +389,7 @@ impl Write for HttpStream {
 
     fn flush(&mut self) -> io::Result<()> {
         while self.wbuf.pos < self.wbuf.cap {
-            match self.inner.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
+            match self.socket.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
                 Ok(0) => {
                     return Err(io::Error::new(io::ErrorKind::WriteZero,
                         "failed to write the buffered data"));
@@ -494,6 +403,6 @@ impl Write for HttpStream {
         }
         self.wbuf.pos = 0;
         self.wbuf.cap = 0;
-        self.inner.flush()
+        self.socket.flush()
     }
 }

@@ -22,6 +22,8 @@ pub use crate::response::{
     ResponseError,
 };
 
+mod socket;
+
 mod stream;
 pub use crate::stream::{
     HttpStream,
@@ -45,5 +47,3 @@ pub use crate::url::{
     UrlEncoder,
     UrlQuery,
 };
-
-mod ssl_error;
