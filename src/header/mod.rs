@@ -20,7 +20,9 @@ pub struct Header(HashMap<HeaderKey, HeaderPair>);
 
 
 impl fmt::Debug for Header {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.0.values()).finish()
+    }
 }
 
 
