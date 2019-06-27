@@ -50,6 +50,7 @@ impl Stream for TcpStream {}
 impl Stream for SslStream<TcpStream> {}
 
 
+/// HTTP socket - abstraction over TcpStream or SslStream
 #[derive(Debug)]
 pub struct HttpSocket {
     timeout: Duration,
@@ -94,7 +95,6 @@ impl HttpSocket {
     }
 
     /// Opens a TCP connection to a remote host
-    /// If connection already opened just clears read/write buffers
     pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<()> {
         let stream = self.io_connect(host, port)?;
 
@@ -126,4 +126,24 @@ impl Write for HttpSocket {
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
+}
+
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_socket() {
+        use super::*;
+        use std::io::{Read, Write};
+
+        let mut socket = HttpSocket::default();
+        socket.connect(true, "example.com", 443).unwrap();
+        socket.write_all(concat!("GET / HTTP/1.0\r\n",
+            "Host: example.com\r\n",
+            "User-Agent: libhttp\r\n",
+            "\r\n").as_bytes()).unwrap();
+        socket.flush().unwrap();
+        let mut body = String::new();
+        socket.read_to_string(&mut body).unwrap();
+    }
 }
