@@ -1,6 +1,5 @@
 use std::{
     cmp,
-    fmt,
     io::{
         self,
         Read,
@@ -16,10 +15,14 @@ use crate::{
         HttpSocket,
         HttpSocketError,
     },
+    transfer::{
+        HttpBuffer,
+        HttpTransferExt,
+        HttpPersist,
+        HttpLength,
+        HttpChunked,
+    },
 };
-
-
-const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 
 #[derive(Debug, Error)]
@@ -34,19 +37,6 @@ pub enum HttpStreamError {
 type Result<T> = std::result::Result<T, HttpStreamError>;
 
 
-/// Internal transfer state
-#[derive(Debug)]
-enum HttpTransferEncoding {
-    /// Reading until EOF
-    Eof,
-    /// Content-Length
-    Length(usize),
-    /// Transfer-Encoding: chunked
-    /// (chunk-size, first)
-    Chunked(usize, bool),
-}
-
-
 /// HTTP Connection type
 #[derive(Debug, PartialEq)]
 enum HttpConnection {
@@ -58,39 +48,6 @@ enum HttpConnection {
     Close,
     /// Keep connection alive
     KeepAlive,
-}
-
-
-/// Read/Write buffer
-struct HttpBuffer {
-    buf: Box<[u8]>,
-    pos: usize,
-    cap: usize,
-}
-
-
-impl fmt::Debug for HttpBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("HttpBuffer")
-            .field("pos", &self.pos)
-            .field("cap", &self.cap)
-            .finish()
-    }
-}
-
-
-impl Default for HttpBuffer {
-    fn default() -> HttpBuffer {
-        HttpBuffer {
-            buf: {
-                let mut v = Vec::with_capacity(DEFAULT_BUF_SIZE);
-                unsafe { v.set_len(DEFAULT_BUF_SIZE) };
-                v.into_boxed_slice()
-            },
-            pos: 0,
-            cap: 0,
-        }
-    }
 }
 
 
@@ -130,7 +87,7 @@ pub struct HttpStream {
     wbuf: HttpBuffer,
 
     // Content-Length or Transfer-Encoding
-    transfer: HttpTransferEncoding,
+    transfer: Box<dyn HttpTransferExt>,
     // Connection
     connection: HttpConnection,
 }
@@ -143,7 +100,7 @@ impl Default for HttpStream {
             rbuf: HttpBuffer::default(),
             wbuf: HttpBuffer::default(),
 
-            transfer: HttpTransferEncoding::Eof,
+            transfer: Box::new(HttpPersist),
             connection: HttpConnection::None,
         }
     }
@@ -161,11 +118,9 @@ impl HttpStream {
     /// Opens a TCP connection to a remote host
     /// If connection already opened just clears read/write buffers
     pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<()> {
-        self.rbuf.pos = 0;
-        self.rbuf.cap = 0;
-        self.wbuf.pos = 0;
-        self.wbuf.cap = 0;
-        self.transfer = HttpTransferEncoding::Eof;
+        self.rbuf.clear();
+        self.wbuf.clear();
+        self.transfer = Box::new(HttpPersist);
 
         if self.connection == HttpConnection::None {
             self.socket.connect(tls, host, port)?;
@@ -178,8 +133,6 @@ impl HttpStream {
     /// Checks response headers and set content parser behavior
     /// no_content - protocol specified response without content
     pub fn configure(&mut self, no_content: bool, response: &Response) -> Result<()> {
-        self.transfer = HttpTransferEncoding::Eof;
-
         match response.get_version() {
             HttpVersion::HTTP10 => self.connection = HttpConnection::Close,
             _ => self.connection = HttpConnection::KeepAlive,
@@ -194,21 +147,26 @@ impl HttpStream {
         }
 
         if no_content {
-            self.transfer = HttpTransferEncoding::Length(0);
+            self.transfer = Box::new(HttpLength::new(0));
             return Ok(());
         }
 
         if let Some(len) = response.header.get("content-length") {
             let len = len.parse().unwrap_or(0);
-            self.transfer = HttpTransferEncoding::Length(len);
+            self.transfer = Box::new(HttpLength::new(len));
+            return Ok(());
         }
 
         if let Some(encoding) = response.header.get("transfer-encoding") {
-            // TODO: parse encoding
-            if encoding == "chunked" {
-                self.transfer = HttpTransferEncoding::Chunked(0, true);
+            for i in encoding.split(',').map(|v| v.trim()) {
+                if i == "chunked" {
+                    self.transfer = Box::new(HttpChunked::new());
+                    return Ok(());
+                }
             }
         }
+
+        self.transfer = Box::new(HttpPersist);
 
         Ok(())
     }
@@ -218,111 +176,6 @@ impl HttpStream {
     pub fn skip_body(&mut self) -> Result<()> {
         io::copy(self, &mut io::sink())?;
         Ok(())
-    }
-
-    /// HttpTransferEncoding::Eof
-    #[inline]
-    fn fill_stream(&mut self) -> io::Result<&[u8]> {
-        if self.rbuf.pos >= self.rbuf.cap {
-            self.rbuf.cap = self.socket.read(&mut self.rbuf.buf)?;
-            self.rbuf.pos = 0;
-        }
-        Ok(&self.rbuf.buf[self.rbuf.pos .. self.rbuf.cap])
-    }
-
-    /// HttpTransferEncoding::Chunked
-    fn fill_chunked(&mut self, len: usize, first: bool) -> io::Result<&[u8]> {
-        let mut len = len;
-
-        if len == 0 {
-            // step:
-            // 0 - check CRLF before chunk-size
-            // 1 - parse chunk-size
-            // 2 - skip chunk-ext
-            // 3 - skip trailer
-            // 4 - almost done
-            // 100 - ok
-            let mut step = if first { 1 } else { 0 };
-
-            loop {
-                if self.rbuf.pos >= self.rbuf.cap {
-                    self.rbuf.cap = self.socket.read(&mut self.rbuf.buf)?;
-                    self.rbuf.pos = 0;
-                }
-
-                let b = self.rbuf.buf[self.rbuf.pos];
-                self.rbuf.pos += 1;
-
-                if step == 1 {
-                    // chunk-size
-                    let d = match b {
-                        b'0' ..= b'9' => b - b'0',
-                        b'a' ..= b'f' => b - b'a' + 10,
-                        b'A' ..= b'F' => b - b'A' + 10,
-                        b'\n' if len == 0 => { step = 3; continue }
-                        b'\n' => { step = 100; break }
-                        b'\r' => { step = 4; continue }
-                        b';' | b' ' | b'\t' => { step = 2; continue }
-                        _ => break,
-                    };
-
-                    len = len * 16 + usize::from(d);
-                }
-
-                else if step == 0 {
-                    // skip CRLF after chunk
-                    match b {
-                        b'\r' => continue,
-                        b'\n' => { step = 1; continue }
-                        _ => break,
-                    }
-                }
-
-                else if step == 2 {
-                    // skip chunk-ext
-                    match b {
-                        b'\r' => { step = 4; continue }
-                        b'\n' if len == 0 => { step = 3; continue }
-                        b'\n' => { step = 100; break }
-                        _ => continue,
-                    }
-                }
-
-                else if step == 3 {
-                    // skip trailer
-                    match b {
-                        b'\r' => { step = 4; continue }
-                        b'\n' => { step = 100; break }
-                        _ => continue,
-                    }
-                }
-
-                else if step == 4 {
-                    // almost done
-                    if b == b'\n' { step = 100 }
-                    break
-                }
-            }
-
-            if step != 100 {
-                return Err(io::Error::new(io::ErrorKind::InvalidData,
-                    "invalid chunk-size format"));
-            }
-
-            if len == 0 {
-                return Ok(&[]);
-            }
-
-            self.transfer = HttpTransferEncoding::Chunked(len, false);
-        }
-
-        if self.rbuf.pos >= self.rbuf.cap {
-            self.rbuf.cap = self.socket.read(&mut self.rbuf.buf)?;
-            self.rbuf.pos = 0;
-        }
-
-        let remain = cmp::min(self.rbuf.cap, self.rbuf.pos + len);
-        Ok(&self.rbuf.buf[self.rbuf.pos .. remain])
     }
 }
 
@@ -348,25 +201,11 @@ impl Read for HttpStream {
 
 impl BufRead for HttpStream {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        match self.transfer {
-            HttpTransferEncoding::Eof => self.fill_stream(),
-            HttpTransferEncoding::Length(len) => {
-                if len > 0 {
-                    self.fill_stream()
-                } else {
-                    Ok(&[])
-                }
-            }
-            HttpTransferEncoding::Chunked(len, first) => self.fill_chunked(len, first),
-        }
+        self.transfer.fill_buf(&mut self.rbuf, &mut self.socket)
     }
 
     fn consume(&mut self, amt: usize) {
-        match &mut self.transfer {
-            HttpTransferEncoding::Eof => {},
-            HttpTransferEncoding::Length(len) => *len -= amt,
-            HttpTransferEncoding::Chunked(len, _) => *len -= amt,
-        }
+        self.transfer.consume(amt);
         self.rbuf.pos = cmp::min(self.rbuf.cap, self.rbuf.pos + amt);
     }
 }
@@ -401,8 +240,7 @@ impl Write for HttpStream {
                 },
             }
         }
-        self.wbuf.pos = 0;
-        self.wbuf.cap = 0;
+        self.wbuf.clear();
         self.socket.flush()
     }
 }

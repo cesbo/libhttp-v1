@@ -23,6 +23,7 @@ pub use crate::response::{
 };
 
 mod socket;
+mod transfer;
 
 mod stream;
 pub use crate::stream::{
