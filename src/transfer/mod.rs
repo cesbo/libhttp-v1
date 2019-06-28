@@ -9,8 +9,7 @@ use std::{
     },
 };
 
-mod socket;
-pub (crate) use self::socket::{
+use crate::socket::{
     HttpSocket,
     HttpSocketError,
 };
