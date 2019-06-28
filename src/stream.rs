@@ -1,5 +1,4 @@
 use std::{
-    cmp,
     io::{
         self,
         Read,
@@ -11,16 +10,9 @@ use std::{
 use crate::{
     HttpVersion,
     Response,
-    socket::{
-        HttpSocket,
-        HttpSocketError,
-    },
     transfer::{
-        HttpBuffer,
-        HttpTransferExt,
-        HttpPersist,
-        HttpLength,
-        HttpChunked,
+        HttpTransfer,
+        HttpTransferError,
     },
 };
 
@@ -30,143 +22,71 @@ pub enum HttpStreamError {
     #[error_from]
     Io(io::Error),
     #[error_from]
-    Socket(HttpSocketError),
+    Transfer(HttpTransferError),
 }
 
 
 type Result<T> = std::result::Result<T, HttpStreamError>;
 
 
-/// HTTP Connection type
-#[derive(Debug, PartialEq)]
-enum HttpConnection {
-    /// Not connected. NullStream
-    None,
-    /// Connected and ready for request
-    Ready,
-    /// Close connection
-    Close,
-    /// Keep connection alive
-    KeepAlive,
-}
-
-
 /// HTTP transport stream
-///
-/// Supports next features:
-///
-/// - synchronous tcp stream
-/// - buffering reader and writer
-/// - chunked transfer-encoding
-/// - returns EOF if content completely readed or connection closed
-/// - keep-alive
-/// - TLS encryption
-///
-/// Usage:
-///
-/// ```
-/// use std::io::{Read, Write};
-/// use http::HttpStream;
-///
-/// fn main() {
-///     let mut stream = HttpStream::default();
-///     stream.connect(true, "example.com", 443).unwrap();
-///     stream.write_all(concat!("GET / HTTP/1.0\r\n",
-///         "Host: example.com\r\n",
-///         "User-Agent: libhttp\r\n",
-///         "\r\n").as_bytes()).unwrap();
-///     stream.flush().unwrap();
-///     let mut body = String::new();
-///     stream.read_to_string(&mut body).unwrap();
-/// }
-/// ```
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct HttpStream {
-    socket: HttpSocket,
-    rbuf: HttpBuffer,
-    wbuf: HttpBuffer,
-
-    // Content-Length or Transfer-Encoding
-    transfer: Box<dyn HttpTransferExt>,
-    // Connection
-    connection: HttpConnection,
-}
-
-
-impl Default for HttpStream {
-    fn default() -> HttpStream {
-        HttpStream {
-            socket: HttpSocket::default(),
-            rbuf: HttpBuffer::default(),
-            wbuf: HttpBuffer::default(),
-
-            transfer: Box::new(HttpPersist),
-            connection: HttpConnection::None,
-        }
-    }
+    transfer: HttpTransfer,
 }
 
 
 impl HttpStream {
     /// Close connection
     #[inline]
-    pub fn close(&mut self) {
-        self.connection = HttpConnection::None;
-        self.socket.close();
-    }
+    pub fn close(&mut self) { self.transfer.close() }
 
     /// Opens a TCP connection to a remote host
     /// If connection already opened just clears read/write buffers
+    #[inline]
     pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<()> {
-        self.rbuf.clear();
-        self.wbuf.clear();
-        self.transfer = Box::new(HttpPersist);
-
-        if self.connection == HttpConnection::None {
-            self.socket.connect(tls, host, port)?;
-            self.connection = HttpConnection::Ready;
-        }
-
+        self.transfer.connect(tls, host, port)?;
         Ok(())
     }
 
     /// Checks response headers and set content parser behavior
     /// no_content - protocol specified response without content
     pub fn configure(&mut self, no_content: bool, response: &Response) -> Result<()> {
-        match response.get_version() {
-            HttpVersion::HTTP10 => self.connection = HttpConnection::Close,
-            _ => self.connection = HttpConnection::KeepAlive,
-        }
-
         if let Some(connection) = response.header.get("connection") {
-            if connection.eq_ignore_ascii_case("close") {
-                self.connection = HttpConnection::Close
-            } else if connection.eq_ignore_ascii_case("keep-alive") {
-                self.connection = HttpConnection::KeepAlive
+            if connection.eq_ignore_ascii_case("keep-alive") {
+                self.transfer.set_connection_keep_alive();
+            } else {
+                self.transfer.set_connection_close();
+            }
+        } else {
+            if response.get_version() == HttpVersion::HTTP10 {
+                self.transfer.set_connection_close();
+            } else {
+                self.transfer.set_connection_keep_alive();
             }
         }
 
         if no_content {
-            self.transfer = Box::new(HttpLength::new(0));
+            self.transfer.set_content_length(0);
             return Ok(());
         }
 
         if let Some(len) = response.header.get("content-length") {
             let len = len.parse().unwrap_or(0);
-            self.transfer = Box::new(HttpLength::new(len));
+            self.transfer.set_content_length(len);
             return Ok(());
         }
 
         if let Some(encoding) = response.header.get("transfer-encoding") {
             for i in encoding.split(',').map(|v| v.trim()) {
-                if i == "chunked" {
-                    self.transfer = Box::new(HttpChunked::new());
+                if i.eq_ignore_ascii_case("chunked") {
+                    self.transfer.set_content_chunked();
                     return Ok(());
                 }
             }
         }
 
-        self.transfer = Box::new(HttpPersist);
+        self.transfer.set_content_persist();
 
         Ok(())
     }
@@ -181,66 +101,24 @@ impl HttpStream {
 
 
 impl Read for HttpStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut rem = self.fill_buf()?;
-        if ! rem.is_empty() {
-            let nread = rem.read(buf)?;
-            self.consume(nread);
-            Ok(nread)
-        } else {
-            if self.connection == HttpConnection::Close {
-                self.close();
-            } else {
-                self.connection = HttpConnection::Ready;
-            }
-            Ok(0)
-        }
-    }
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.transfer.read(buf) }
 }
 
 
 impl BufRead for HttpStream {
-    fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        self.transfer.fill_buf(&mut self.rbuf, &mut self.socket)
-    }
+    #[inline]
+    fn fill_buf(&mut self) -> io::Result<&[u8]> { self.transfer.fill_buf() }
 
-    fn consume(&mut self, amt: usize) {
-        self.transfer.consume(amt);
-        self.rbuf.pos = cmp::min(self.rbuf.cap, self.rbuf.pos + amt);
-    }
+    #[inline]
+    fn consume(&mut self, amt: usize) { self.transfer.consume(amt) }
 }
 
 
 impl Write for HttpStream {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if self.wbuf.cap + buf.len() > self.wbuf.buf.len() {
-            self.flush()?;
-        }
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.transfer.write(buf) }
 
-        if buf.len() >= self.wbuf.buf.len() {
-            self.socket.write(buf)
-        } else {
-            let r = (&mut self.wbuf.buf[self.wbuf.cap ..]).write(buf)?;
-            self.wbuf.cap += r;
-            Ok(r)
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        while self.wbuf.pos < self.wbuf.cap {
-            match self.socket.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
-                Ok(0) => {
-                    return Err(io::Error::new(io::ErrorKind::WriteZero,
-                        "failed to write the buffered data"));
-                },
-                Ok(n) => { self.wbuf.pos += n },
-                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},
-                Err(e) => {
-                    return Err(e);
-                },
-            }
-        }
-        self.wbuf.clear();
-        self.socket.flush()
-    }
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> { self.transfer.flush() }
 }

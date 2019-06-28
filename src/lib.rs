@@ -22,7 +22,6 @@ pub use crate::response::{
     ResponseError,
 };
 
-mod socket;
 mod transfer;
 
 mod stream;
