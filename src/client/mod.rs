@@ -1,3 +1,4 @@
+
 use std::{
     io::{
         self,
@@ -14,10 +15,15 @@ use crate::{
     RequestError,
     Response,
     ResponseError,
-    HttpStream,
-    HttpStreamError,
     UrlError,
     UrlSetter,
+};
+
+mod transfer;
+
+use self::transfer::{
+    HttpTransfer,
+    HttpTransferError,
 };
 
 
@@ -31,7 +37,7 @@ pub enum HttpClientError {
     #[error_from]
     Response(ResponseError),
     #[error_from]
-    HttpStream(HttpStreamError),
+    HttpTransfer(HttpTransferError),
     #[error_from]
     Url(UrlError),
     #[error_kind("invalid protocol")]
@@ -90,7 +96,7 @@ pub struct HttpClient {
     /// received HTTP response
     pub response: Response,
     /// HTTP stream
-    stream: HttpStream,
+    inner: HttpTransfer,
 }
 
 
@@ -114,7 +120,7 @@ impl HttpClient {
     /// Close connection
     /// Method should not used manually
     #[inline]
-    pub fn close(&mut self) { self.stream.close() }
+    pub fn close(&mut self) { self.inner.close() }
 
     /// Connects to destination host, sends request line and headers
     /// Prepares HTTP stream for writing data
@@ -145,9 +151,9 @@ impl HttpClient {
 
         let host = self.request.url.get_host();
 
-        self.stream.connect(tls, host, port)?;
-        self.request.send(&mut self.stream)?;
-        self.stream.flush()?;
+        self.inner.connect(tls, host, port)?;
+        self.request.send(&mut self.inner)?;
+        self.inner.flush()?;
 
         Ok(())
     }
@@ -155,8 +161,8 @@ impl HttpClient {
     /// Flushes writing buffer, receives response line and headers
     /// Prepares HTTP stream for reading data
     pub fn receive(&mut self) -> Result<()> {
-        self.stream.flush()?;
-        self.response.parse(&mut self.stream)?;
+        self.inner.flush()?;
+        self.response.parse(&mut self.inner)?;
 
         let no_content = {
             let code = self.response.get_code();
@@ -166,14 +172,59 @@ impl HttpClient {
             self.request.get_method() == "HEAD"
         };
 
-        self.stream.configure(no_content, &self.response)?;
+        if let Some(connection) = self.response.header.get("connection") {
+            if connection.eq_ignore_ascii_case("keep-alive") {
+                self.inner.set_connection_keep_alive();
+            } else {
+                self.inner.set_connection_close();
+            }
+        } else {
+            if self.response.get_version() == HttpVersion::HTTP10 {
+                self.inner.set_connection_close();
+            } else {
+                self.inner.set_connection_keep_alive();
+            }
+        }
 
+        if no_content {
+            self.inner.set_content_length(0);
+            return Ok(());
+        }
+
+        if let Some(_encoding) = self.response.header.get("content-encoding") {
+            // TODO:
+        }
+
+        if let Some(len) = self.response.header.get("content-length") {
+            let len = len.parse().unwrap_or(0);
+            self.inner.set_content_length(len);
+            return Ok(());
+        }
+
+        if let Some(encoding) = self.response.header.get("transfer-encoding") {
+            for i in encoding.split(',').map(|v| v.trim()) {
+                if i.eq_ignore_ascii_case("chunked") {
+                    self.inner.set_content_chunked();
+                    return Ok(());
+                }
+            }
+        }
+
+        self.inner.set_content_persist();
+
+        Ok(())
+    }
+
+    /// Reads response body from receiving buffer and stream
+    #[inline]
+    pub fn skip_body(&mut self) -> Result<()> {
+        io::copy(self, &mut io::sink())?;
         Ok(())
     }
 
     /// Prepares for HTTP redirect to given location
     pub fn redirect(&mut self) -> Result<()> {
-        self.stream.skip_body()?;
+        self.skip_body()?;
 
         let location = self.response.header.get("location").unwrap_or("");
         if location.is_empty() {
@@ -181,7 +232,7 @@ impl HttpClient {
         }
 
         // TODO: keep-alive
-        self.stream.close();
+        self.inner.close();
         self.request.url.set(location)?;
 
         Ok(())
@@ -212,7 +263,7 @@ impl HttpClient {
             match self.response.get_code() {
                 200 | 204 => break,
                 401 if attempt_auth < 2 => {
-                    self.stream.skip_body()?;
+                    self.skip_body()?;
                     // TODO: check url prefix
                     attempt_auth += 1;
                 }
@@ -222,7 +273,7 @@ impl HttpClient {
                     attempt_auth = 0;
                 }
                 code => {
-                    self.stream.skip_body()?;
+                    self.skip_body()?;
                     return Err(HttpClientError::RequestFailed(
                         code, self.response.get_reason().to_owned()));
                 }
@@ -236,33 +287,23 @@ impl HttpClient {
 
 impl Read for HttpClient {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.stream.read(buf)
-    }
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.inner.read(buf) }
 }
 
 
 impl BufRead for HttpClient {
     #[inline]
-    fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        self.stream.fill_buf()
-    }
+    fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
 
     #[inline]
-    fn consume(&mut self, amt: usize) {
-        self.stream.consume(amt)
-    }
+    fn consume(&mut self, amt: usize) { self.inner.consume(amt) }
 }
 
 
 impl Write for HttpClient {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.stream.write(buf)
-    }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.inner.write(buf) }
 
     #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        self.stream.flush()
-    }
+    fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
 }

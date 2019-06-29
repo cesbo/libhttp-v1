@@ -9,9 +9,10 @@ use std::{
     },
 };
 
-use crate::socket::{
-    HttpSocket,
-    HttpSocketError,
+mod stream;
+use self::stream::{
+    HttpStream,
+    HttpStreamError,
 };
 
 mod buffer;
@@ -38,7 +39,7 @@ pub enum HttpTransferError {
     #[error_from]
     Io(io::Error),
     #[error_from]
-    Socket(HttpSocketError),
+    Socket(HttpStreamError),
 }
 
 
@@ -69,7 +70,7 @@ enum HttpConnection {
 /// - keep-alive
 #[derive(Debug)]
 pub struct HttpTransfer {
-    socket: HttpSocket,
+    socket: HttpStream,
     rbuf: HttpBuffer,
     wbuf: HttpBuffer,
 
@@ -81,7 +82,7 @@ pub struct HttpTransfer {
 impl Default for HttpTransfer {
     fn default() -> Self {
         HttpTransfer {
-            socket: HttpSocket::default(),
+            socket: HttpStream::default(),
             rbuf: HttpBuffer::default(),
             wbuf: HttpBuffer::default(),
 

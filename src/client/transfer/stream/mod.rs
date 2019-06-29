@@ -29,8 +29,8 @@ use self::ssl::{
 
 
 #[derive(Debug, Error)]
-pub enum HttpSocketError {
-    #[error_from("HttpSocket IO: {}", 0)]
+pub enum HttpStreamError {
+    #[error_from("HttpStream IO: {}", 0)]
     Io(io::Error),
     #[error_from("SSL: {}", 0)]
     Ssl(SslError),
@@ -39,7 +39,7 @@ pub enum HttpSocketError {
 }
 
 
-type Result<T> = std::result::Result<T, HttpSocketError>;
+type Result<T> = std::result::Result<T, HttpStreamError>;
 
 
 trait Stream: Read + Write + fmt::Debug {}
@@ -52,15 +52,15 @@ impl Stream for SslStream<TcpStream> {}
 
 /// HTTP socket - abstraction over TcpStream or SslStream
 #[derive(Debug)]
-pub struct HttpSocket {
+pub struct HttpStream {
     timeout: Duration,
     inner: Box<dyn Stream>,
 }
 
 
-impl Default for HttpSocket {
-    fn default() -> HttpSocket {
-        HttpSocket {
+impl Default for HttpStream {
+    fn default() -> Self {
+        HttpStream {
             timeout: Duration::from_secs(3),
             inner: Box::new(NullStream),
         }
@@ -68,7 +68,7 @@ impl Default for HttpSocket {
 }
 
 
-impl HttpSocket {
+impl HttpStream {
     /// Close connection
     #[inline]
     pub fn close(&mut self) {
@@ -114,13 +114,13 @@ impl HttpSocket {
 }
 
 
-impl Read for HttpSocket {
+impl Read for HttpStream {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.inner.read(buf) }
 }
 
 
-impl Write for HttpSocket {
+impl Write for HttpStream {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.inner.write(buf) }
 
@@ -136,7 +136,7 @@ mod tests {
         use super::*;
         use std::io::{Read, Write};
 
-        let mut socket = HttpSocket::default();
+        let mut socket = HttpStream::default();
         socket.connect(true, "example.com", 443).unwrap();
         socket.write_all(concat!("GET / HTTP/1.0\r\n",
             "Host: example.com\r\n",

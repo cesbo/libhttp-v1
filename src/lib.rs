@@ -22,16 +22,6 @@ pub use crate::response::{
     ResponseError,
 };
 
-mod socket;
-
-mod transfer;
-
-mod stream;
-pub use crate::stream::{
-    HttpStream,
-    HttpStreamError,
-};
-
 mod client;
 pub use crate::client::{
     USER_AGENT,
