@@ -19,7 +19,7 @@ use crate::{
     UrlSetter,
 };
 
-mod transfer;
+pub (crate) mod transfer;
 
 use self::transfer::{
     HttpTransfer,
@@ -52,7 +52,7 @@ pub enum HttpClientError {
 pub type Result<T> = std::result::Result<T, HttpClientError>;
 
 
-pub const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
+const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
 
 
 /// HTTP client

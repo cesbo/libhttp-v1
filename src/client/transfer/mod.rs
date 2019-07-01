@@ -9,26 +9,26 @@ use std::{
     },
 };
 
-mod stream;
+pub (crate) mod stream;
 use self::stream::{
     HttpStream,
     HttpStreamError,
 };
 
-mod buffer;
-pub (crate) use self::buffer::HttpBuffer;
+pub (crate) mod buffer;
+use self::buffer::HttpBuffer;
 
 mod chunked;
-pub (crate) use self::chunked::HttpChunked;
+use self::chunked::HttpChunked;
 
 mod length;
-pub (crate) use self::length::HttpLength;
+use self::length::HttpLength;
 
 mod persist;
-pub (crate) use self::persist::HttpPersist;
+use self::persist::HttpPersist;
 
 
-pub (crate) trait HttpTransferExt: fmt::Debug {
+trait HttpTransferExt: fmt::Debug {
     fn fill_buf<'a>(&mut self, buf: &'a mut HttpBuffer, src: &mut dyn Read) -> io::Result<&'a [u8]>;
     fn consume(&mut self, amt: usize);
 }

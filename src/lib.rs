@@ -24,7 +24,6 @@ pub use crate::response::{
 
 mod client;
 pub use crate::client::{
-    USER_AGENT,
     HttpClient,
     HttpClientError,
 };

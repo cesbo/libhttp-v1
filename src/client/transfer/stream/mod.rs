@@ -18,14 +18,14 @@ use openssl::ssl::{
     SslStream,
 };
 
-mod null;
-use self::null::NullStream;
-
 mod ssl;
 use self::ssl::{
     SslError,
     HandshakeError,
 };
+
+mod null;
+pub (crate) use self::null::NullStream;
 
 
 #[derive(Debug, Error)]
