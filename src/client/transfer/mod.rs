@@ -158,10 +158,12 @@ impl Read for HttpTransfer {
 
 
 impl BufRead for HttpTransfer {
+    #[inline]
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         self.transfer.fill_buf(&mut self.rbuf, &mut self.socket)
     }
 
+    #[inline]
     fn consume(&mut self, amt: usize) {
         self.transfer.consume(amt);
         self.rbuf.pos = cmp::min(self.rbuf.cap, self.rbuf.pos + amt);
