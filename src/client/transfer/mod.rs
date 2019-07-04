@@ -39,7 +39,7 @@ pub enum HttpTransferError {
     #[error_from]
     Io(io::Error),
     #[error_from]
-    Socket(HttpStreamError),
+    HttpStream(HttpStreamError),
 }
 
 
@@ -70,7 +70,7 @@ enum HttpConnection {
 /// - keep-alive
 #[derive(Debug)]
 pub struct HttpTransfer {
-    socket: HttpStream,
+    stream: HttpStream,
     rbuf: HttpBuffer,
     wbuf: HttpBuffer,
 
@@ -82,7 +82,7 @@ pub struct HttpTransfer {
 impl Default for HttpTransfer {
     fn default() -> Self {
         HttpTransfer {
-            socket: HttpStream::default(),
+            stream: HttpStream::default(),
             rbuf: HttpBuffer::default(),
             wbuf: HttpBuffer::default(),
 
@@ -98,7 +98,7 @@ impl HttpTransfer {
     #[inline]
     pub fn close(&mut self) {
         self.connection = HttpConnection::None;
-        self.socket.close();
+        self.stream.close();
     }
 
     /// Opens a TCP connection to a remote host
@@ -109,7 +109,7 @@ impl HttpTransfer {
         self.transfer = Box::new(HttpPersist);
 
         if self.connection == HttpConnection::None {
-            self.socket.connect(tls, host, port)?;
+            self.stream.connect(tls, host, port)?;
             self.connection = HttpConnection::Ready;
         }
 
@@ -160,7 +160,7 @@ impl Read for HttpTransfer {
 impl BufRead for HttpTransfer {
     #[inline]
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        self.transfer.fill_buf(&mut self.rbuf, &mut self.socket)
+        self.transfer.fill_buf(&mut self.rbuf, &mut self.stream)
     }
 
     #[inline]
@@ -178,7 +178,7 @@ impl Write for HttpTransfer {
         }
 
         if buf.len() >= self.wbuf.buf.len() {
-            self.socket.write(buf)
+            self.stream.write(buf)
         } else {
             let r = (&mut self.wbuf.buf[self.wbuf.cap ..]).write(buf)?;
             self.wbuf.cap += r;
@@ -188,7 +188,7 @@ impl Write for HttpTransfer {
 
     fn flush(&mut self) -> io::Result<()> {
         while self.wbuf.pos < self.wbuf.cap {
-            match self.socket.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
+            match self.stream.write(&self.wbuf.buf[self.wbuf.pos .. self.wbuf.cap]) {
                 Ok(0) => {
                     return Err(io::Error::new(io::ErrorKind::WriteZero,
                         "failed to write the buffered data"));
@@ -201,6 +201,6 @@ impl Write for HttpTransfer {
             }
         }
         self.wbuf.clear();
-        self.socket.flush()
+        self.stream.flush()
     }
 }
