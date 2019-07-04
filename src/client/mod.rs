@@ -96,7 +96,7 @@ pub struct HttpClient {
     /// received HTTP response
     pub response: Response,
     /// HTTP stream
-    inner: HttpTransfer,
+    transfer: HttpTransfer,
 }
 
 
@@ -120,7 +120,7 @@ impl HttpClient {
     /// Close connection
     /// Method should not used manually
     #[inline]
-    pub fn close(&mut self) { self.inner.close() }
+    pub fn close(&mut self) { self.transfer.close() }
 
     /// Connects to destination host, sends request line and headers
     /// Prepares HTTP stream for writing data
@@ -151,9 +151,9 @@ impl HttpClient {
 
         let host = self.request.url.get_host();
 
-        self.inner.connect(tls, host, port)?;
-        self.request.send(&mut self.inner)?;
-        self.inner.flush()?;
+        self.transfer.connect(tls, host, port)?;
+        self.request.send(&mut self.transfer)?;
+        self.transfer.flush()?;
 
         Ok(())
     }
@@ -161,8 +161,8 @@ impl HttpClient {
     /// Flushes writing buffer, receives response line and headers
     /// Prepares HTTP stream for reading data
     pub fn receive(&mut self) -> Result<()> {
-        self.inner.flush()?;
-        self.response.parse(&mut self.inner)?;
+        self.transfer.flush()?;
+        self.response.parse(&mut self.transfer)?;
 
         let no_content = {
             let code = self.response.get_code();
@@ -174,20 +174,20 @@ impl HttpClient {
 
         if let Some(connection) = self.response.header.get("connection") {
             if connection.eq_ignore_ascii_case("keep-alive") {
-                self.inner.set_connection_keep_alive();
+                self.transfer.set_connection_keep_alive();
             } else {
-                self.inner.set_connection_close();
+                self.transfer.set_connection_close();
             }
         } else {
             if self.response.get_version() == HttpVersion::HTTP10 {
-                self.inner.set_connection_close();
+                self.transfer.set_connection_close();
             } else {
-                self.inner.set_connection_keep_alive();
+                self.transfer.set_connection_keep_alive();
             }
         }
 
         if no_content {
-            self.inner.set_content_length(0);
+            self.transfer.set_content_length(0);
             return Ok(());
         }
 
@@ -197,20 +197,20 @@ impl HttpClient {
 
         if let Some(len) = self.response.header.get("content-length") {
             let len = len.parse().unwrap_or(0);
-            self.inner.set_content_length(len);
+            self.transfer.set_content_length(len);
             return Ok(());
         }
 
         if let Some(encoding) = self.response.header.get("transfer-encoding") {
             for i in encoding.split(',').map(|v| v.trim()) {
                 if i.eq_ignore_ascii_case("chunked") {
-                    self.inner.set_content_chunked();
+                    self.transfer.set_content_chunked();
                     return Ok(());
                 }
             }
         }
 
-        self.inner.set_content_persist();
+        self.transfer.set_content_persist();
 
         Ok(())
     }
@@ -232,7 +232,7 @@ impl HttpClient {
         }
 
         // TODO: keep-alive
-        self.inner.close();
+        self.transfer.close();
         self.request.url.set(location)?;
 
         Ok(())
@@ -287,23 +287,23 @@ impl HttpClient {
 
 impl Read for HttpClient {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.inner.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.transfer.read(buf) }
 }
 
 
 impl BufRead for HttpClient {
     #[inline]
-    fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
+    fn fill_buf(&mut self) -> io::Result<&[u8]> { self.transfer.fill_buf() }
 
     #[inline]
-    fn consume(&mut self, amt: usize) { self.inner.consume(amt) }
+    fn consume(&mut self, amt: usize) { self.transfer.consume(amt) }
 }
 
 
 impl Write for HttpClient {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.inner.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.transfer.write(buf) }
 
     #[inline]
-    fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
+    fn flush(&mut self) -> io::Result<()> { self.transfer.flush() }
 }
