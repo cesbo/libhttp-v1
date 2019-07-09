@@ -172,3 +172,36 @@ fn test_fill_buf() {
     let buf = client.fill_buf().unwrap();
     assert_eq!(buf, HELLO_WORLD);
 }
+
+
+#[test]
+fn test_content_length_less() {
+    let mut client = HttpClient::new("http://127.0.0.1:9090/test_content_length_less").unwrap();
+    client.get().unwrap();
+
+    let mut buf = Vec::new();
+    io::copy(&mut client, &mut buf).unwrap();
+    assert_eq!(buf.len(), HELLO_WORLD.len() - 1);
+}
+
+
+#[test]
+fn test_content_length_more() {
+    let mut client = HttpClient::new("http://127.0.0.1:9090/test_content_length_more").unwrap();
+    client.get().unwrap();
+
+    let mut buf = Vec::new();
+    io::copy(&mut client, &mut buf).unwrap();
+    assert_eq!(buf.len(), HELLO_WORLD.len());
+}
+
+
+#[test]
+fn test_content_length_exact() {
+    let mut client = HttpClient::new("http://127.0.0.1:9090/test_content_length_exact").unwrap();
+    client.get().unwrap();
+
+    let mut buf = Vec::new();
+    io::copy(&mut client, &mut buf).unwrap();
+    assert_eq!(buf.len(), HELLO_WORLD.len());
+}

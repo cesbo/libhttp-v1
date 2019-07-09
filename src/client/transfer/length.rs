@@ -1,6 +1,9 @@
-use std::io::{
-    self,
-    Read,
+use std::{
+    cmp,
+    io::{
+        self,
+        Read,
+    },
 };
 
 use super::{
@@ -31,9 +34,11 @@ impl HttpTransferExt for HttpLength {
         }
 
         if buf.pos >= buf.cap {
-            buf.cap = src.read(&mut buf.buf)?;
+            let remain = cmp::min(buf.buf.len(), self.len);
+            buf.cap = src.read(&mut buf.buf[.. remain])?;
             buf.pos = 0;
         }
+
         Ok(&buf.buf[buf.pos .. buf.cap])
     }
 

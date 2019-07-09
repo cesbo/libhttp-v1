@@ -19,6 +19,30 @@ if (URL_PATH == '/get' && METHOD == 'GET') {
 }
 
 
+if (URL_PATH == '/test_content_length_less' && METHOD == 'GET') {
+    header('Content-Type: text/plain');
+    header('Content-Length: ' . (strlen(TEST_DATA) - 1));
+    echo TEST_DATA;
+    exit;
+}
+
+
+if (URL_PATH == '/test_content_length_more' && METHOD == 'GET') {
+    header('Content-Type: text/plain');
+    header('Content-Length: ' . (strlen(TEST_DATA) + 1));
+    echo TEST_DATA;
+    exit;
+}
+
+
+if (URL_PATH == '/test_content_length_exact' && METHOD == 'GET') {
+    header('Content-Type: text/plain');
+    header('Content-Length: ' . strlen(TEST_DATA));
+    echo TEST_DATA;
+    exit;
+}
+
+
 if (URL_PATH == '/post-length' && METHOD == 'POST') {
     $content = file_get_contents('php://input');
     header('Content-Type: text/plain');
@@ -69,11 +93,11 @@ if (URL_PATH == '/get-chunked-wo-trailer' && METHOD == 'GET') {
 }
 
 
-if (URL_PATH == '/get-chunked-deflate' && METHOD == 'GET') {
+if (URL_PATH == '/get-gzip' && METHOD == 'GET') {
     $content = gzdeflate(TEST_DATA);
-    header('Transfer-Encoding: deflate, chunked');
+    header('Content-Encoding: gzip');
     header('Content-Type: text/plain');
-    printf("%x\r\n%s\r\n", strlen($content), $content);
-    printf("0\r\n\r\n");
+    header('Content-Length: ' . strlen($content));
+    printf("%s", $content);
     exit;
 }

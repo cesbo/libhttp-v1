@@ -126,7 +126,12 @@ impl HttpTransfer {
 
     /// Content-Length defined in the headers or response without content
     #[inline]
-    pub fn set_content_length(&mut self, len: usize) { self.transfer = Box::new(HttpLength::new(len)) }
+    pub fn set_content_length(&mut self, len: usize) {
+        if self.rbuf.cap - self.rbuf.pos > len {
+            self.rbuf.cap = self.rbuf.pos + len;
+        }
+        self.transfer = Box::new(HttpLength::new(len))
+    }
 
     /// Transfer-Encoded: chunked
     #[inline]
