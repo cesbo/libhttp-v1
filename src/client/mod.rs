@@ -178,12 +178,10 @@ impl HttpClient {
             } else {
                 self.transfer.set_connection_close();
             }
+        } else if self.response.get_version() == HttpVersion::HTTP10 {
+            self.transfer.set_connection_close();
         } else {
-            if self.response.get_version() == HttpVersion::HTTP10 {
-                self.transfer.set_connection_close();
-            } else {
-                self.transfer.set_connection_keep_alive();
-            }
+            self.transfer.set_connection_keep_alive();
         }
 
         if no_content {
