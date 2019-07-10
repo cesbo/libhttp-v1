@@ -4,9 +4,6 @@ extern crate error_rules;
 mod version;
 pub use crate::version::HttpVersion;
 
-mod auth;
-pub use crate::auth::http_auth;
-
 mod header;
 pub use crate::header::Header;
 

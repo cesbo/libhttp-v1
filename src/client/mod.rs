@@ -1,4 +1,3 @@
-
 use std::{
     io::{
         self,
@@ -10,7 +9,6 @@ use std::{
 
 use crate::{
     HttpVersion,
-    http_auth,
     Request,
     RequestError,
     Response,
@@ -19,8 +17,10 @@ use crate::{
     UrlSetter,
 };
 
-pub (crate) mod transfer;
+mod auth;
+use self::auth::http_auth;
 
+pub (crate) mod transfer;
 use self::transfer::{
     HttpTransfer,
     HttpTransferError,
