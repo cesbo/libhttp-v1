@@ -27,8 +27,8 @@ fn test_transfer_persist() {
                     "\r\n",
                     "Hello, world!"
                 ).as_bytes())
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33000").unwrap();
     client.get().unwrap();
@@ -51,8 +51,8 @@ fn test_transfer_length() {
                     "\r\n",
                     "Hello, world!"
                 ).as_bytes())
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33001").unwrap();
     client.get().unwrap();
@@ -75,8 +75,8 @@ fn test_content_length_less() {
                     "\r\n",
                     "Hello, world!"
                 ).as_bytes())
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33002").unwrap();
     client.get().unwrap();
@@ -99,8 +99,8 @@ fn test_content_length_more() {
                     "\r\n",
                     "Hello, world!"
                 ).as_bytes())
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33003").unwrap();
     client.get().unwrap();
@@ -128,8 +128,8 @@ fn test_post() {
                     "\r\n",
                     "Hello, world!"
                 ).as_bytes())
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33004").unwrap();
     client.request.set_method("POST");
@@ -164,8 +164,8 @@ fn test_transfer_chunked() {
                     thread::sleep(std::time::Duration::from_millis(10));
                 }
                 writer.write_all(b"0\r\n\r\n")
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33005").unwrap();
     client.get().unwrap();
@@ -200,8 +200,8 @@ fn test_get_chunked_lf_only() {
                     thread::sleep(std::time::Duration::from_millis(10));
                 }
                 writer.write_all(b"0\n\n")
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33006").unwrap();
     client.get().unwrap();
@@ -236,8 +236,8 @@ fn test_get_chunked_wo_trailer() {
                     thread::sleep(std::time::Duration::from_millis(10));
                 }
                 writer.write_all(b"0\r\n")
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33007").unwrap();
     client.get().unwrap();
@@ -305,8 +305,8 @@ fn test_404_without_body() {
                     "HTTP/1.1 404 Not Found\r\n",
                     "\r\n",
                 ).as_bytes())
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33010").unwrap();
     assert!(client.get().is_err());
@@ -325,8 +325,8 @@ fn test_fill_buf() {
                     "\r\n",
                     "Hello, world!"
                 ).as_bytes())
-            }
-        ).run();
+            })
+        .run();
 
     let mut client = HttpClient::new("http://127.0.0.1:33011").unwrap();
     client.get().unwrap();
