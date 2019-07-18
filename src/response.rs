@@ -65,7 +65,7 @@ impl Response {
 
         loop {
             buffer.clear();
-            let r = reader.read_line(&mut buffer)?;
+            reader.read_line(&mut buffer)?;
 
             let s = buffer.trim();
             if s.is_empty() {

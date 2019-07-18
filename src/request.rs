@@ -68,7 +68,7 @@ impl Request {
 
         loop {
             buffer.clear();
-            let r = reader.read_line(&mut buffer)?;
+            reader.read_line(&mut buffer)?;
 
             let s = buffer.trim();
             if s.is_empty() {
@@ -100,9 +100,8 @@ impl Request {
 
     fn io_send<W: Write>(&self, dst: &mut W) -> io::Result<()> {
         let path_fmt = match self.version {
-            HttpVersion::HTTP11 => UrlFormatter::RequestUri(&self.url),
-            HttpVersion::RTSP10 => UrlFormatter::Url(&self.url),
-            HttpVersion::HTTP10 => UrlFormatter::RequestUri(&self.url),
+            HttpVersion::HTTP11 | HttpVersion::HTTP10 => UrlFormatter::RequestUri(&self.url),
+            HttpVersion::RTSP10 | HttpVersion::RTSP20 => UrlFormatter::Url(&self.url),
         };
 
         writeln!(dst,"{} {} {}\r",
