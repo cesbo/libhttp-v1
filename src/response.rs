@@ -15,8 +15,6 @@ use crate::{
 pub enum ResponseError {
     #[error_from]
     Io(io::Error),
-    #[error_kind("unexpected eof")]
-    UnexpectedEof,
     #[error_kind("invalid format")]
     InvalidFormat,
     #[error_kind("invalid status code")]
@@ -71,7 +69,6 @@ impl Response {
 
             let s = buffer.trim();
             if s.is_empty() {
-                if first_line || r == 0 { return Err(ResponseError::UnexpectedEof) }
                 break;
             }
 

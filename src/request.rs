@@ -20,8 +20,6 @@ pub enum RequestError {
     Io(io::Error),
     #[error_from]
     Url(UrlError),
-    #[error_kind("unexpected eof")]
-    UnexpectedEof,
     #[error_kind("invalid format")]
     InvalidFormat,
 }
@@ -74,7 +72,6 @@ impl Request {
 
             let s = buffer.trim();
             if s.is_empty() {
-                if first_line || r == 0 { return Err(RequestError::UnexpectedEof) }
                 break;
             }
 
