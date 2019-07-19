@@ -15,6 +15,9 @@ use std::{
 use http;
 
 
+pub const HELLO_WORLD: &[u8] = b"Hello, world!";
+
+
 pub type FnRequest = fn(&http::Request, &mut BufReader<TcpStream>) -> io::Result<()>;
 pub type FnResponse = fn(&mut BufWriter<TcpStream>) -> io::Result<()>;
 

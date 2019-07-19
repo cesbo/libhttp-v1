@@ -10,19 +10,10 @@ use std::{
 use http::HttpClient;
 
 mod support;
-use support::Server;
-
-
-const HELLO_WORLD: &[u8] = b"Hello, world!";
-
-
-#[test]
-fn test_invalid_url() {
-    match HttpClient::new("http://127.0.0.1/test%QQ") {
-        Ok(_) => unreachable!(),
-        Err(ref e) => println!("test_invalid_url(): {}", e),
-    }
-}
+use support::{
+    Server,
+    HELLO_WORLD,
+};
 
 
 #[test]
@@ -363,26 +354,4 @@ fn test_fill_buf() {
 
     let buf = client.fill_buf().unwrap();
     assert_eq!(buf, HELLO_WORLD);
-}
-
-
-#[test]
-fn test_get_ssl() {
-    let mut client = HttpClient::new("https://httpbin.org/base64/SGVsbG8sIHdvcmxkIQ==").unwrap();
-    client.send().unwrap();
-    client.receive().unwrap();
-
-    let mut body = Vec::with_capacity(64);
-    client.read_to_end(&mut body).unwrap();
-    assert_eq!(HELLO_WORLD, body.as_slice());
-}
-
-
-#[test]
-fn test_get_expired_ssl() {
-    let mut client = HttpClient::new("https://expired.badssl.com/").unwrap();
-    match client.send() {
-        Ok(_) => unreachable!(),
-        Err(ref e) => println!("test_get_expired_ssl(): {}", e),
-    }
 }
