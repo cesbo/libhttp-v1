@@ -17,6 +17,15 @@ const HELLO_WORLD: &[u8] = b"Hello, world!";
 
 
 #[test]
+fn test_invalid_url() {
+    match HttpClient::new("http://127.0.0.1/test%QQ") {
+        Ok(_) => unreachable!(),
+        Err(ref e) => println!("test_invalid_url(): {}", e),
+    }
+}
+
+
+#[test]
 fn test_transfer_persist() {
     Server::new("127.0.0.1:33000")
         .step(
@@ -254,6 +263,110 @@ fn test_get_chunked_wo_trailer() {
 
 
 #[test]
+fn test_get_timeout() {
+    Server::new("127.0.0.1:33008")
+        .step(
+            |_request, _reader| Ok(()),
+            |writer| {
+                thread::sleep(std::time::Duration::from_secs(5));
+                writer.write_all(concat!(
+                    "HTTP/1.1 200 Ok\r\n",
+                    "\r\n",
+                ).as_bytes())
+            })
+        .run();
+
+    let mut client = HttpClient::new("http://127.0.0.1:33008").unwrap();
+    match client.get() {
+        Ok(_) => unreachable!(),
+        Err(ref e) => println!("test_get_timeout(): {}", e),
+    }
+}
+
+
+#[test]
+fn test_redirect() {
+    Server::new("127.0.0.1:33009")
+        .step(
+            |request, _reader| {
+                assert_eq!(request.url.get_path(), "/redirect/");
+                Ok(())
+            },
+            |writer| {
+                writer.write_all(concat!(
+                    "HTTP/1.1 302 Found\r\n",
+                    "Location: http://127.0.0.1:33010/ok/\r\n",
+                    "Content-Length: 0\r\n",
+                    "\r\n"
+                ).as_bytes())
+            })
+        .run();
+
+    Server::new("127.0.0.1:33010")
+        .step(
+            |request, _reader| {
+                assert_eq!(request.url.get_path(), "/ok/");
+                Ok(())
+            },
+            |writer| {
+                writer.write_all(concat!(
+                    "HTTP/1.1 200 Ok\r\n",
+                    "\r\n"
+                ).as_bytes())
+            })
+        .run();
+
+    let mut client = HttpClient::new("http://127.0.0.1:33009/redirect/").unwrap();
+    client.get().unwrap();
+    assert_eq!(200, client.response.get_code());
+}
+
+
+#[test]
+fn test_404_without_body() {
+    Server::new("127.0.0.1:33011")
+        .step(
+            |_request, _reader| Ok(()),
+            |writer| {
+                writer.write_all(concat!(
+                    "HTTP/1.1 404 Not Found\r\n",
+                    "\r\n",
+                ).as_bytes())
+            })
+        .run();
+
+    let mut client = HttpClient::new("http://127.0.0.1:33011").unwrap();
+    assert!(client.get().is_err());
+    assert_eq!(404, client.response.get_code());
+}
+
+
+#[test]
+fn test_fill_buf() {
+    Server::new("127.0.0.1:33012")
+        .step(
+            |_request, _reader| Ok(()),
+            |writer| {
+                writer.write_all(concat!(
+                    "HTTP/1.1 200 Ok\r\n",
+                    "\r\n",
+                    "Hello, world!"
+                ).as_bytes())
+            })
+        .run();
+
+    let mut client = HttpClient::new("http://127.0.0.1:33012").unwrap();
+    client.get().unwrap();
+
+    let buf = client.fill_buf().unwrap();
+    assert_eq!(buf, HELLO_WORLD);
+
+    let buf = client.fill_buf().unwrap();
+    assert_eq!(buf, HELLO_WORLD);
+}
+
+
+#[test]
 fn test_get_ssl() {
     let mut client = HttpClient::new("https://httpbin.org/base64/SGVsbG8sIHdvcmxkIQ==").unwrap();
     client.send().unwrap();
@@ -272,68 +385,4 @@ fn test_get_expired_ssl() {
         Ok(_) => unreachable!(),
         Err(ref e) => println!("test_get_expired_ssl(): {}", e),
     }
-}
-
-
-#[test]
-fn test_get_timeout() {
-    let mut client = HttpClient::new("http://httpbin.org/delay/5").unwrap();
-    client.send().unwrap();
-    match client.receive() {
-        Ok(_) => unreachable!(),
-        Err(ref e) => println!("test_get_timeout(): {}", e),
-    }
-}
-
-
-#[test]
-fn test_invalid_url() {
-    match HttpClient::new("http://127.0.0.1/test%QQ") {
-        Ok(_) => unreachable!(),
-        Err(ref e) => println!("test_invalid_url(): {}", e),
-    }
-}
-
-
-#[test]
-fn test_404_without_body() {
-    Server::new("127.0.0.1:33010")
-        .step(
-            |_request, _reader| Ok(()),
-            |writer| {
-                writer.write_all(concat!(
-                    "HTTP/1.1 404 Not Found\r\n",
-                    "\r\n",
-                ).as_bytes())
-            })
-        .run();
-
-    let mut client = HttpClient::new("http://127.0.0.1:33010").unwrap();
-    assert!(client.get().is_err());
-    assert_eq!(404, client.response.get_code());
-}
-
-
-#[test]
-fn test_fill_buf() {
-    Server::new("127.0.0.1:33011")
-        .step(
-            |_request, _reader| Ok(()),
-            |writer| {
-                writer.write_all(concat!(
-                    "HTTP/1.1 200 Ok\r\n",
-                    "\r\n",
-                    "Hello, world!"
-                ).as_bytes())
-            })
-        .run();
-
-    let mut client = HttpClient::new("http://127.0.0.1:33011").unwrap();
-    client.get().unwrap();
-
-    let buf = client.fill_buf().unwrap();
-    assert_eq!(buf, HELLO_WORLD);
-
-    let buf = client.fill_buf().unwrap();
-    assert_eq!(buf, HELLO_WORLD);
 }
