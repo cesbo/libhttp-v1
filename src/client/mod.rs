@@ -229,8 +229,13 @@ impl HttpClient {
             return Err(HttpClientError::InvalidRedirectLocation)
         }
 
-        // TODO: keep-alive
-        self.transfer.close();
+        if ! self.transfer.is_closed() {
+            let limit = std::cmp::min(location.len(), 8); // 8 - enough for "https://"
+            if location[.. limit].find("://").is_some() {
+                self.transfer.close();
+            }
+        }
+
         self.request.url.set(location)?;
 
         Ok(())

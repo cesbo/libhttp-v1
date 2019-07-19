@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{
     thread,
     io::{
@@ -48,22 +50,34 @@ impl Server {
         self
     }
 
-    pub fn run(mut self) {
+    pub fn run(self) {
         thread::spawn(move || {
             let listener = TcpListener::bind(self.addr).unwrap();
 
-            let client_r = listener.incoming().next().unwrap().unwrap();
-            let client_w = client_r.try_clone().unwrap();
+            let mut step_id = 0;
 
-            let mut reader = BufReader::new(client_r);
-            let mut writer = BufWriter::new(client_w);
+            'M: loop {
+                let client_r = listener.incoming().next().unwrap().unwrap();
+                let client_w = client_r.try_clone().unwrap();
 
-            for step in &mut self.steps {
-                let mut request = http::Request::default();
-                request.parse(&mut reader).unwrap();
-                (step.request)(&request, &mut reader).unwrap();
-                (step.response)(&mut writer).unwrap();
-                writer.flush().unwrap();
+                let mut reader = BufReader::new(client_r);
+                let mut writer = BufWriter::new(client_w);
+
+                while step_id < self.steps.len() {
+                    let step = &self.steps[step_id];
+                    let mut request = http::Request::default();
+                    request.parse(&mut reader).unwrap();
+                    if request.get_method().is_empty() {
+                        // Connection closed, try to accept next
+                        continue 'M;
+                    }
+                    (step.request)(&request, &mut reader).unwrap();
+                    (step.response)(&mut writer).unwrap();
+                    writer.flush().unwrap();
+                    step_id += 1;
+                }
+
+                break;
             }
         });
     }

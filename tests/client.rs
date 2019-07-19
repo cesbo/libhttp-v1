@@ -276,44 +276,6 @@ fn test_get_timeout() {
 
 
 #[test]
-fn test_redirect() {
-    Server::new("127.0.0.1:33009")
-        .step(
-            |request, _reader| {
-                assert_eq!(request.url.get_path(), "/redirect/");
-                Ok(())
-            },
-            |writer| {
-                writer.write_all(concat!(
-                    "HTTP/1.1 302 Found\r\n",
-                    "Location: http://127.0.0.1:33010/ok/\r\n",
-                    "Content-Length: 0\r\n",
-                    "\r\n"
-                ).as_bytes())
-            })
-        .run();
-
-    Server::new("127.0.0.1:33010")
-        .step(
-            |request, _reader| {
-                assert_eq!(request.url.get_path(), "/ok/");
-                Ok(())
-            },
-            |writer| {
-                writer.write_all(concat!(
-                    "HTTP/1.1 200 Ok\r\n",
-                    "\r\n"
-                ).as_bytes())
-            })
-        .run();
-
-    let mut client = HttpClient::new("http://127.0.0.1:33009/redirect/").unwrap();
-    client.get().unwrap();
-    assert_eq!(200, client.response.get_code());
-}
-
-
-#[test]
 fn test_404_without_body() {
     Server::new("127.0.0.1:33011")
         .step(
@@ -354,4 +316,125 @@ fn test_fill_buf() {
 
     let buf = client.fill_buf().unwrap();
     assert_eq!(buf, HELLO_WORLD);
+}
+
+
+#[test]
+fn test_redirect_connection_close() {
+    Server::new("127.0.0.1:33013")
+        .step(
+            |request, _reader| {
+                assert_eq!(request.url.get_path(), "/redirect/");
+                Ok(())
+            },
+            |writer| {
+                let peer_port = writer.get_ref().peer_addr().unwrap().port();
+                writer.write_all(format!(concat!(
+                    "HTTP/1.1 302 Found\r\n",
+                    "Location: /ok/{}\r\n",
+                    "Connection: close\r\n",
+                    "Content-Length: 0\r\n",
+                    "\r\n"
+                ), peer_port).as_bytes())
+            })
+        .step(
+            |request, reader| {
+                let path = request.url.get_path();
+                assert!(path.starts_with("/ok/"));
+                let port: u16 = path[4 ..].parse().unwrap();
+                let peer_port = reader.get_ref().peer_addr().unwrap().port();
+                assert_ne!(port, peer_port);
+                Ok(())
+            },
+            |writer| {
+                writer.write_all(concat!(
+                    "HTTP/1.1 200 Ok\r\n",
+                    "\r\n"
+                ).as_bytes())
+            })
+        .run();
+
+    let mut client = HttpClient::new("http://127.0.0.1:33013/redirect/").unwrap();
+    client.get().unwrap();
+    assert_eq!(200, client.response.get_code());
+}
+
+
+#[test]
+fn test_redirect_connection_keep_alive() {
+    Server::new("127.0.0.1:33014")
+        .step(
+            |request, _reader| {
+                assert_eq!(request.url.get_path(), "/redirect/");
+                Ok(())
+            },
+            |writer| {
+                let peer_port = writer.get_ref().peer_addr().unwrap().port();
+                writer.write_all(format!(concat!(
+                    "HTTP/1.1 302 Found\r\n",
+                    "Location: /ok/{}\r\n",
+                    "Connection: keep-alive\r\n",
+                    "Content-Length: 0\r\n",
+                    "\r\n"
+                ), peer_port).as_bytes())
+            })
+        .step(
+            |request, reader| {
+                let path = request.url.get_path();
+                assert!(path.starts_with("/ok/"));
+                let port: u16 = path[4 ..].parse().unwrap();
+                let peer_port = reader.get_ref().peer_addr().unwrap().port();
+                assert_eq!(port, peer_port);
+                Ok(())
+            },
+            |writer| {
+                writer.write_all(concat!(
+                    "HTTP/1.1 200 Ok\r\n",
+                    "\r\n"
+                ).as_bytes())
+            })
+        .run();
+
+    let mut client = HttpClient::new("http://127.0.0.1:33014/redirect/").unwrap();
+    client.get().unwrap();
+    assert_eq!(200, client.response.get_code());
+}
+
+
+#[test]
+fn test_redirect_absolute_url() {
+    Server::new("127.0.0.1:33009")
+        .step(
+            |request, _reader| {
+                assert_eq!(request.url.get_path(), "/redirect/");
+                Ok(())
+            },
+            |writer| {
+                writer.write_all(concat!(
+                    "HTTP/1.1 302 Found\r\n",
+                    "Location: http://127.0.0.1:33010/ok/\r\n",
+                    "Connection: keep-alive\r\n",
+                    "Content-Length: 0\r\n",
+                    "\r\n"
+                ).as_bytes())
+            })
+        .run();
+
+    Server::new("127.0.0.1:33010")
+        .step(
+            |request, _reader| {
+                assert_eq!(request.url.get_path(), "/ok/");
+                Ok(())
+            },
+            |writer| {
+                writer.write_all(concat!(
+                    "HTTP/1.1 200 Ok\r\n",
+                    "\r\n"
+                ).as_bytes())
+            })
+        .run();
+
+    let mut client = HttpClient::new("http://127.0.0.1:33009/redirect/").unwrap();
+    client.get().unwrap();
+    assert_eq!(200, client.response.get_code());
 }

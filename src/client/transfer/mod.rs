@@ -116,6 +116,9 @@ impl HttpTransfer {
         Ok(())
     }
 
+    #[inline]
+    pub fn is_closed(&self) -> bool { self.connection == HttpConnection::None }
+
     /// Close connection after end of response
     #[inline]
     pub fn set_connection_close(&mut self) { self.connection = HttpConnection::Close }
