@@ -1,3 +1,10 @@
+// Copyright (C) 2019 Cesbo OU <info@cesbo.com>
+//
+// This file is part of ASC/libhttp
+//
+// ASC/libhttp can not be copied and/or distributed without the express
+// permission of Cesbo OU
+
 use std::fmt;
 
 
