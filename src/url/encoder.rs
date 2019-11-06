@@ -18,6 +18,7 @@ fn is_rfc3986(b: u8) -> bool {
         b'A' ..= b'Z' => true,
         b'0' ..= b'9' => true,
         b'-' | b'_' | b'.' | b'~' => true,
+        b':' | b'@' => true,
         _ => false,
     }
 }
@@ -29,7 +30,9 @@ fn is_rfc3986_path(b: u8) -> bool {
         b'a' ..= b'z' => true,
         b'A' ..= b'Z' => true,
         b'0' ..= b'9' => true,
-        b'-' | b'_' | b'.' | b'~' | b'/' | b':' | b',' | b'=' => true,
+        b'-' | b'_' | b'.' | b'~' => true,
+        b'/' | b',' | b'=' => true,
+        b':' | b'@' => true,
         _ => false,
     }
 }
