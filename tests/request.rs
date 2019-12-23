@@ -8,10 +8,6 @@ const TEST1: &str = "GET /path?query HTTP/1.1\r\n\
     Host: 127.0.0.1:8000\r\n\
     \r\n";
 
-const TEST_BROKEN: &str = "GET /path?query HTTP/1.1\r\n\
-    Host: 127.0.0.1:8000\r\n\
-    User-Agent: lib";
-
 const TEST2: &str = "GET rtsp://127.0.0.1:8000/path?query RTSP/1.0\r\n\
     Host: 127.0.0.1:8000\r\n\
     \r\n";
@@ -58,11 +54,6 @@ fn request_parse() {
     assert_eq!(request.header.get("host").unwrap(), "127.0.0.1:8000");
 }
 
-#[test]
-fn request_broken() {
-    let mut request = Request::new();
-    assert!(request.parse(&mut BufReader::new(TEST_BROKEN.as_bytes())).is_err());
-}
 
 #[test]
 fn request_tab() {
@@ -73,6 +64,7 @@ fn request_tab() {
     assert_eq!(request.header.get("host").unwrap(), "127.0.0.1:8000");
     assert_eq!(request.header.get("user-agent").unwrap(), "libhttp");
 }
+
 
 #[test]
 fn request_unix() {

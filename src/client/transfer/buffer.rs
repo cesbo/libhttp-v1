@@ -13,7 +13,7 @@ const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 /// Read/Write buffer
 pub struct HttpBuffer {
-    pub buf: Box<[u8]>,
+    pub buf: [u8; DEFAULT_BUF_SIZE],
     pub pos: usize,
     pub cap: usize,
 }
@@ -40,11 +40,7 @@ impl fmt::Debug for HttpBuffer {
 impl Default for HttpBuffer {
     fn default() -> HttpBuffer {
         HttpBuffer {
-            buf: {
-                let mut v = Vec::with_capacity(DEFAULT_BUF_SIZE);
-                unsafe { v.set_len(DEFAULT_BUF_SIZE) };
-                v.into_boxed_slice()
-            },
+            buf: [0; DEFAULT_BUF_SIZE],
             pos: 0,
             cap: 0,
         }
