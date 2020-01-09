@@ -7,7 +7,7 @@ use http::{
 };
 
 
-static ENCODED_URI: &str = "http%3A%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F";
+static ENCODED_URI: &str = "http:%2F%2Ffoo%20bar%2F%D1%82%D0%B5%D1%81%D1%82%2F%F0%9F%8D%94%2F";
 static ENCODED_PATH: &str = "http://foo%20bar/%D1%82%D0%B5%D1%81%D1%82/%F0%9F%8D%94/";
 static DECODED_URI: &str = "http://foo bar/тест/🍔/";
 

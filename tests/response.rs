@@ -20,8 +20,6 @@ const TEST_SEND_CASE: &str = "RTSP/1.0 200 Ok\r\n\
 const TEST_INVALID_CODE: &str = "RTSP/1.0 200Ok\r\n\
     \r\n";
 
-const TEST_UNEXPECTED_EOF: &str = "RTSP/1.0 404   ";
-
 const TEST_WO_STATUS: &str = "HTTP/1.1 200\r\n\
     Server: libhttp\r\n\
     \r\n";
@@ -110,13 +108,6 @@ fn response_parse_unix() {
 fn response_parse_bad_code() {
     let mut response = Response::new();
     assert!(response.parse(&mut BufReader::new(TEST_INVALID_CODE.as_bytes())).is_err());
-}
-
-
-#[test]
-fn response_parse_unexpected_eof() {
-    let mut response = Response::new();
-    assert!(response.parse(&mut BufReader::new(TEST_UNEXPECTED_EOF.as_bytes())).is_err());
 }
 
 
