@@ -59,7 +59,7 @@ pub enum HttpClientError {
 pub type Result<T> = std::result::Result<T, HttpClientError>;
 
 
-const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
+pub const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
 
 
 /// HTTP client
@@ -171,8 +171,8 @@ impl HttpClient {
         self.transfer.flush()?;
         self.response.parse(&mut self.transfer)?;
 
+        let code = self.response.get_code();
         let no_content = {
-            let code = self.response.get_code();
             code < 200 ||
             code == 204 ||
             code == 304 ||
@@ -215,7 +215,11 @@ impl HttpClient {
             }
         }
 
-        self.transfer.set_content_persist();
+        if code == 200 {
+            self.transfer.set_content_persist();
+        } else {
+            self.transfer.set_content_length(0);
+        }
 
         Ok(())
     }

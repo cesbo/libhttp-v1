@@ -30,6 +30,7 @@ mod client;
 pub use crate::client::{
     HttpClient,
     HttpClientError,
+    USER_AGENT,
 };
 
 mod url;
