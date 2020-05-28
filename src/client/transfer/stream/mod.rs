@@ -1,35 +1,32 @@
-// Copyright (C) 2019 Cesbo OU <info@cesbo.com>
+// Copyright (C) 2019-2020 Cesbo OU <info@cesbo.com>
 //
 // This file is part of ASC/libhttp
 //
 // ASC/libhttp can not be copied and/or distributed without the express
 // permission of Cesbo OU
 
-use std::{
-    fmt,
-    io::{
-        self,
-        Read,
-        Write,
+use {
+    std::{
+        fmt,
+        io::{
+            self,
+            Read,
+            Write,
+        },
+        net::{
+            ToSocketAddrs,
+            TcpStream,
+        },
+        time::Duration,
     },
-    net::{
-        ToSocketAddrs,
-        TcpStream,
+
+    openssl::ssl::{
+        SslMethod,
+        SslConnector,
+        SslStream,
     },
-    time::Duration,
 };
 
-use openssl::ssl::{
-    SslMethod,
-    SslConnector,
-    SslStream,
-};
-
-mod ssl;
-use self::ssl::{
-    SslError,
-    HandshakeError,
-};
 
 mod null;
 pub (crate) use self::null::NullStream;
@@ -40,9 +37,9 @@ pub enum HttpStreamError {
     #[error_from("HttpStream IO: {}", 0)]
     Io(io::Error),
     #[error_from("SSL: {}", 0)]
-    Ssl(SslError),
+    Ssl(openssl::error::ErrorStack),
     #[error_from("Handshake: {}", 0)]
-    Handshake(HandshakeError),
+    Handshake(openssl::ssl::HandshakeError<TcpStream>),
 }
 
 
@@ -106,11 +103,11 @@ impl HttpStream {
         let stream = self.io_connect(host, port)?;
 
         if tls {
-            let connector = SslConnector::builder(SslMethod::tls()).map_err(SslError::from)?;
-            let mut ssl = connector.build().configure().map_err(SslError::from)?;
+            let connector = SslConnector::builder(SslMethod::tls())?;
+            let mut ssl = connector.build().configure()?;
             ssl.set_use_server_name_indication(true);
             ssl.set_verify_hostname(true);
-            let stream = ssl.connect(host, stream).map_err(HandshakeError::from)?;
+            let stream = ssl.connect(host, stream)?;
             self.inner = Box::new(stream);
         } else {
             self.inner = Box::new(stream);
