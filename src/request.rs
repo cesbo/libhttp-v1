@@ -1,38 +1,26 @@
-// Copyright (C) 2019 Cesbo OU <info@cesbo.com>
+// Copyright (C) 2019-2020 Cesbo OU <info@cesbo.com>
 //
 // This file is part of ASC/libhttp
 //
 // ASC/libhttp can not be copied and/or distributed without the express
 // permission of Cesbo OU
 
-use std::io::{
-    self,
-    BufRead,
-    Write,
+use {
+    std::io::{
+        self,
+        BufRead,
+        Write,
+    },
+
+    crate::{
+        Result,
+
+        Header,
+        Url,
+        UrlFormatter,
+        HttpVersion,
+    },
 };
-
-use crate::{
-    Header,
-    Url,
-    UrlError,
-    UrlFormatter,
-    HttpVersion,
-};
-
-
-#[derive(Debug, Error)]
-#[error_prefix = "Request"]
-pub enum RequestError {
-    #[error_from]
-    Io(io::Error),
-    #[error_from]
-    Url(UrlError),
-    #[error_kind("invalid format")]
-    InvalidFormat,
-}
-
-
-pub type Result<T> = std::result::Result<T, RequestError>;
 
 
 /// Parser and formatter for HTTP request line and headers
@@ -85,7 +73,7 @@ impl Request {
             if first_line {
                 first_line = false;
 
-                let skip = s.find(char::is_whitespace).ok_or_else(|| RequestError::InvalidFormat)?;
+                let skip = s.find(char::is_whitespace).ok_or_else(|| "invalid request format")?;
                 self.method.push_str(&s[.. skip]);
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());

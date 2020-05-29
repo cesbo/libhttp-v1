@@ -5,12 +5,17 @@
 // ASC/libhttp can not be copied and/or distributed without the express
 // permission of Cesbo OU
 
-use std::fmt;
 
 mod decoder;
 mod encoder;
 mod query;
 mod formatter;
+
+use {
+    std::fmt,
+    crate::Result,
+};
+
 
 pub use self::{
     decoder::UrlDecoder,
@@ -18,21 +23,6 @@ pub use self::{
     query::UrlQuery,
     formatter::UrlFormatter,
 };
-
-
-#[derive(Debug, Error)]
-#[error_prefix = "Url"]
-pub enum UrlError {
-    #[error_from]
-    Fmt(fmt::Error),
-    #[error_kind("length limit")]
-    LengthLimit,
-    #[error_kind("invalid port")]
-    InvalidPort,
-}
-
-
-type Result<T> = std::result::Result<T, UrlError>;
 
 
 /// A parsed URL record
@@ -181,7 +171,7 @@ impl UrlSetter for &str {
         let mut fragment = None;
 
         if self.is_empty() { return Ok(()) }
-        if self.len() > 2048 { return Err(UrlError::LengthLimit) }
+        ensure!(self.len() < 2048, "URL is to long");
 
         if let Some(v) = self.find("://") {
             url.scheme.clear();
@@ -261,7 +251,7 @@ impl UrlSetter for &str {
             url.host = addr.next().unwrap().to_string();
             if let Some(port) = addr.next() {
                 url.port = port.parse::<u16>().unwrap_or(0);
-                if url.port == 0 { return Err(UrlError::InvalidPort) }
+                ensure!(url.port != 0, "invalid port value");
             }
         }
 

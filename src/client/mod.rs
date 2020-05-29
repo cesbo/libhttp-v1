@@ -1,62 +1,39 @@
-// Copyright (C) 2019 Cesbo OU <info@cesbo.com>
+// Copyright (C) 2019-2020 Cesbo OU <info@cesbo.com>
 //
 // This file is part of ASC/libhttp
 //
 // ASC/libhttp can not be copied and/or distributed without the express
 // permission of Cesbo OU
 
-use std::{
-    io::{
-        self,
-        BufRead,
-        Read,
-        Write,
-    },
-};
-
-use crate::{
-    HttpVersion,
-    Request,
-    RequestError,
-    Response,
-    ResponseError,
-    UrlError,
-    UrlSetter,
-};
 
 mod auth;
-use self::auth::http_auth;
-
 pub (crate) mod transfer;
-use self::transfer::{
-    HttpTransfer,
-    HttpTransferError,
+
+
+use {
+    std::{
+        io::{
+            self,
+            BufRead,
+            Read,
+            Write,
+        },
+    },
+
+    crate::{
+        Result,
+
+        HttpVersion,
+        Request,
+        Response,
+        UrlSetter,
+    },
+
+    self::{
+        auth::http_auth,
+        transfer::HttpTransfer,
+    },
 };
-
-
-#[derive(Debug, Error)]
-#[error_prefix = "HttpClient"]
-pub enum HttpClientError {
-    #[error_from]
-    Io(io::Error),
-    #[error_from]
-    Request(RequestError),
-    #[error_from]
-    Response(ResponseError),
-    #[error_from]
-    HttpTransfer(HttpTransferError),
-    #[error_from]
-    Url(UrlError),
-    #[error_kind("invalid protocol")]
-    InvalidProtocol,
-    #[error_kind("redirect location not defined")]
-    InvalidRedirectLocation,
-    #[error_kind("request failed: {} {}", 0, 1)]
-    RequestFailed(usize, String),
-}
-
-
-pub type Result<T> = std::result::Result<T, HttpClientError>;
 
 
 pub const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
@@ -153,7 +130,7 @@ impl HttpClient {
                 }
                 self.request.set_version(HttpVersion::RTSP10);
             }
-            _ => return Err(HttpClientError::InvalidProtocol)
+            _ => return err!("invalid protocol"),
         };
 
         let host = self.request.url.get_host();
@@ -237,7 +214,7 @@ impl HttpClient {
 
         let location = self.response.header.get("location").unwrap_or("");
         if location.is_empty() {
-            return Err(HttpClientError::InvalidRedirectLocation)
+            return err!("invalid redirect location");
         }
 
         if ! self.transfer.is_closed() {
@@ -288,8 +265,7 @@ impl HttpClient {
                 }
                 code => {
                     self.skip_body()?;
-                    return Err(HttpClientError::RequestFailed(
-                        code, self.response.get_reason().to_owned()));
+                    return err!("request failed {} {}", code, self.response.get_reason());
                 }
             }
         }

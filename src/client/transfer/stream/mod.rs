@@ -25,25 +25,13 @@ use {
         SslConnector,
         SslStream,
     },
+
+    crate::Result,
 };
 
 
 mod null;
 pub (crate) use self::null::NullStream;
-
-
-#[derive(Debug, Error)]
-pub enum HttpStreamError {
-    #[error_from("HttpStream IO: {}", 0)]
-    Io(io::Error),
-    #[error_from("SSL: {}", 0)]
-    Ssl(openssl::error::ErrorStack),
-    #[error_from("Handshake: {}", 0)]
-    Handshake(openssl::ssl::HandshakeError<TcpStream>),
-}
-
-
-type Result<T> = std::result::Result<T, HttpStreamError>;
 
 
 trait Stream: Read + Write + fmt::Debug {}

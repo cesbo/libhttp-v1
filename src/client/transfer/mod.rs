@@ -5,52 +5,41 @@
 // ASC/libhttp can not be copied and/or distributed without the express
 // permission of Cesbo OU
 
-use std::{
-    cmp,
-    fmt,
-    io::{
-        self,
-        BufRead,
-        Read,
-        Write,
+pub (crate) mod stream;
+pub (crate) mod buffer;
+mod chunked;
+mod length;
+mod persist;
+
+
+use {
+    std::{
+        cmp,
+        fmt,
+        io::{
+            self,
+            BufRead,
+            Read,
+            Write,
+        },
+    },
+
+    crate::Result,
+
+    self::{
+        stream::HttpStream,
+        buffer::HttpBuffer,
+        chunked::HttpChunked,
+        length::HttpLength,
+        persist::HttpPersist,
     },
 };
-
-pub (crate) mod stream;
-use self::stream::{
-    HttpStream,
-    HttpStreamError,
-};
-
-pub (crate) mod buffer;
-use self::buffer::HttpBuffer;
-
-mod chunked;
-use self::chunked::HttpChunked;
-
-mod length;
-use self::length::HttpLength;
-
-mod persist;
-use self::persist::HttpPersist;
 
 
 trait HttpTransferExt: fmt::Debug {
     fn fill_buf<'a>(&mut self, buf: &'a mut HttpBuffer, src: &mut dyn Read) -> io::Result<&'a [u8]>;
     fn consume(&mut self, amt: usize);
 }
-
-
-#[derive(Debug, Error)]
-pub enum HttpTransferError {
-    #[error_from]
-    Io(io::Error),
-    #[error_from]
-    HttpStream(HttpStreamError),
-}
-
-
-type Result<T> = std::result::Result<T, HttpTransferError>;
 
 
 /// HTTP Connection type

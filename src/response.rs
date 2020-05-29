@@ -1,35 +1,24 @@
-// Copyright (C) 2019 Cesbo OU <info@cesbo.com>
+// Copyright (C) 2019-2020 Cesbo OU <info@cesbo.com>
 //
 // This file is part of ASC/libhttp
 //
 // ASC/libhttp can not be copied and/or distributed without the express
 // permission of Cesbo OU
 
-use std::io::{
-    self,
-    BufRead,
-    Write,
+use {
+    std::io::{
+        self,
+        BufRead,
+        Write,
+    },
+
+    crate::{
+        Result,
+
+        Header,
+        HttpVersion,
+    },
 };
-
-use crate::{
-    Header,
-    HttpVersion,
-};
-
-
-#[derive(Debug, Error)]
-#[error_prefix = "Response"]
-pub enum ResponseError {
-    #[error_from]
-    Io(io::Error),
-    #[error_kind("invalid format")]
-    InvalidFormat,
-    #[error_kind("invalid status code")]
-    InvalidStatus,
-}
-
-
-pub type Result<T> = std::result::Result<T, ResponseError>;
 
 
 /// Parser and formatter for HTTP response line and headers
@@ -82,12 +71,16 @@ impl Response {
             if first_line {
                 first_line = false;
 
-                let skip = s.find(char::is_whitespace).ok_or_else(|| ResponseError::InvalidFormat)?;
+                let skip = s.find(char::is_whitespace).ok_or_else(|| "invalid response format")?;
                 self.version = s[.. skip].into();
                 let s = s[skip + 1 ..].trim_start();
                 let skip = s.find(char::is_whitespace).unwrap_or_else(|| s.len());
                 self.code = s[.. skip].parse().unwrap_or(0);
-                if self.code < 100 || self.code >= 600 { return Err(ResponseError::InvalidStatus) }
+
+                ensure!(
+                    self.code >= 100 && self.code < 600,
+                    "invalid status code"
+                );
 
                 if s.len() > skip {
                     let s = s[skip + 1 ..].trim_start();
