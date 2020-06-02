@@ -130,7 +130,7 @@ impl HttpClient {
                 }
                 self.request.set_version(HttpVersion::RTSP10);
             }
-            _ => return err!("invalid protocol"),
+            _ => bail!("invalid protocol"),
         };
 
         let host = self.request.url.get_host();
@@ -214,7 +214,7 @@ impl HttpClient {
 
         let location = self.response.header.get("location").unwrap_or("");
         if location.is_empty() {
-            return err!("invalid redirect location");
+            bail!("invalid redirect location");
         }
 
         if ! self.transfer.is_closed() {
@@ -265,7 +265,7 @@ impl HttpClient {
                 }
                 code => {
                     self.skip_body()?;
-                    return err!("request failed {} {}", code, self.response.get_reason());
+                    bail!("request failed {} {}", code, self.response.get_reason());
                 }
             }
         }
