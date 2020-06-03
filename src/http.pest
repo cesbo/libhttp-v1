@@ -1,0 +1,67 @@
+// --- RFC7230 ---
+
+EOL = _{ "\n" }
+ESC = _{ "\\" }
+QUOTE = _{ "\"" }
+WHITESPACE = _{ " " | "\t" }
+
+TCHAR = _{
+	ASCII_ALPHANUMERIC |
+	"!" | "#" | "$" | "%" |
+    "&" | "'" | "*" | "+" |
+    "-" | "." | "^" | "_" |
+    "`" | "|" | "~"
+}
+
+token = @{ TCHAR+ }
+
+// --- String ---
+
+escape = @{ QUOTE | ESC | " " }
+fragment = @{ (!(ESC | EOL | QUOTE) ~ ANY)+ }
+
+string = ${
+    QUOTE ~
+    (
+        ESC ~ escape |
+        fragment
+    )* ~
+    QUOTE
+}
+
+// --- Auth Challenge ---
+
+key = @{ token }
+challenge_value = @{ string | token }
+challenge_pair = { key ~ "=" ~ challenge_value }
+
+challenge = { SOI ~ (challenge_pair ~ ","?)+ ~ EOI }
+
+// --- Headers ---
+
+header_value = @{ (!EOL ~ ANY)+ }
+header_pair = { key ~ ":" ~ header_value }
+headers = { (!EOL ~ header_pair ~ EOL)+ }
+
+// --- Request ---
+
+method = @{ token }
+target = @{ (!(WHITESPACE | EOL) ~ ANY)+ }
+version = @{ (ASCII_ALPHANUMERIC | "." | "/")+ }
+
+request = {
+	SOI ~
+    method ~ target ~ version? ~ EOL ~
+    headers ~ EOL
+}
+
+// --- Response ---
+
+status_code = @{ ASCII_DIGIT{3} }
+status_phrase = @{ (!EOL ~ ANY)+ }
+
+response = {
+	SOI ~
+    version ~ status_code ~ status_phrase? ~ EOL ~
+    headers ~ EOL
+}
