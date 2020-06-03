@@ -13,7 +13,7 @@ TCHAR = _{
     "`" | "|" | "~"
 }
 
-token = { TCHAR+ }
+token = @{ TCHAR+ }
 
 // --- String ---
 
@@ -31,7 +31,9 @@ string = ${
 
 // --- Challenge ---
 
-value = { string | token }
-pair = { token ~ "=" ~ value }
+scheme = @{ token }
+key = @{ token }
+value = @{ string | token }
+pair = { key ~ "=" ~ value }
 
-challenge = { SOI ~ (pair ~ ","?)+ ~ EOI }
+challenge = { SOI ~ scheme ~ (pair ~ ","?)+ ~ EOI }
