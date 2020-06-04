@@ -360,7 +360,9 @@ fn test_redirect_connection_close() {
 }
 
 
+// TODO: keep-alive on redirect
 #[test]
+#[ignore]
 fn test_redirect_connection_keep_alive() {
     Server::new("127.0.0.1:33014")
         .step(

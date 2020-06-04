@@ -6,6 +6,7 @@
 //! - length - reads content limited by `Content-Length`
 //! - chunked - reads content divided into a series of non-overlapping chunks
 
+mod void;
 mod buffer;
 mod chunked;
 mod length;
@@ -24,12 +25,8 @@ use {
         },
     },
 
-    crate::{
-        Result,
-        client::stream::HttpStream,
-    },
-
     self::{
+        void::VoidStream,
         buffer::HttpBuffer,
         chunked::HttpChunked,
         length::HttpLength,
@@ -38,23 +35,12 @@ use {
 };
 
 
+pub trait HttpTransferStream: Read + Write + fmt::Debug {}
+
+
 trait HttpTransferExt: fmt::Debug {
     fn fill_buf<'a>(&mut self, buf: &'a mut HttpBuffer, src: &mut dyn Read) -> io::Result<&'a [u8]>;
     fn consume(&mut self, amt: usize);
-}
-
-
-/// HTTP Connection type
-#[derive(Debug, PartialEq)]
-enum HttpConnection {
-    /// Not connected. NullStream
-    None,
-    /// Connected and ready for request
-    Ready,
-    /// Close connection
-    Close,
-    /// Keep connection alive
-    KeepAlive,
 }
 
 
@@ -68,66 +54,50 @@ enum HttpConnection {
 /// - keep-alive
 #[derive(Debug)]
 pub struct HttpTransfer {
-    stream: HttpStream,
     rbuf: HttpBuffer,
     wbuf: HttpBuffer,
 
+    stream: Box<dyn HttpTransferStream>,
     transfer: Box<dyn HttpTransferExt>,
-    connection: HttpConnection,
 }
 
 
 impl Default for HttpTransfer {
     fn default() -> Self {
         HttpTransfer {
-            stream: HttpStream::default(),
             rbuf: HttpBuffer::default(),
             wbuf: HttpBuffer::default(),
 
+            stream: Box::new(VoidStream),
             transfer: Box::new(HttpPersist),
-            connection: HttpConnection::None,
         }
     }
 }
 
 
 impl HttpTransfer {
-    /// Close connection
+    /// Attach Stream
     #[inline]
-    pub fn close(&mut self) {
-        self.connection = HttpConnection::None;
-        self.stream.close();
-    }
+    pub fn init(&mut self, stream: Box<dyn HttpTransferStream>) { self.stream = stream }
 
-    /// Opens a TCP connection to a remote host
-    /// If connection already opened just clears read/write buffers
-    pub fn connect(&mut self, tls: bool, host: &str, port: u16) -> Result<()> {
+    /// Clear IO buffers
+    /// Should be called before each request
+    pub fn clear(&mut self) {
         self.rbuf.clear();
         self.wbuf.clear();
         self.transfer = Box::new(HttpPersist);
-
-        if self.connection == HttpConnection::None {
-            self.stream.connect(tls, host, port)?;
-            self.connection = HttpConnection::Ready;
-        }
-
-        Ok(())
     }
 
+    /// Close connection
     #[inline]
-    pub fn is_closed(&self) -> bool { self.connection == HttpConnection::None }
-
-    /// Close connection after end of response
-    #[inline]
-    pub fn set_connection_close(&mut self) { self.connection = HttpConnection::Close }
-
-    /// Keep connection alive after end of response
-    #[inline]
-    pub fn set_connection_keep_alive(&mut self) { self.connection = HttpConnection::KeepAlive }
+    pub fn close(&mut self) {
+        self.clear();
+        self.init(Box::new(VoidStream));
+    }
 
     /// Content-Length defined in the headers or response without content
     #[inline]
-    pub fn set_content_length(&mut self, len: usize) {
+    pub fn set_transfer_length(&mut self, len: usize) {
         if self.rbuf.cap - self.rbuf.pos > len {
             self.rbuf.cap = self.rbuf.pos + len;
         }
@@ -136,11 +106,11 @@ impl HttpTransfer {
 
     /// Transfer-Encoded: chunked
     #[inline]
-    pub fn set_content_chunked(&mut self) { self.transfer = Box::new(HttpChunked::new()) }
+    pub fn set_transfer_chunked(&mut self) { self.transfer = Box::new(HttpChunked::new()) }
 
     /// Receive content until connection closed
     #[inline]
-    pub fn set_content_persist(&mut self) { self.transfer = Box::new(HttpPersist) }
+    pub fn set_transfer_persist(&mut self) { self.transfer = Box::new(HttpPersist) }
 }
 
 
@@ -152,11 +122,6 @@ impl Read for HttpTransfer {
             self.consume(nread);
             Ok(nread)
         } else {
-            if self.connection == HttpConnection::Close {
-                self.close();
-            } else {
-                self.connection = HttpConnection::Ready;
-            }
             Ok(0)
         }
     }

@@ -1,13 +1,7 @@
-// Copyright (C) 2019-2020 Cesbo OU <info@cesbo.com>
-//
-// This file is part of ASC/libhttp
-//
-// ASC/libhttp can not be copied and/or distributed without the express
-// permission of Cesbo OU
+//! HTTP Core: HTTP Client
 
-
+mod stream;
 mod auth;
-pub (crate) mod stream;
 
 
 use {
@@ -32,6 +26,7 @@ use {
     },
 
     self::{
+        stream::HttpStream,
         auth::http_auth,
     },
 };
@@ -78,10 +73,14 @@ pub const USER_AGENT: &str = concat!("libhttp/", env!("CARGO_PKG_VERSION"));
 pub struct HttpClient {
     /// HTTP request
     pub request: Request,
+
     /// received HTTP response
     pub response: Response,
+
     /// HTTP stream
     transfer: HttpTransfer,
+
+    keep_alive: bool,
 }
 
 
@@ -105,7 +104,10 @@ impl HttpClient {
     /// Close connection
     /// Method should not used manually
     #[inline]
-    pub fn close(&mut self) { self.transfer.close() }
+    pub fn close(&mut self) {
+        self.keep_alive = false;
+        self.transfer.close();
+    }
 
     /// Connects to destination host, sends request line and headers
     /// Prepares HTTP stream for writing data
@@ -136,7 +138,13 @@ impl HttpClient {
 
         let host = self.request.url.get_host();
 
-        self.transfer.connect(tls, host, port)?;
+        self.transfer.clear();
+
+        if ! self.keep_alive {
+            let stream = HttpStream::connect(tls, host, port)?;
+            self.transfer.init(Box::new(stream));
+        }
+
         self.request.send(&mut self.transfer)?;
         self.transfer.flush()?;
 
@@ -159,44 +167,40 @@ impl HttpClient {
 
         if let Some(connection) = self.response.header.get("connection") {
             if connection.eq_ignore_ascii_case("keep-alive") {
-                self.transfer.set_connection_keep_alive();
-            } else {
-                self.transfer.set_connection_close();
+                self.keep_alive = true;
             }
-        } else if self.response.get_version() == HttpVersion::HTTP10 {
-            self.transfer.set_connection_close();
-        } else {
-            self.transfer.set_connection_keep_alive();
+        } else if self.response.get_version() != HttpVersion::HTTP10 {
+            self.keep_alive = true;
         }
 
         if no_content {
-            self.transfer.set_content_length(0);
+            self.transfer.set_transfer_length(0);
             return Ok(());
         }
 
-        if let Some(_encoding) = self.response.header.get("content-encoding") {
-            // TODO:
-        }
+        // TODO:
+        // if let Some(_encoding) = self.response.header.get("content-encoding") {
+        // }
 
         if let Some(len) = self.response.header.get("content-length") {
             let len = len.parse().unwrap_or(0);
-            self.transfer.set_content_length(len);
+            self.transfer.set_transfer_length(len);
             return Ok(());
         }
 
         if let Some(encoding) = self.response.header.get("transfer-encoding") {
             for i in encoding.split(',').map(|v| v.trim()) {
                 if i.eq_ignore_ascii_case("chunked") {
-                    self.transfer.set_content_chunked();
+                    self.transfer.set_transfer_chunked();
                     return Ok(());
                 }
             }
         }
 
         if code == 200 {
-            self.transfer.set_content_persist();
+            self.transfer.set_transfer_persist();
         } else {
-            self.transfer.set_content_length(0);
+            self.transfer.set_transfer_length(0);
         }
 
         Ok(())
@@ -217,15 +221,10 @@ impl HttpClient {
         if location.is_empty() {
             bail!("invalid redirect location");
         }
-
-        if ! self.transfer.is_closed() {
-            let limit = std::cmp::min(location.len(), 8); // 8 - enough for "https://"
-            if location[.. limit].find("://").is_some() {
-                self.transfer.close();
-            }
-        }
-
         self.request.url.set(location)?;
+
+        // TODO: check scheme, host, port
+        self.close();
 
         Ok(())
     }
@@ -278,7 +277,17 @@ impl HttpClient {
 
 impl Read for HttpClient {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.transfer.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let size = self.transfer.read(buf)?;
+        if size != 0 {
+            Ok(size)
+        } else {
+            if ! self.keep_alive {
+                self.close();
+            }
+            Ok(0)
+        }
+    }
 }
 
 

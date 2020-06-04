@@ -15,7 +15,6 @@ mod request;
 mod response;
 mod client;
 mod url;
-// mod parser;
 
 mod transfer;
 
@@ -27,7 +26,6 @@ pub use crate::{
     header::Header,
     request::Request,
     response::Response,
-
 
     client::{
         HttpClient,
