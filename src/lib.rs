@@ -14,6 +14,7 @@ mod request;
 mod response;
 mod client;
 mod url;
+mod parser;
 
 
 pub use crate::{

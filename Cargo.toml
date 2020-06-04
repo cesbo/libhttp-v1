@@ -6,9 +6,11 @@ edition = "2018"
 publish = false
 
 [dependencies]
-base64 = "0.10"
+pest = "2.1"
+pest_derive = "2.1"
+base64 = "0.12"
 openssl = "0.10"
-libflate = "0.1"
+libflate = "1.0"
 
 [features]
 static = ["openssl/vendored"]
