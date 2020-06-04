@@ -8,13 +8,16 @@
 
 #[macro_use]
 mod error;
+
 mod version;
 mod header;
 mod request;
 mod response;
 mod client;
 mod url;
-mod parser;
+// mod parser;
+
+mod transfer;
 
 
 pub use crate::{

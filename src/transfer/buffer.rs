@@ -1,9 +1,4 @@
-// Copyright (C) 2019 Cesbo OU <info@cesbo.com>
-//
-// This file is part of ASC/libhttp
-//
-// ASC/libhttp can not be copied and/or distributed without the express
-// permission of Cesbo OU
+//! HTTP Core: HTTP IO Buffer
 
 use std::fmt;
 

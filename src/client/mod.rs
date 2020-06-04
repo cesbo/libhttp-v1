@@ -7,7 +7,7 @@
 
 
 mod auth;
-pub (crate) mod transfer;
+pub (crate) mod stream;
 
 
 use {
@@ -27,11 +27,12 @@ use {
         Request,
         Response,
         UrlSetter,
+
+        transfer::HttpTransfer,
     },
 
     self::{
         auth::http_auth,
-        transfer::HttpTransfer,
     },
 };
 

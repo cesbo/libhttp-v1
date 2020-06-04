@@ -1,12 +1,12 @@
-// Copyright (C) 2019 Cesbo OU <info@cesbo.com>
-//
-// This file is part of ASC/libhttp
-//
-// ASC/libhttp can not be copied and/or distributed without the express
-// permission of Cesbo OU
+//! HTTP Core: Transfer module
+//!
+//! Implements IO buffer and transfer encoding algorithms:
+//!
+//! - persist - waits while server closes connection
+//! - length - reads content limited by `Content-Length`
+//! - chunked - reads content divided into a series of non-overlapping chunks
 
-pub (crate) mod stream;
-pub (crate) mod buffer;
+mod buffer;
 mod chunked;
 mod length;
 mod persist;
@@ -24,10 +24,12 @@ use {
         },
     },
 
-    crate::Result,
+    crate::{
+        Result,
+        client::stream::HttpStream,
+    },
 
     self::{
-        stream::HttpStream,
         buffer::HttpBuffer,
         chunked::HttpChunked,
         length::HttpLength,
