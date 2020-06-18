@@ -23,7 +23,7 @@ pub use crate::{
     error::Result,
 
     version::HttpVersion,
-    header::Header,
+    header::HeaderMap,
     request::Request,
     response::Response,
 

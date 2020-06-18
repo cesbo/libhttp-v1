@@ -15,7 +15,7 @@ use {
     crate::{
         Result,
 
-        Header,
+        HeaderMap,
         HttpVersion,
     },
 };
@@ -28,7 +28,7 @@ pub struct Response {
     code: usize,
     reason: String,
     ///
-    pub header: Header,
+    pub header: HeaderMap,
 }
 
 
@@ -38,7 +38,7 @@ impl Default for Response {
             version: HttpVersion::default(),
             code: 0,
             reason: String::default(),
-            header: Header::default(),
+            header: HeaderMap::default(),
         }
     }
 }

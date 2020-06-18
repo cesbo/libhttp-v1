@@ -15,7 +15,7 @@ use {
     crate::{
         Result,
 
-        Header,
+        HeaderMap,
         Url,
         UrlFormatter,
         HttpVersion,
@@ -29,7 +29,7 @@ pub struct Request {
     method: String,
     pub url: Url,
     version: HttpVersion,
-    pub header: Header,
+    pub header: HeaderMap,
     pub (crate) nonce_count: usize
 }
 
@@ -37,10 +37,10 @@ pub struct Request {
 impl Default for Request {
     fn default() -> Request {
         Request {
-            method: "GET".to_owned(),
+            method: String::with_capacity(32),
             url: Url::default(),
             version: HttpVersion::default(),
-            header: Header::default(),
+            header: HeaderMap::default(),
             nonce_count: 0,
         }
     }

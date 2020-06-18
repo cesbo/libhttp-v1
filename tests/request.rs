@@ -27,6 +27,7 @@ const TEST_TAB_UNIX: &str = "POST \t\t\t\t\t /path?query     \t\t\t\t\t       RT
 fn request_send() {
     let mut request = Request::new();
     request.url.set("rtsp://127.0.0.1:8000/path?query").unwrap();
+    request.set_method("GET");
     request.set_version(HttpVersion::RTSP10);
     request.header.set("Host", request.url.as_address());
     let mut dst: Vec<u8> = Vec::new();
@@ -39,6 +40,7 @@ fn request_send() {
 fn request_send_version() {
     let mut request = Request::new();
     request.url.set("http://127.0.0.1:8000/path?query").unwrap();
+    request.set_method("GET");
     request.header.set("Host", request.url.as_address());
     let mut dst: Vec<u8> = Vec::new();
     request.send(&mut dst).unwrap();

@@ -23,17 +23,17 @@ use self::pair::HeaderPair;
 
 /// Set of the headers for HTTP request and response
 #[derive(Default)]
-pub struct Header(HashMap<HeaderKey, HeaderPair>);
+pub struct HeaderMap(HashMap<HeaderKey, HeaderPair>);
 
 
-impl fmt::Debug for Header {
+impl fmt::Debug for HeaderMap {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.0.values()).finish()
     }
 }
 
 
-impl Header {
+impl HeaderMap {
     /// Parses header line
     pub fn parse(&mut self, line: &str) {
         if let Some(skip) = line.find(':') {

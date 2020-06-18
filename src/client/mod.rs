@@ -243,6 +243,8 @@ impl HttpClient {
     /// client.read_to_string(&mut body).unwrap();
     /// ```
     pub fn get(&mut self) -> Result<()> {
+        self.request.set_method("GET");
+
         let mut attempt_auth = 0;
         let mut attempt_redirect = 0;
 
