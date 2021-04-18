@@ -218,7 +218,10 @@ impl UrlSetter for &str {
             };
             url.path.push('/');
 
-            step = 3;
+            url.query.clear();
+            url.fragment.clear();
+
+            step = 2;
         }
 
         for (idx, part) in self[skip ..].match_indices(|c| {
